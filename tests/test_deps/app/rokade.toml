@@ -1,0 +1,9 @@
+[package]
+name = "dep_app"
+version = "0.1.0"
+
+[dependencies]
+mathlib = { path = "../mathlib" }
+
+[build]
+kind = "exe"

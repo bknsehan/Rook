@@ -343,6 +343,80 @@ build/
 
 ---
 
+## Package Dependencies & C Library Integration
+
+Rook provides two modern dependency mechanisms: **Source-Level Packages** for other Rook projects, and **First-Class C Library Interop** via `pkg-config`.
+
+### 1. Rook-to-Rook Package Dependencies
+
+Rook uses source-level module dependencies (similar to Go and Zig). Because Rook has no header files, source dependencies allow full compile-time static dispatch, whole-program optimizations, and effortless multi-target cross-compilation.
+
+In your consumer's `rokade.toml`:
+```toml
+[package]
+name = "mygame"
+version = "0.1.0"
+
+[dependencies]
+mathlib = { path = "../mathlib" }
+```
+
+In your Rook source code:
+```rook
+#comprise mathlib
+
+int main() {
+    let v1 = Vec2 { x: 10.0, y: 20.0 };
+    let v2 = Vec2 { x: 5.0, y: 5.0 };
+    let v3 = v1.add(v2);
+    return 0;
+}
+```
+
+### 2. C Libraries as Dependencies (e.g. Raylib, SDL2, SQLite)
+
+Rook natively understands C headers. By using `pkg-config`, Rokade automatically resolves all include paths, compiler flags, and link flags for system C libraries.
+
+In `rokade.toml`:
+```toml
+[package]
+name = "raylib_demo"
+version = "0.1.0"
+
+[build]
+kind = "exe"
+pkg-config = ["raylib"]
+```
+
+In `src/main.rook`:
+```rook
+#include <stdio.h>
+#include <raylib.h>
+
+int main() {
+    InitWindow(800, 450, "Rook + Raylib Demo");
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Congrats! You are running Raylib natively in Rook!", 120, 200, 20, DARKGRAY);
+        EndDrawing();
+    }
+
+    CloseWindow();
+    return 0;
+}
+```
+
+Build and run:
+```bash
+rokade build
+rokade run
+```
+
+---
+
 ## License
 
 Rook is released under the [MIT License](LICENSE).

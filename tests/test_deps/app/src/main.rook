@@ -1,0 +1,10 @@
+#include <stdio.h>
+#comprise mathlib
+
+int main() {
+    let v1 = Vec2 { x: 10.0, y: 20.0 };
+    let v2 = Vec2 { x: 5.5, y: 2.5 };
+    let v3 = v1.add(v2);
+    printf("Vec2 sum: (%f, %f)\n", v3.x, v3.y);
+    return 0;
+}

@@ -593,7 +593,12 @@ static void cg_expr(CG* g, Expr* x) {
                 }
             }
         }
-        sb_append(&g->sb, "{");
+        int has_type = (x->type && x->type->name && x->type->name[0]);
+        if (has_type) {
+            sb_appendf(&g->sb, "((%s){", x->type->name);
+        } else {
+            sb_append(&g->sb, "{");
+        }
         StructDef* target_st = (x->type && x->type->name) ? lookup_struct(g, x->type->name) : NULL;
         for (int i = 0; i < x->nnfields; i++) {
             if (i) sb_append(&g->sb, ", ");
@@ -609,7 +614,11 @@ static void cg_expr(CG* g, Expr* x) {
             sb_append(&g->sb, " = ");
             cg_expr(g, x->nfields[i].e);
         }
-        sb_append(&g->sb, "}");
+        if (has_type) {
+            sb_append(&g->sb, "})");
+        } else {
+            sb_append(&g->sb, "}");
+        }
         break;
     case E_BRACE_INIT:
         sb_append(&g->sb, "{");

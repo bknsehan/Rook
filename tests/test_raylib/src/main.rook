@@ -1,0 +1,11 @@
+#include <stdio.h>
+#include <raylib.h>
+
+int main() {
+    InitWindow(400, 300, "Rook + Raylib Demo");
+    Color bg = RAYWHITE;
+    printf("Window created successfully!\n");
+    CloseWindow();
+    printf("Window closed cleanly!\n");
+    return 0;
+}

@@ -26,16 +26,41 @@
 /* ---------- include resolution ---------- */
 
 /* Resolve an include path, searching basedir first, then include dirs.
+   Also checks common package entrypoints (src/<name>.rook, src/lib.rook, lib.rook, main.rook).
    Returns a malloc'd path or NULL if not found. */
 static char* resolve_include_path(const char* incpath, const char* basedir,
                                    const char** inc_dirs, size_t n_inc) {
     char candidate[4096];
+    size_t ilen = strlen(incpath);
+    char modname[256];
+    if (ilen > 5 && strcmp(incpath + ilen - 5, ".rook") == 0) {
+        size_t mlen = ilen - 5 < sizeof(modname) ? ilen - 5 : sizeof(modname) - 1;
+        memcpy(modname, incpath, mlen);
+        modname[mlen] = '\0';
+    } else {
+        snprintf(modname, sizeof modname, "%s", incpath);
+    }
+
     if (basedir) {
         snprintf(candidate, sizeof(candidate), "%s/%s", basedir, incpath);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/src/%s", basedir, incpath);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/%s/src/%s.rook", basedir, modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/%s/src/lib.rook", basedir, modname);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
     }
     for (size_t i = 0; i < n_inc; i++) {
         snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/src/%s", inc_dirs[i], incpath);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/src/lib.rook", inc_dirs[i]);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/src/main.rook", inc_dirs[i]);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/lib.rook", inc_dirs[i]);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
     }
     snprintf(candidate, sizeof(candidate), "%s", incpath);
@@ -460,15 +485,20 @@ typedef struct {
 } TargetConfig;
 
 typedef struct {
+    char name[64];
+    char path[4096];
+} Dependency;
+
+typedef struct {
     char name[256];
     char version[64];
     char build_kind[32];
     char build_target[64];
     char c_standard[16];
     char cflags[4096];
-    char libraries[16][256];
+    char libraries[32][256];
     size_t n_libraries;
-    char include_dirs[16][4096];
+    char include_dirs[32][4096];
     size_t n_include_dirs;
 
     /* Multi-target list: targets = ["linux", "android", "windows"] */
@@ -478,6 +508,14 @@ typedef struct {
     /* Specific target configs */
     TargetConfig target_configs[16];
     size_t n_target_configs;
+
+    /* Rook package dependencies */
+    Dependency dependencies[32];
+    size_t n_dependencies;
+
+    /* pkg-config packages */
+    char pkg_config[16][64];
+    size_t n_pkg_config;
 } ProjectConfig;
 
 static void project_config_init(ProjectConfig* cfg) {
@@ -538,6 +576,33 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
     const char* val = eq + 1;
     while (*val == ' ' || *val == '\t') val++;
 
+    /* inline table: key = { path = "..." } */
+    if (*val == '{') {
+        if (strcmp(cur_sec, "dependencies") == 0) {
+            char pathbuf[4096] = "";
+            const char* pkey = strstr(val, "path");
+            if (pkey) {
+                const char* q1 = strchr(pkey, '"');
+                if (q1) {
+                    const char* q2 = strchr(q1 + 1, '"');
+                    if (q2) {
+                        size_t plen = (size_t)(q2 - q1 - 1);
+                        if (plen < sizeof(pathbuf)) {
+                            memcpy(pathbuf, q1 + 1, plen);
+                            pathbuf[plen] = '\0';
+                        }
+                    }
+                }
+            }
+            if (pathbuf[0] && cfg->n_dependencies < 32) {
+                snprintf(cfg->dependencies[cfg->n_dependencies].name, sizeof(cfg->dependencies[0].name), "%s", key);
+                snprintf(cfg->dependencies[cfg->n_dependencies].path, sizeof(cfg->dependencies[0].path), "%s", pathbuf);
+                cfg->n_dependencies++;
+            }
+        }
+        return 0;
+    }
+
     /* strip quotes from string values */
     char valbuf[4096];
     if (*val == '"') {
@@ -578,12 +643,16 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
             }
             /* Process this array element */
             if (strcmp(key, "library") == 0 || strcmp(key, "libraries") == 0) {
-                if (cfg->n_libraries < 16) {
+                if (cfg->n_libraries < 32) {
                     snprintf(cfg->libraries[cfg->n_libraries++], 256, "%s", valbuf);
                 }
             } else if (strcmp(key, "include-dir") == 0 || strcmp(key, "include-dirs") == 0) {
-                if (cfg->n_include_dirs < 16) {
+                if (cfg->n_include_dirs < 32) {
                     snprintf(cfg->include_dirs[cfg->n_include_dirs++], 4096, "%s", valbuf);
+                }
+            } else if (strcmp(key, "pkg-config") == 0 || strcmp(key, "pkg_config") == 0) {
+                if (cfg->n_pkg_config < 16) {
+                    snprintf(cfg->pkg_config[cfg->n_pkg_config++], 64, "%s", valbuf);
                 }
             } else if (strcmp(key, "targets") == 0) {
                 if (cfg->n_configured_targets < 16) {
@@ -617,11 +686,23 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
         if (strcmp(key, "name") == 0) snprintf(cfg->name, sizeof(cfg->name), "%s", valbuf);
         else if (strcmp(key, "version") == 0) snprintf(cfg->version, sizeof(cfg->version), "%s", valbuf);
     }
+    if (strcmp(cur_sec, "dependencies") == 0) {
+        if (cfg->n_dependencies < 32) {
+            snprintf(cfg->dependencies[cfg->n_dependencies].name, sizeof(cfg->dependencies[0].name), "%s", key);
+            snprintf(cfg->dependencies[cfg->n_dependencies].path, sizeof(cfg->dependencies[0].path), "%s", valbuf);
+            cfg->n_dependencies++;
+        }
+    }
     if (strcmp(cur_sec, "build") == 0 || cur_sec[0] == '\0') {
         if (strcmp(key, "kind") == 0) snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
         else if (strcmp(key, "target") == 0) snprintf(cfg->build_target, sizeof(cfg->build_target), "%s", valbuf);
         else if (strcmp(key, "c-standard") == 0 || strcmp(key, "standard") == 0) snprintf(cfg->c_standard, sizeof(cfg->c_standard), "%s", valbuf);
         else if (strcmp(key, "cflags") == 0) snprintf(cfg->cflags, sizeof(cfg->cflags), "%s", valbuf);
+        else if (strcmp(key, "pkg-config") == 0 || strcmp(key, "pkg_config") == 0) {
+            if (cfg->n_pkg_config < 16) {
+                snprintf(cfg->pkg_config[cfg->n_pkg_config++], 64, "%s", valbuf);
+            }
+        }
         else if (strcmp(key, "targets") == 0 && cfg->n_configured_targets < 16) {
             snprintf(cfg->configured_targets[cfg->n_configured_targets++], 64, "%s", valbuf);
         }
@@ -644,6 +725,187 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
     return 0;
 }
 
+static void resolve_pkg_config(ProjectConfig* cfg) {
+    if (cfg->n_pkg_config == 0) return;
+    for (size_t i = 0; i < cfg->n_pkg_config; i++) {
+        const char* pkg = cfg->pkg_config[i];
+        char cmd[1024];
+
+        /* Include dirs */
+        snprintf(cmd, sizeof cmd, "pkg-config --cflags-only-I %s 2>/dev/null", pkg);
+        FILE* fp = popen(cmd, "r");
+        if (fp) {
+            char buf[4096];
+            if (fgets(buf, sizeof buf, fp)) {
+                char* p = buf;
+                while (*p) {
+                    while (*p == ' ' || *p == '\t' || *p == '\n') p++;
+                    if (*p == '-' && *(p + 1) == 'I') {
+                        p += 2;
+                        char inc[4096];
+                        int k = 0;
+                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
+                            inc[k++] = *p++;
+                        }
+                        inc[k] = '\0';
+                        if (k > 0 && cfg->n_include_dirs < 32) {
+                            int seen = 0;
+                            for (size_t j = 0; j < cfg->n_include_dirs; j++) {
+                                if (strcmp(cfg->include_dirs[j], inc) == 0) { seen = 1; break; }
+                            }
+                            if (!seen) {
+                                snprintf(cfg->include_dirs[cfg->n_include_dirs++], 4096, "%s", inc);
+                            }
+                        }
+                    } else if (*p) {
+                        p++;
+                    }
+                }
+            }
+            pclose(fp);
+        }
+
+        /* Other cflags */
+        snprintf(cmd, sizeof cmd, "pkg-config --cflags-only-other %s 2>/dev/null", pkg);
+        fp = popen(cmd, "r");
+        if (fp) {
+            char buf[4096];
+            if (fgets(buf, sizeof buf, fp)) {
+                size_t blen = strlen(buf);
+                while (blen > 0 && (buf[blen - 1] == '\n' || buf[blen - 1] == '\r')) buf[--blen] = '\0';
+                if (blen > 0) {
+                    size_t curlen = strlen(cfg->cflags);
+                    snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", buf);
+                }
+            }
+            pclose(fp);
+        }
+
+        /* Libraries (-l) and library dirs (-L) */
+        snprintf(cmd, sizeof cmd, "pkg-config --libs %s 2>/dev/null", pkg);
+        fp = popen(cmd, "r");
+        if (fp) {
+            char buf[4096];
+            if (fgets(buf, sizeof buf, fp)) {
+                char* p = buf;
+                while (*p) {
+                    while (*p == ' ' || *p == '\t' || *p == '\n') p++;
+                    if (*p == '-' && *(p + 1) == 'l') {
+                        p += 2;
+                        char lib[256];
+                        int k = 0;
+                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
+                            lib[k++] = *p++;
+                        }
+                        lib[k] = '\0';
+                        if (k > 0 && cfg->n_libraries < 32) {
+                            int seen = 0;
+                            for (size_t j = 0; j < cfg->n_libraries; j++) {
+                                if (strcmp(cfg->libraries[j], lib) == 0) { seen = 1; break; }
+                            }
+                            if (!seen) {
+                                snprintf(cfg->libraries[cfg->n_libraries++], 256, "%s", lib);
+                            }
+                        }
+                    } else if (*p == '-' && *(p + 1) == 'L') {
+                        char ldir[4096];
+                        int k = 0;
+                        ldir[k++] = *p++;
+                        ldir[k++] = *p++;
+                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
+                            ldir[k++] = *p++;
+                        }
+                        ldir[k] = '\0';
+                        size_t curlen = strlen(cfg->cflags);
+                        snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", ldir);
+                    } else if (*p) {
+                        p++;
+                    }
+                }
+            }
+            pclose(fp);
+        }
+    }
+}
+
+static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cfg, int depth) {
+    if (depth > 8) return;
+
+    resolve_pkg_config(cfg);
+
+    for (size_t i = 0; i < cfg->n_dependencies; i++) {
+        const char* dpath = cfg->dependencies[i].path;
+        char resolved_dir[4096];
+        if (dpath[0] == '/') {
+            snprintf(resolved_dir, sizeof resolved_dir, "%s", dpath);
+        } else {
+            snprintf(resolved_dir, sizeof resolved_dir, "%s/%s", proj_dir, dpath);
+        }
+
+        /* 1. Add <dep>/src to include_dirs */
+        char src_dir[4096];
+        snprintf(src_dir, sizeof src_dir, "%s/src", resolved_dir);
+        if (access(src_dir, R_OK) == 0 && cfg->n_include_dirs < 32) {
+            int seen = 0;
+            for (size_t j = 0; j < cfg->n_include_dirs; j++) {
+                if (strcmp(cfg->include_dirs[j], src_dir) == 0) { seen = 1; break; }
+            }
+            if (!seen) {
+                snprintf(cfg->include_dirs[cfg->n_include_dirs++], 4096, "%s", src_dir);
+            }
+        }
+        /* 2. Add <dep> itself to include_dirs */
+        if (access(resolved_dir, R_OK) == 0 && cfg->n_include_dirs < 32) {
+            int seen = 0;
+            for (size_t j = 0; j < cfg->n_include_dirs; j++) {
+                if (strcmp(cfg->include_dirs[j], resolved_dir) == 0) { seen = 1; break; }
+            }
+            if (!seen) {
+                snprintf(cfg->include_dirs[cfg->n_include_dirs++], 4096, "%s", resolved_dir);
+            }
+        }
+
+        /* 3. Transitive inherit from dependency's rokade.toml */
+        char dep_toml[4096];
+        snprintf(dep_toml, sizeof dep_toml, "%s/rokade.toml", resolved_dir);
+        if (access(dep_toml, R_OK) == 0) {
+            ProjectConfig dep_cfg;
+            project_config_init(&dep_cfg);
+            FILE* df = fopen(dep_toml, "r");
+            if (df) {
+                char dline[4096];
+                char cur_dsec[128] = "";
+                while (fgets(dline, sizeof(dline), df)) {
+                    parse_toml_line(dline, &dep_cfg, cur_dsec, sizeof(cur_dsec));
+                }
+                fclose(df);
+
+                for (size_t k = 0; k < dep_cfg.n_pkg_config; k++) {
+                    int seen = 0;
+                    for (size_t m = 0; m < cfg->n_pkg_config; m++) {
+                        if (strcmp(cfg->pkg_config[m], dep_cfg.pkg_config[k]) == 0) { seen = 1; break; }
+                    }
+                    if (!seen && cfg->n_pkg_config < 16) {
+                        snprintf(cfg->pkg_config[cfg->n_pkg_config++], 64, "%s", dep_cfg.pkg_config[k]);
+                    }
+                }
+                for (size_t k = 0; k < dep_cfg.n_libraries; k++) {
+                    int seen = 0;
+                    for (size_t m = 0; m < cfg->n_libraries; m++) {
+                        if (strcmp(cfg->libraries[m], dep_cfg.libraries[k]) == 0) { seen = 1; break; }
+                    }
+                    if (!seen && cfg->n_libraries < 32) {
+                        snprintf(cfg->libraries[cfg->n_libraries++], 256, "%s", dep_cfg.libraries[k]);
+                    }
+                }
+                resolve_project_dependencies(resolved_dir, &dep_cfg, depth + 1);
+            }
+        }
+    }
+
+    resolve_pkg_config(cfg);
+}
+
 static int read_project_config(const char* proj_dir, ProjectConfig* cfg) {
     project_config_init(cfg);
     char toml_path[4096];
@@ -656,6 +918,8 @@ static int read_project_config(const char* proj_dir, ProjectConfig* cfg) {
         parse_toml_line(line, cfg, cur_sec, sizeof(cur_sec));
     }
     fclose(f);
+
+    resolve_project_dependencies(proj_dir, cfg, 0);
     return cfg->name[0] != '\0';
 }
 

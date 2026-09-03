@@ -1,0 +1,6 @@
+[package]
+name = "mathlib"
+version = "1.0.0"
+
+[build]
+kind = "static-lib"

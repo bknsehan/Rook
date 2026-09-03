@@ -840,6 +840,57 @@ static int is_ident_char(char c) {
            (c >= '0' && c <= '9') || c == '_';
 }
 
+static void scan_raw_region(Checker* ck, const char* raw, int len);
+
+static void scan_c_header_file(Checker* ck, const char* header_name) {
+    if (!header_name || !*header_name) return;
+
+    static char scanned[256][256];
+    static size_t n_scanned = 0;
+    for (size_t i = 0; i < n_scanned; i++) {
+        if (strcmp(scanned[i], header_name) == 0) return;
+    }
+    if (n_scanned < 256) {
+        snprintf(scanned[n_scanned++], 256, "%s", header_name);
+    }
+
+    const char* search_dirs[] = {
+        "/usr/include",
+        "/usr/local/include",
+        "/usr/include/x86_64-linux-gnu",
+        "/usr/include/aarch64-linux-gnu",
+        "src",
+        "include",
+        "."
+    };
+    char full_path[4096];
+    int found = 0;
+    for (size_t d = 0; d < sizeof(search_dirs)/sizeof(search_dirs[0]); d++) {
+        snprintf(full_path, sizeof full_path, "%s/%s", search_dirs[d], header_name);
+        if (access(full_path, R_OK) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found) return;
+
+    FILE* f = fopen(full_path, "r");
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (sz > 0 && sz < 2 * 1024 * 1024) { /* Up to 2MB header */
+        char* content = malloc((size_t)sz + 1);
+        if (content) {
+            size_t rd = fread(content, 1, (size_t)sz, f);
+            content[rd] = '\0';
+            scan_raw_region(ck, content, (int)rd);
+            free(content);
+        }
+    }
+    fclose(f);
+}
+
 /* Scan a TOP_RAW slice for typedef aliases, C function names, #define macro
    names, and top-level C global variable names, so the checker does not flag
    them. Conservative: every bare identifier that is not a C type-word and not
@@ -850,6 +901,36 @@ static void scan_raw_region(Checker* ck, const char* raw, int len) {
     if (!buf) exit(1);
     memcpy(buf, raw, len);
     buf[len] = '\0';
+
+    /* Discover any included C headers and scan their symbols */
+    const char* inc = strstr(buf, "#include");
+    while (inc) {
+        const char* q1 = strchr(inc, '<');
+        const char* q2 = strchr(inc, '"');
+        char end_char = 0;
+        const char* hstart = NULL;
+        if (q1 && (!q2 || q1 < q2)) {
+            hstart = q1 + 1;
+            end_char = '>';
+        } else if (q2) {
+            hstart = q2 + 1;
+            end_char = '"';
+        }
+        if (hstart) {
+            const char* hend = strchr(hstart, end_char);
+            if (hend && (hend - hstart < 256)) {
+                char hname[256];
+                size_t hlen = (size_t)(hend - hstart);
+                memcpy(hname, hstart, hlen);
+                hname[hlen] = '\0';
+                /* Only scan C headers (.h or without extension), not .rook */
+                if (hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) {
+                    scan_c_header_file(ck, hname);
+                }
+            }
+        }
+        inc = strstr(inc + 8, "#include");
+    }
 
     const char* p = buf;
     while (*p) {
@@ -1221,8 +1302,6 @@ static void ck_expr(Checker* ck, Expr* x) {
     case E_IDENT: {
         if (ck_is_self(ck, x)) break;
         if (strcmp(x->str, "_") == 0) break;
-        if (is_builtin_name(x->str)) break;
-        if (raw_has(x->str)) break;
         Sym* local = ck_lookup_local(ck, x->str);
         if (local) {
             if (local->decl) { x->def_kind = DEF_VAR; x->def = local->decl; }
@@ -1247,6 +1326,8 @@ static void ck_expr(Checker* ck, Expr* x) {
             }
             break;
         }
+        if (is_builtin_name(x->str)) break;
+        if (raw_has(x->str)) break;
         if (sema_is_cfunc(x->str)) break;
         if (x->str[0] >= '0' && x->str[0] <= '9') break;
         char msg[256];
@@ -1452,6 +1533,7 @@ static int is_enum_type(Sema* s, const char* name) {
 static int ck_decl_type_valid(Checker* ck, AstType* t) {
     if (!t) return 1;
     if (is_c_type_word(t->name)) return 1;
+    if (raw_has(t->name)) return 1;
     Sym* sym = sema_lookup(ck->s, t->name);
     if (sym && (sym->kind == SYM_STRUCT || sym->kind == SYM_IMPL)) {
         StructDef* st = sema_lookup_struct(ck->s, t->name);
@@ -1505,6 +1587,7 @@ static void ck_decl(Checker* ck, Decl* d) {
             if (ck_type_is_numeric(d->type->name) && ck_type_is_numeric(got->name) &&
                      d->type->ptrs == 0 && got->ptrs == 0) ok = 1;
             else if (ck_type_eq(d->type, got)) ok = 1;
+            else if (raw_has(d->type->name)) ok = 1;
             if (!ok) {
                 char* ws = ck_type_str(d->type);
                 char* gs = ck_type_str(got);
