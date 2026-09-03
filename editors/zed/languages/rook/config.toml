@@ -2,7 +2,9 @@ name = "Rook"
 grammar = "c"
 path_suffixes = ["rook"]
 line_comments = ["// "]
+block_comment = ["/*", "*/"]
 autoclose_before = ";:.,=}])>"
+word_characters = ["_"]
 brackets = [
     { start = "{", end = "}", close = true, newline = true },
     { start = "[", end = "]", close = true, newline = true },
