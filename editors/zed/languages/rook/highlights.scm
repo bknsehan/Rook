@@ -3,6 +3,9 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
+((identifier) @keyword
+ (#match? @keyword "^(object|impl|sum|defer|let|match|comprise)$"))
+
 "break" @keyword
 "case" @keyword
 "const" @keyword
@@ -24,15 +27,6 @@
 "union" @keyword
 "volatile" @keyword
 "while" @keyword
-
-"object" @keyword
-"impl" @keyword
-"sum" @keyword
-"defer" @keyword
-"let" @keyword
-"#comprise" @keyword
-"comprise" @keyword
-"match" @keyword
 
 "#define" @keyword
 "#elif" @keyword
