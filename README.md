@@ -243,17 +243,27 @@ int main() {
 - CMake (for compiling the `rokade` compiler itself)
 - Optional: Cargo/Rust (if building the LSP server `rook-lsp`)
 
-### Building Rokade
+### Building & Installing Rokade
 
+#### Linux (Automated Installer):
 ```bash
 git clone https://github.com/bknsehan/Rook.git
 cd Rook
-cmake -B build -S .
-cmake --build build
+./install.sh --prefix=/home/bknsehan/bin/Rook --with-zed
+```
+This builds `rokade` and `rook-lsp`, installs the toolchain and `std/` into your chosen prefix, creates symlinks in `~/bin/`, and automatically integrates with the Zed editor.
+
+#### Windows (PowerShell):
+```powershell
+git clone https://github.com/bknsehan/Rook.git
+cd Rook
+.\install.ps1 -WithZed
 ```
 
-Verify your environment:
+#### Manual Build with CMake:
 ```bash
+cmake -B build -S .
+cmake --build build
 ./build/rokade doctor
 ```
 
@@ -413,6 +423,60 @@ Build and run:
 ```bash
 rokade build
 rokade run
+```
+
+---
+
+## Standard Library (`std`)
+
+Rook comes with a modular standard library installed directly with the toolchain (located at `<install_prefix>/std`). Rokade strictly resolves standard library modules from the verified installation directory, eliminating messy relative include paths.
+
+### Available Modules
+- `<std/io>`: Basic output (`println`, `print`, `eprintln`).
+- `<std/math>`: Vector math (`Vec2`, `Vec3`, methods like `.add()`, `.dot()`, and math functions `clampf`, `minf`, `maxf`, `lerpf`).
+- `<std/os>`: Runtime control (`panic`, `exit_with`).
+- `std`: Central prelude module importing all foundational utilities.
+
+### Example
+```rook
+#comprise <std/io>
+#comprise <std/math>
+
+int main() {
+    println("Hello from Rook Standard Library!");
+    let v1 = Vec2 { x: 3.0, y: 4.0 };
+    let v2 = Vec2 { x: 1.0, y: 2.0 };
+    let v3 = v1.add(v2);
+    printf("Vec2 sum: (%f, %f)\n", v3.x, v3.y);
+    return 0;
+}
+```
+
+---
+
+## Zed Editor Integration
+
+Rook provides first-class integration with the [Zed](https://zed.dev) editor:
+- **Language Extension**: Located at `editors/zed/` (auto-installed by `./install.sh --with-zed` to `~/.local/share/zed/extensions/installed/rook`).
+- **Syntax Highlighting**: Leverages C grammar mapping for robust, instant highlighting.
+- **Language Server (`rook-lsp`)**: Fully supported via stdio JSON-RPC.
+
+Configure `~/.config/zed/settings.json`:
+```json
+{
+  "lsp": {
+    "rook-lsp": {
+      "binary": {
+        "path": "/home/bknsehan/bin/Rook/bin/rook-lsp"
+      }
+    }
+  },
+  "languages": {
+    "Rook": {
+      "language_servers": ["rook-lsp"]
+    }
+  }
+}
 ```
 
 ---

@@ -78,4 +78,12 @@ if(ROOK_BUILD_LSP)
     OPTIONAL)
 endif()
 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/std/
+  DESTINATION std
+  OPTIONAL)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/editors/
+  DESTINATION editors
+  OPTIONAL)
+
 

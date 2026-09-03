@@ -1,0 +1,11 @@
+#include <stdlib.h>
+#comprise <std/io>
+
+void panic(const char* msg) {
+    eprintln(msg);
+    exit(1);
+}
+
+void exit_with(int code) {
+    exit(code);
+}

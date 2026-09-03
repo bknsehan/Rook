@@ -1,0 +1,41 @@
+#include <math.h>
+
+object Vec2 {
+    x: float
+    y: float
+}
+
+impl Vec2 {
+    Vec2 add(self, Vec2 other) {
+        return Vec2 { x: self.x + other.x, y: self.y + other.y };
+    }
+    Vec2 sub(self, Vec2 other) {
+        return Vec2 { x: self.x - other.x, y: self.y - other.y };
+    }
+    Vec2 scale(self, float s) {
+        return Vec2 { x: self.x * s, y: self.y * s };
+    }
+    float dot(self, Vec2 other) {
+        return self.x * other.x + self.y * other.y;
+    }
+}
+
+float clampf(float val, float min_val, float max_val) {
+    if (val < min_val) return min_val;
+    if (val > max_val) return max_val;
+    return val;
+}
+
+float minf(float a, float b) {
+    if (a < b) return a;
+    return b;
+}
+
+float maxf(float a, float b) {
+    if (a > b) return a;
+    return b;
+}
+
+float lerpf(float a, float b, float t) {
+    return a + t * (b - a);
+}

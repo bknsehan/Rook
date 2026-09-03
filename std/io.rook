@@ -1,0 +1,13 @@
+#include <stdio.h>
+
+void println(const char* s) {
+    puts(s);
+}
+
+void print(const char* s) {
+    printf("%s", s);
+}
+
+void eprintln(const char* s) {
+    fprintf(stderr, "%s\n", s);
+}

@@ -23,6 +23,89 @@
 #define ROKADE_VERSION "0.3.0"
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+/* Get the root installation directory of rokade.
+   Returns 0 on success, -1 on failure. */
+static int rokade_get_install_root(char* buf, size_t cap) {
+    /* 1. Explicit environment override */
+    const char* env_home = getenv("ROOK_HOME");
+    if (env_home && env_home[0]) {
+        snprintf(buf, cap, "%s", env_home);
+        return 0;
+    }
+
+#ifdef __linux__
+    /* 2. Linux /proc/self/exe resolution */
+    ssize_t n = readlink("/proc/self/exe", buf, cap - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        char* slash = strrchr(buf, '/');
+        if (slash) {
+            *slash = '\0'; /* strip executable name */
+            char* bin_slash = strrchr(buf, '/');
+            if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0)) {
+                *bin_slash = '\0'; /* strip /bin or /build to get install prefix */
+                return 0;
+            }
+        }
+    }
+#elif defined(_WIN32)
+    /* 3. Windows GetModuleFileName */
+    DWORD len = GetModuleFileNameA(NULL, buf, (DWORD)cap);
+    if (len > 0) {
+        char* slash = strrchr(buf, '\\');
+        if (!slash) slash = strrchr(buf, '/');
+        if (slash) {
+            *slash = '\0';
+            char* bin_slash = strrchr(buf, '\\');
+            if (!bin_slash) bin_slash = strrchr(buf, '/');
+            if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "BIN") == 0 ||
+                              strcmp(bin_slash + 1, "build") == 0)) {
+                *bin_slash = '\0';
+                return 0;
+            }
+        }
+    }
+#endif
+
+    /* 4. Target user install path on Linux */
+    const char* default_linux = "/home/bknsehan/bin/Rook";
+    if (access(default_linux, R_OK) == 0) {
+        snprintf(buf, cap, "%s", default_linux);
+        return 0;
+    }
+
+    return -1;
+}
+
+/* Locate the Rook standard library directory.
+   Returns 0 on success (path stored in out_std), -1 if not found.
+   Strict: Only loads std from the Rook installation path (or ROOK_HOME). */
+static int rokade_get_std_dir(char* out_std, size_t cap) {
+    char root[4096];
+    if (rokade_get_install_root(root, sizeof root) != 0) return -1;
+
+    char candidate[4096];
+    /* Check <install_root>/std */
+    snprintf(candidate, sizeof candidate, "%s/std", root);
+    if (access(candidate, R_OK) == 0) {
+        snprintf(out_std, cap, "%s", candidate);
+        return 0;
+    }
+
+    /* Check <install_root>/lib/rook/std */
+    snprintf(candidate, sizeof candidate, "%s/lib/rook/std", root);
+    if (access(candidate, R_OK) == 0) {
+        snprintf(out_std, cap, "%s", candidate);
+        return 0;
+    }
+
+    return -1;
+}
+
 /* ---------- include resolution ---------- */
 
 /* Resolve an include path, searching basedir first, then include dirs.
@@ -54,6 +137,13 @@ static char* resolve_include_path(const char* incpath, const char* basedir,
     for (size_t i = 0; i < n_inc; i++) {
         snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
+
+        /* Special std module alias: std/io.rook -> <std_dir>/io.rook */
+        if (strncmp(incpath, "std/", 4) == 0) {
+            snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath + 4);
+            if (access(candidate, R_OK) == 0) return strdup(candidate);
+        }
+
         snprintf(candidate, sizeof(candidate), "%s/src/%s", inc_dirs[i], incpath);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
         snprintf(candidate, sizeof(candidate), "%s/src/lib.rook", inc_dirs[i]);
@@ -147,6 +237,9 @@ static char* rook_rewrites_includes(const char* src, int src_len) {
                 mod[idlen] = '\0';
                 if (idlen > 5 && strcmp(mod + idlen - 5, ".rook") == 0) {
                     mod[idlen - 5] = '\0';
+                }
+                for (char* cp = mod; *cp; cp++) {
+                    if (*cp == '.') *cp = '/';
                 }
                 const char* indent = p;
                 while (indent < end && (*indent == ' ' || *indent == '\t')) indent++;
@@ -317,13 +410,34 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
 
 static char* resolve_includes(const char* src, int src_len, const char* basedir,
                               const char** inc_dirs, size_t n_inc, int depth) {
+    const char* all_dirs[64];
+    size_t total_inc = 0;
+    if (inc_dirs) {
+        for (size_t i = 0; i < n_inc && total_inc < 60; i++) {
+            all_dirs[total_inc++] = inc_dirs[i];
+        }
+    }
+    char std_path[4096];
+    char* allocated_std = NULL;
+    if (rokade_get_std_dir(std_path, sizeof std_path) == 0 && total_inc < 60) {
+        int seen = 0;
+        for (size_t i = 0; i < total_inc; i++) {
+            if (strcmp(all_dirs[i], std_path) == 0) { seen = 1; break; }
+        }
+        if (!seen) {
+            allocated_std = strdup(std_path);
+            all_dirs[total_inc++] = allocated_std;
+        }
+    }
+
     VisitedInc* visited = NULL;
-    char* r = resolve_includes_rec(src, src_len, basedir, inc_dirs, n_inc, depth, &visited);
+    char* r = resolve_includes_rec(src, src_len, basedir, all_dirs, total_inc, depth, &visited);
     while (visited) {
         VisitedInc* n = visited->next;
         free(visited);
         visited = n;
     }
+    if (allocated_std) free(allocated_std);
     return r;
 }
 
