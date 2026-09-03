@@ -1,0 +1,25 @@
+#include <stdio.h>
+
+enum Dir { Up, Down }
+
+int main() {
+    Dir d = Up;
+    match (d) {
+        Up => printf("up\n"),
+        Down => printf("down\n"),
+        _ => printf("bad\n")
+    }
+    let d2 = Down;
+    match (d2) {
+        Up => printf("up2\n"),
+        Down => printf("down2\n")
+    }
+    match (d) {
+        _ => printf("default\n")
+    }
+    int eq = Up == Up;
+    printf("eq=%d\n", eq);
+    int ne = Up == Down;
+    printf("ne=%d\n", ne);
+    return 0;
+}

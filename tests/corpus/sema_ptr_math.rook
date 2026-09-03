@@ -1,0 +1,5 @@
+int main() {
+    void* p = (void*)0;
+    void* q = p + 1;
+    return 0;
+}

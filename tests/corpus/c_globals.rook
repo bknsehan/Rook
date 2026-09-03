@@ -1,0 +1,8 @@
+#include <stdio.h>
+
+int counter = 7;
+
+int main() {
+    printf("%d\n", counter);
+    return 0;
+}

@@ -1,0 +1,12 @@
+#include <stdio.h>
+
+const char* make() {
+    s2: const char* = "hi";
+    return s2;
+}
+
+int main() {
+    s: const char* = make();
+    printf("%s\n", s);
+    return 0;
+}

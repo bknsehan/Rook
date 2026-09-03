@@ -1,0 +1,9 @@
+#include <stdio.h>
+
+int cmax(int a, int b) { if (a > b) return a; return b; }
+
+int main() {
+    printf("%d\n", cmax(7, 3));
+    printf("hi from c\n");
+    return 0;
+}

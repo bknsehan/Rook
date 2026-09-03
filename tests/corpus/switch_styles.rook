@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+int main() {
+    int v = 2;
+    switch (v) {
+    case 1: printf("one\n"); break;
+    case 2: printf("two\n"); break;
+    default: printf("other\n");
+    }
+    int y = 2;
+    switch (y) {
+    case 1 -> printf("a\n");
+    case 2 -> printf("b\n");
+    else -> printf("c\n");
+    }
+    return 0;
+}

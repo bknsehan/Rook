@@ -1,0 +1,16 @@
+#include <stdio.h>
+
+void greet(const char* name) {
+    printf("%s\n", name);
+}
+
+int double_it(int name) {
+    return name * 2;
+}
+
+int main() {
+    name: int = 5;
+    printf("%d\n", double_it(name));
+    printf("scope OK\n");
+    return 0;
+}

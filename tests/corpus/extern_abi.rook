@@ -1,0 +1,35 @@
+#include <string.h>
+#include <stdio.h>
+
+static int check_string_abi(const char* s) {
+    if (s == 0) return 0;
+    if (strlen(s) != 5) return 0;
+    if (strcmp(s, "hello") != 0) return 0;
+    return 1;
+}
+
+extern int check_string_abi(const char* s);
+
+struct Vec2 { float x; float y; }
+
+int check_vec2_abi(Vec2 v) {
+    if (v.x < 0.99) return 0;
+    if (v.x > 1.01) return 0;
+    if (v.y < 1.99) return 0;
+    if (v.y > 2.01) return 0;
+    return 1;
+}
+
+int main() {
+    let s = "hello";
+    let v = Vec2{ x: 1.0, y: 2.0 };
+    let ok = 1;
+    if (check_string_abi(s) != 1) { ok = 0; }
+    if (check_vec2_abi(v) != 1) { ok = 0; }
+    if (ok == 1) {
+         printf("ABI OK: string=char* by-pointer; Vec2 by value\n");
+        return 0;
+    }
+    printf("ABI FAIL\n");
+    return 1;
+}

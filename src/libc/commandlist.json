@@ -1,0 +1,1082 @@
+[
+  {
+    "name": "abs",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "acos",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "asin",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "atan",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "atof",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "atoi",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "atol",
+    "ret": "long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "bsearch",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      },
+      {
+        "name": "arg3",
+        "type": "size_t"
+      },
+      {
+        "name": "arg4",
+        "type": "int (*)(const void*, const void*)"
+      }
+    ]
+  },
+  {
+    "name": "calloc",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "size_t"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "cbrt",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "ceil",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "cos",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "exit",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "exp",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "fabs",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "fclose",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "feof",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "ferror",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fflush",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fgetc",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fgets",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      },
+      {
+        "name": "arg2",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "floor",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "fopen",
+    "ret": "FILE*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "fprintf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "fputc",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "int"
+      },
+      {
+        "name": "arg1",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fputs",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fread",
+    "ret": "size_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      },
+      {
+        "name": "arg3",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "free",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "fseek",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      },
+      {
+        "name": "arg1",
+        "type": "long"
+      },
+      {
+        "name": "arg2",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "ftell",
+    "ret": "long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "fwrite",
+    "ret": "size_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const void*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      },
+      {
+        "name": "arg3",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "getchar",
+    "ret": "int",
+    "params": []
+  },
+  {
+    "name": "getdelim",
+    "ret": "ssize_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char**"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t*"
+      },
+      {
+        "name": "arg2",
+        "type": "int"
+      },
+      {
+        "name": "arg3",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "getenv",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "getline",
+    "ret": "ssize_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char**"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t*"
+      },
+      {
+        "name": "arg2",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "labs",
+    "ret": "long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "long"
+      }
+    ]
+  },
+  {
+    "name": "llabs",
+    "ret": "long long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "long long"
+      }
+    ]
+  },
+  {
+    "name": "log",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "log10",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "log2",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "malloc",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "memchr",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const void*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "memcmp",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "memcpy",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "memmove",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "memset",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "perror",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "pow",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      },
+      {
+        "name": "arg1",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "printf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "putchar",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "puts",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "qsort",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      },
+      {
+        "name": "arg3",
+        "type": "int (*)(const void*, const void*)"
+      }
+    ]
+  },
+  {
+    "name": "rand",
+    "ret": "int",
+    "params": []
+  },
+  {
+    "name": "realloc",
+    "ret": "void*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "rewind",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "FILE*"
+      }
+    ]
+  },
+  {
+    "name": "scanf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "sin",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "snprintf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      },
+      {
+        "name": "arg2",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "sprintf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "sqrt",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  },
+  {
+    "name": "srand",
+    "ret": "void",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "unsigned int"
+      }
+    ]
+  },
+  {
+    "name": "sscanf",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "...",
+        "type": "..."
+      }
+    ]
+  },
+  {
+    "name": "strcat",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strchr",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "strcmp",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strcpy",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strcspn",
+    "ret": "size_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strdup",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strlen",
+    "ret": "size_t",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strncat",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "strncmp",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "strncpy",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      },
+      {
+        "name": "arg2",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "strrchr",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "strstr",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strtod",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "char**"
+      }
+    ]
+  },
+  {
+    "name": "strtok",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "strtol",
+    "ret": "long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "char**"
+      },
+      {
+        "name": "arg2",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "strtoll",
+    "ret": "long long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "char**"
+      },
+      {
+        "name": "arg2",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "strtoul",
+    "ret": "unsigned long",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "char**"
+      },
+      {
+        "name": "arg2",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "system",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "tan",
+    "ret": "double",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "double"
+      }
+    ]
+  }
+]

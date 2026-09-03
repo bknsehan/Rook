@@ -1,0 +1,2 @@
+# This program intentionally confuses a pointer with a value. `rokade` must
+# reject it.

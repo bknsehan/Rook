@@ -1,0 +1,22 @@
+[package]
+name = "rook-lsp"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Rook language server (JSON-RPC over stdio)."
+
+[[bin]]
+name = "rook-lsp"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lsp-types = "0.97"
+
+[features]
+default = []
+# When enabled, the server also parses the project's C headers (via libclang)
+# so C types/fields/macros appear in completions & hover. Off by default:
+# libc is known from the bundled commandlist with NO libclang dependency.
+c-headers = []

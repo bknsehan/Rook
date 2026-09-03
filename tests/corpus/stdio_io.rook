@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+int main() {
+    printf("line with newline\n");
+    printf("no newline");
+    fprintf(stderr, "stderr newline\n");
+    fprintf(stderr, "stderr no newline");
+    printf("%d\n", 7);
+    printf("%f\n", 2.5);
+    fprintf(stderr, "%d\n", -3);
+    fprintf(stderr, "%f\n", 1.125);
+    (void)getchar();
+    char line[64];
+    if (fgets(line, sizeof(line), stdin) == 0) line[0] = 0;
+    printf("Got input\n");
+    return 0;
+}

@@ -1,0 +1,11 @@
+#include <stdio.h>
+
+extern int puts(const char* s);
+
+int main() {
+    s: const char* = "hello";
+    puts(s);
+    let name = "world";
+    puts(name);
+    return 0;
+}

@@ -1,0 +1,4 @@
+int main() {
+    defer return 0;
+    return 0;
+}

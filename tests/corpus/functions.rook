@@ -1,0 +1,21 @@
+#include <stdio.h>
+
+int add(int a, int b) {
+    return a + b;
+}
+
+void greet(const char* name) {
+    printf("hi %s\n", name);
+}
+
+int mix(int a) {
+    return a * 2;
+}
+
+int main() {
+    printf("%d\n", add(2, 3));
+    greet("bob");
+    x: int = mix(21);
+    printf("%d\n", x);
+    return 0;
+}

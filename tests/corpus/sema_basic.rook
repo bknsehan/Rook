@@ -1,0 +1,9 @@
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    let x = add(1);          // error: expects 2 args, got 1
+    let y = undefined_thing; // error: unknown identifier
+    return 0;
+}

@@ -1,0 +1,23 @@
+#include <stdio.h>
+
+sum Shape {
+  Circle { r: float; };
+  Rect { w: float; h: float; };
+  Point;
+}
+
+float area(Shape s) {
+  return match (s) {
+    Circle { r } => 3.14159265 * r * r,
+    Rect { w, h } => w * h,
+    Point => 0.0,
+    _ => 0.0,
+  };
+}
+
+int main() {
+  printf("%f\n", area(Circle { r: 2.0 }));
+  printf("%f\n", area(Rect { w: 3.0, h: 4.0 }));
+  printf("%f\n", area(Point));
+  return 0;
+}

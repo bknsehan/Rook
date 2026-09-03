@@ -1,0 +1,16 @@
+#include <stdio.majic>
+
+fn main() int {
+    println("line with newline");
+    print("no newline");
+    eprintln("stderr newline");
+    eprint("stderr no newline");
+    println_int(7);
+    println_float(2.5);
+    eprintln_int(-3);
+    eprintln_float(1.125);
+    let c = read();
+    let line = readln();
+    println("Got input");
+    return 0;
+}

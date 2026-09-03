@@ -1,0 +1,18 @@
+#include <stdio.h>
+#include <string.h>
+
+void greet(const char* name) {
+    printf("hello %s\n", name);
+}
+
+int main() {
+    s: const char* = "world";
+    greet(s);
+    greet("direct");
+    char line[64];
+    if (fgets(line, sizeof(line), stdin) != 0) {
+         line[strcspn(line, "\n")] = 0;
+         printf("got: %s\n", line);
+    }
+    return 0;
+}

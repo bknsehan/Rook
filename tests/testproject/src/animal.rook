@@ -1,0 +1,23 @@
+#include <stdio.h>
+#comprise base
+
+object Animal {
+    name: const char*
+    age: int
+}
+
+impl Animal {
+    void speak(self) {
+        printf("%s speaks!\n", self.name);
+    }
+}
+
+object Dog : Animal {
+    breed: const char*
+}
+
+impl Dog {
+    void bark(self) {
+        printf("%s barks (%s)!\n", self.name, self.breed);
+    }
+}

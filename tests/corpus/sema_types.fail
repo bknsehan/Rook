@@ -1,0 +1,2 @@
+# This program intentionally has type errors (bad argument, bad return, bad
+# initializer). `rokade` must reject it. Exact messages are not asserted.

@@ -1,0 +1,4 @@
+int f(int* p) {
+    let x: int = p;   /* error: cannot assign int* to int */
+    return x;
+}

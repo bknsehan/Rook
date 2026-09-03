@@ -1,0 +1,14 @@
+int f(int x) {
+    return x;
+}
+
+int g() {
+    let s: const char* = "x";
+    return s;          // error: returns int but expression has type const char*
+}
+
+int main() {
+    f("oops");        // error: argument 1 of 'f': expected int, got const char*
+    let n: int = "bad"; // error: cannot initialize int with const char*
+    return 0;
+}

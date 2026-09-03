@@ -1,0 +1,19 @@
+#include <stdio.h>
+
+struct Entity {
+    x: int
+    y: int
+}
+
+object Player : Entity {
+    hp: int
+}
+
+int main() {
+    Player p;
+    p.x = 3;
+    p.y = 4;
+    p.hp = 100;
+    printf("%d %d %d\n", p.x, p.y, p.hp);
+    return 0;
+}

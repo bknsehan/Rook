@@ -1,0 +1,7 @@
+int missing() {
+    /* no return statement at all */
+}
+
+int early() {
+    return;          /* 'return' with no value in a non-void function */
+}

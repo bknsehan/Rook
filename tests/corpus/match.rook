@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+int main() {
+    int x = 42;
+    match (x) {
+        1 => printf("one\n"),
+        42 => printf("answer\n"),
+        100 => printf("hundred\n")
+    }
+    int y = 5;
+    match (y) {
+        1 => printf("low\n"),
+        5 => printf("mid\n"),
+        9 => printf("high\n")
+    }
+    return 0;
+}

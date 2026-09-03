@@ -1,0 +1,13 @@
+#include <stdio.h>
+
+int f() {
+    defer printf("%d\n", 1);
+    defer printf("%d\n", 2);
+    printf("%d\n", 3);
+    return 99;
+}
+
+int main() {
+    printf("%d\n", f());
+    return 0;
+}

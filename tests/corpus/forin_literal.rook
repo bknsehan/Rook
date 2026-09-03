@@ -1,0 +1,11 @@
+#include <stdio.h>
+
+int main() {
+    int total = 0;
+    for x in [10, 20, 30] {
+        printf("%d\n", x);
+        total += x;
+    }
+    printf("total=%d\n", total);
+    return 0;
+}

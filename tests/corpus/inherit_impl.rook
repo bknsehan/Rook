@@ -1,0 +1,51 @@
+#include <stdio.h>
+
+object Animal {
+    name: const char*
+    legs: int
+}
+
+impl Animal {
+    void speak(Animal* self) {
+         printf("%s\n", self.name);
+    }
+    int legs_count(Animal* self) {
+        return self.legs;
+    }
+}
+
+object Cat : Animal {
+    lives: int
+}
+
+impl Cat {
+    void meow(Cat* self) {
+        self.speak();
+    }
+}
+
+object Pet : Animal {
+    owner: const char*
+}
+
+object Siamese : Pet {
+    color: const char*
+}
+
+int main() {
+    Cat c;
+    c.name = "Tom";
+    c.legs = 4;
+    c.lives = 9;
+    c.speak();
+    printf("legs=%d lives=%d\n", c.legs_count(), c.lives);
+    c.meow();
+
+    Siamese s;
+    s.name = "Nyan";
+    s.owner = "Bob";
+    s.color = "cream";
+    s.speak();
+    printf("owner=%s color=%s\n", s.owner, s.color);
+    return 0;
+}

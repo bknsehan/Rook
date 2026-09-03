@@ -1,0 +1,16 @@
+#include <stdio.h>
+
+int main() {
+    int total = 0;
+    for (int i = 0; i < 5; i++) {
+        if (i % 2 == 0) total += i;
+    }
+    printf("total=%d\n", total);
+    int n = 7;
+    switch (n) {
+        case 5: printf("five\n"); break;
+        case 7: printf("seven\n"); break;
+        default: printf("other\n");
+    }
+    return 0;
+}

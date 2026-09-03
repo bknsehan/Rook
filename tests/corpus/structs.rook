@@ -1,0 +1,31 @@
+#include <stdio.h>
+
+object Point {
+    x: int
+    y: int
+}
+
+impl Point {
+    int len2(Point* self) {
+        return self.x * self.x + self.y * self.y;
+    }
+}
+
+Point mk(int x, int y) {
+    Point p;
+    p.x = x;
+    p.y = y;
+    return p;
+}
+
+int main() {
+    Point a;
+    a.x = 3;
+    a.y = 4;
+    printf("%d\n", a.len2());
+    Point b = mk(5, 12);
+    printf("%d\n", b.len2());
+    Point c = {6, 8};
+    printf("%d\n", c.len2());
+    return 0;
+}

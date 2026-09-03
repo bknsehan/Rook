@@ -1,0 +1,32 @@
+# Compiler build artifacts
+build/
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Rust LSP target directory
+target/
+lsp/target/
+src/lsp/target/
+
+# Editor and temporary files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+.DS_Store
+
+# Test project generated build artifacts
+tests/testproject/build/

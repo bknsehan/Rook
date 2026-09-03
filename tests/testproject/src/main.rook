@@ -1,0 +1,17 @@
+#include <stdio.h>
+#comprise base
+#comprise animal
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    Common c = Common { id: 42 };
+    printf("common id=%d\n", c.id);
+
+    Dog d = Dog { name: "Rover", age: 3, breed: "Labrador" };
+    d.speak();
+    d.bark();
+    return 0;
+}

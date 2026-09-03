@@ -1,0 +1,12 @@
+#include <stdio.h>
+
+struct Point { int x; int y; }
+
+int main() {
+    let p = Point{ x: 3, y: 4 };
+    printf("%d\n", p.x);
+    printf("%d\n", p.y);
+    let q = Point{ y: 20, x: 10 };
+    printf("%d\n", q.x + q.y);
+    return 0;
+}
