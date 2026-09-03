@@ -19,6 +19,7 @@ Makefile
 target/
 lsp/target/
 src/lsp/target/
+editors/zed/target/
 
 # Editor and temporary files
 *.swp

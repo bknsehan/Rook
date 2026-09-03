@@ -253,6 +253,9 @@ cd Rook
 ```
 This builds `rokade` and `rook-lsp`, installs the toolchain and `std/` into your chosen prefix, creates symlinks in `~/bin/`, and automatically integrates with the Zed editor.
 
+> [!NOTE]
+> Do **not** run `install.sh` with `sudo`. Rook installs directly into your personal user environment (`~/bin/Rook`), so simple user installation works without any root permissions.
+
 #### Windows (PowerShell):
 ```powershell
 git clone https://github.com/bknsehan/Rook.git

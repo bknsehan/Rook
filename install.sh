@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
+# Guard against running with sudo
+if [ "${EUID:-$(id -u)}" -eq 0 ] || [ -n "${SUDO_USER}" ]; then
+    echo "================================================================="
+    echo " [NOTICE] Please DO NOT run install.sh with sudo!"
+    echo ""
+    echo " Rook installs directly into your user environment:"
+    echo "   Prefix:   \${HOME}/bin/Rook"
+    echo "   Symlinks: \${HOME}/bin/rokade"
+    echo "   Zed Ext:  \${HOME}/.local/share/zed/extensions/installed/rook"
+    echo ""
+    echo " Simple user install works without any root permissions."
+    echo " Please re-run simply as:"
+    echo "   ./install.sh"
+    echo "================================================================="
+    exit 1
+fi
+
 # Default installation paths
 DEFAULT_PREFIX="${HOME}/bin/Rook"
 PREFIX="${DEFAULT_PREFIX}"
@@ -150,18 +167,68 @@ if [ "${ZED_FOUND}" -eq 1 ]; then
         echo "Installing Rook Zed extension to ${ZED_EXT_DIR}..."
         mkdir -p "${HOME}/.local/share/zed/extensions/installed"
         rm -rf "${ZED_EXT_DIR}"
-        ln -sf "${PREFIX}/editors/zed" "${ZED_EXT_DIR}"
+        cp -rf "${PREFIX}/editors/zed" "${ZED_EXT_DIR}"
+
+        # Register manifest in Zed index.json
+        if command -v python3 >/dev/null 2>&1; then
+            python3 -c '
+import json, os
+index_path = os.path.expanduser("~/.local/share/zed/extensions/index.json")
+if os.path.exists(index_path):
+    try:
+        with open(index_path, "r") as f:
+            d = json.load(f)
+        d.setdefault("extensions", {})["rook"] = {
+            "manifest": {
+                "id": "rook",
+                "name": "Rook",
+                "version": "0.1.0",
+                "schema_version": 1,
+                "description": "Rook programming language support for Zed",
+                "repository": "https://github.com/bknsehan/Rook",
+                "authors": ["bknsehan"],
+                "lib": {"kind": "Rust", "version": "0.7.0"},
+                "themes": [],
+                "icon_themes": [],
+                "languages": ["languages/rook"],
+                "grammars": {
+                    "c": {
+                        "repository": "https://github.com/tree-sitter/tree-sitter-c",
+                        "rev": "v0.23.4",
+                        "path": None
+                    }
+                },
+                "language_servers": {
+                    "rook-lsp": {
+                        "language": "Rook",
+                        "languages": [],
+                        "language_ids": {},
+                        "code_action_kinds": None
+                    }
+                },
+                "context_servers": {},
+                "slash_commands": {},
+                "snippets": None,
+                "capabilities": []
+            },
+            "dev": False
+        }
+        with open(index_path, "w") as f:
+            json.dump(d, f, indent=2)
+    except Exception:
+        pass
+'
+        fi
 
         # Configure ~/.config/zed/settings.json
         ZED_SETTINGS="${HOME}/.config/zed/settings.json"
         if [ -f "${ZED_SETTINGS}" ]; then
             if ! grep -q "rook-lsp" "${ZED_SETTINGS}"; then
                 echo "Note: To link rook-lsp, add to your ${ZED_SETTINGS}:"
-                echo '  "lsp": { "rook-lsp": { "binary": { "path": "'"${PREFIX}"'/bin/rook-lsp" } } },'
                 echo '  "languages": { "Rook": { "language_servers": ["rook-lsp"] } }'
             fi
         fi
-        echo "Zed extension successfully installed!"
+        echo "Zed extension successfully installed with full syntax highlighting & LSP support!"
     else
         echo "Skipping Zed extension installation."
     fi
