@@ -277,6 +277,72 @@ rokade run
 
 ---
 
+## Multi-Target & Cross-Platform Builds
+
+Rook features a built-in cross-compilation engine that transpiles source code once into `build/generated/*.c` and compiles/links for multiple platforms simultaneously.
+
+### `rokade.toml` Multi-Target Configuration
+
+```toml
+[package]
+name = "myapp"
+version = "0.1.0"
+
+[build]
+kind = "exe"                    # Default build kind: exe, shared-lib, static-lib
+standard = "c2x"                # C standard: c11, c17, c2x, gnu23
+targets = ["linux", "android", "windows"] # Builds all 3 targets simultaneously!
+
+# Target-specific customizations:
+[target.linux]
+kind = "exe"
+cflags = "-O3"
+
+[target.android]
+kind = "shared-lib"             # Typically .so for JNI/NDK
+api = 24                        # Android API level / min SDK
+arch = ["arm64-v8a", "x86_64"]  # Targets multiple Android ABIs!
+cflags = "-fPIC -O3"
+
+[target.windows]
+kind = "exe"
+# Auto-detects x86_64-w64-mingw32-gcc when cross-compiling from Linux!
+```
+
+### Build CLI Options
+
+- Build all configured targets:
+  ```bash
+  rokade build
+  # or explicitly:
+  rokade build --all
+  ```
+- Build a specific target:
+  ```bash
+  rokade build --target=android
+  rokade build --target=windows
+  rokade build --target=linux
+  ```
+
+### Generated Binaries Output
+
+```
+build/
+├── generated/
+│   └── main.c                        # Shared transpiled C
+├── linux/
+│   └── myapp                         # ELF 64-bit Linux executable
+├── windows/
+│   └── myapp.exe                     # PE32+ Windows executable
+└── android/
+    ├── arm64-v8a/
+    │   └── libmyapp.so               # ELF 64-bit ARM aarch64 shared library
+    └── x86_64/
+        └── libmyapp.so               # ELF 64-bit x86-64 shared library
+```
+
+---
+
 ## License
 
 Rook is released under the [MIT License](LICENSE).

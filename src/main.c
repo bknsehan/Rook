@@ -319,7 +319,7 @@ static void usage(void) {
     printf("                              definition as one JSON LSP Location (or `null`)\n");
     printf("  rokade --symbols <file>    list top-level definitions as JSON (for LSP outline)\n");
     printf("  rokade new <name>         create a new Rook project\n");
-    printf("  rokade build [path]       build a Rook project (reads rokade.toml)\n");
+    printf("  rokade build [path] [--target=t] [--all]  build a Rook project (supports multi-target)\n");
     printf("  rokade run [path]         build and run a Rook project\n");
     printf("  rokade config             show effective configuration\n");
     printf("  rokade config get <key>   print one config value\n");
@@ -336,7 +336,7 @@ static const char* help_detail(const char* cmd) {
     if (strcmp(cmd, "new") == 0)
         return "rokade new <name>\n  Create a new Rook project directory <name>/ with a\n  rokade.toml and a src/main.rook. Build/run with 'rokade build'.";
     if (strcmp(cmd, "build") == 0)
-        return "rokade build [path]\n  Build a Rook project (reads rokade.toml). Drives the C\n  toolchain (auto-detected or set via 'rokade config/toolchain set cc').";
+        return "rokade build [path] [--target=<os>] [--all]\n  Build a Rook project (reads rokade.toml). Drives the C\n  toolchain (supports linux, android, windows, and multi-target matrix).";
     if (strcmp(cmd, "run") == 0)
         return "rokade run [path]\n  Build the project then run the resulting executable.";
     if (strcmp(cmd, "config") == 0)
@@ -447,15 +447,37 @@ static char** scan_includes(const char* src, int src_len, const char* basedir, s
 /* ---------- project config ---------- */
 
 typedef struct {
+    char target_os[32];      /* "linux", "android", "windows" */
+    char build_kind[32];     /* "exe", "shared-lib", "static-lib" */
+    char cflags[4096];
+    char cc[4096];
+    char ar[4096];
+    char standard[16];
+    int  android_api;
+    char android_ndk[4096];
+    char archs[8][32];       /* e.g. ["arm64-v8a", "x86_64"] */
+    size_t n_archs;
+} TargetConfig;
+
+typedef struct {
     char name[256];
     char version[64];
     char build_kind[32];
     char build_target[64];
     char c_standard[16];
+    char cflags[4096];
     char libraries[16][256];
     size_t n_libraries;
     char include_dirs[16][4096];
     size_t n_include_dirs;
+
+    /* Multi-target list: targets = ["linux", "android", "windows"] */
+    char configured_targets[16][64];
+    size_t n_configured_targets;
+
+    /* Specific target configs */
+    TargetConfig target_configs[16];
+    size_t n_target_configs;
 } ProjectConfig;
 
 static void project_config_init(ProjectConfig* cfg) {
@@ -467,14 +489,40 @@ static void project_config_init(ProjectConfig* cfg) {
     snprintf(cfg->c_standard, sizeof(cfg->c_standard), "c2x");
 }
 
-static int parse_toml_line(const char* line, ProjectConfig* cfg) {
+static TargetConfig* get_or_create_target_config(ProjectConfig* cfg, const char* target_os) {
+    for (size_t i = 0; i < cfg->n_target_configs; i++) {
+        if (strcmp(cfg->target_configs[i].target_os, target_os) == 0) {
+            return &cfg->target_configs[i];
+        }
+    }
+    if (cfg->n_target_configs >= 16) return NULL;
+    TargetConfig* tc = &cfg->target_configs[cfg->n_target_configs++];
+    memset(tc, 0, sizeof *tc);
+    snprintf(tc->target_os, sizeof tc->target_os, "%s", target_os);
+    snprintf(tc->build_kind, sizeof tc->build_kind, "%s", cfg->build_kind);
+    snprintf(tc->standard, sizeof tc->standard, "%s", cfg->c_standard);
+    snprintf(tc->cflags, sizeof tc->cflags, "%s", cfg->cflags);
+    tc->android_api = 24;
+    return tc;
+}
+
+static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, size_t cur_sec_len) {
     /* skip empty lines and comments */
     const char* p = line;
     while (*p == ' ' || *p == '\t') p++;
     if (*p == '\0' || *p == '#') return 0;
 
-    /* section headers */
-    if (*p == '[') return 0;
+    /* section headers: [section] or [target.name] */
+    if (*p == '[') {
+        const char* end = strchr(p, ']');
+        if (end) {
+            size_t slen = (size_t)(end - (p + 1));
+            if (slen >= cur_sec_len) slen = cur_sec_len - 1;
+            memcpy(cur_sec, p + 1, slen);
+            cur_sec[slen] = '\0';
+        }
+        return 0;
+    }
 
     /* key = value */
     const char* eq = strchr(p, '=');
@@ -504,7 +552,7 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg) {
             snprintf(valbuf, sizeof(valbuf), "%s", val);
         }
     } else if (*val == '[') {
-        /* Array value: ["a", "b", ...] — parse each element */
+        /* Array value: ["a", "b", ...] */
         valbuf[0] = '\0';
         const char* cur = val + 1;
         while (*cur && *cur != ']') {
@@ -520,7 +568,6 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg) {
                 }
                 cur = end ? end + 1 : cur;
             } else {
-                /* Non-string array element — read until comma or ] */
                 const char* end = cur;
                 while (*end && *end != ',' && *end != ']') end++;
                 size_t vlen = (size_t)(end - cur);
@@ -529,28 +576,35 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg) {
                 valbuf[vlen] = '\0';
                 cur = end;
             }
-            /* Process this element */
+            /* Process this array element */
             if (strcmp(key, "library") == 0 || strcmp(key, "libraries") == 0) {
                 if (cfg->n_libraries < 16) {
                     snprintf(cfg->libraries[cfg->n_libraries++], 256, "%s", valbuf);
                 }
-            }
-            else if (strcmp(key, "include-dir") == 0 || strcmp(key, "include-dirs") == 0) {
+            } else if (strcmp(key, "include-dir") == 0 || strcmp(key, "include-dirs") == 0) {
                 if (cfg->n_include_dirs < 16) {
                     snprintf(cfg->include_dirs[cfg->n_include_dirs++], 4096, "%s", valbuf);
+                }
+            } else if (strcmp(key, "targets") == 0) {
+                if (cfg->n_configured_targets < 16) {
+                    snprintf(cfg->configured_targets[cfg->n_configured_targets++], 64, "%s", valbuf);
+                }
+            } else if (strncmp(cur_sec, "target.", 7) == 0 &&
+                       (strcmp(key, "arch") == 0 || strcmp(key, "archs") == 0)) {
+                TargetConfig* tc = get_or_create_target_config(cfg, cur_sec + 7);
+                if (tc && tc->n_archs < 8) {
+                    snprintf(tc->archs[tc->n_archs++], 32, "%s", valbuf);
                 }
             }
             while (*cur == ' ' || *cur == '\t') cur++;
             if (*cur == ',') cur++;
         }
-        return 0; /* Array handled, don't fall through to single-value processing */
+        return 0;
     } else {
-        /* strip trailing comment */
         char* vcopy = strdup(val);
         if (!vcopy) return 0;
         char* comment = strchr(vcopy, '#');
         if (comment) *comment = '\0';
-        /* trim trailing whitespace */
         size_t vlen = strlen(vcopy);
         while (vlen > 0 && (vcopy[vlen - 1] == ' ' || vcopy[vlen - 1] == '\t' || vcopy[vlen - 1] == '\n' || vcopy[vlen - 1] == '\r')) {
             vcopy[--vlen] = '\0';
@@ -559,11 +613,34 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg) {
         free(vcopy);
     }
 
-    if (strcmp(key, "name") == 0) snprintf(cfg->name, sizeof(cfg->name), "%s", valbuf);
-    else if (strcmp(key, "version") == 0) snprintf(cfg->version, sizeof(cfg->version), "%s", valbuf);
-    else if (strcmp(key, "kind") == 0) snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
-    else if (strcmp(key, "target") == 0) snprintf(cfg->build_target, sizeof(cfg->build_target), "%s", valbuf);
-    else if (strcmp(key, "c-standard") == 0) snprintf(cfg->c_standard, sizeof(cfg->c_standard), "%s", valbuf);
+    if (strcmp(cur_sec, "package") == 0 || cur_sec[0] == '\0') {
+        if (strcmp(key, "name") == 0) snprintf(cfg->name, sizeof(cfg->name), "%s", valbuf);
+        else if (strcmp(key, "version") == 0) snprintf(cfg->version, sizeof(cfg->version), "%s", valbuf);
+    }
+    if (strcmp(cur_sec, "build") == 0 || cur_sec[0] == '\0') {
+        if (strcmp(key, "kind") == 0) snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
+        else if (strcmp(key, "target") == 0) snprintf(cfg->build_target, sizeof(cfg->build_target), "%s", valbuf);
+        else if (strcmp(key, "c-standard") == 0 || strcmp(key, "standard") == 0) snprintf(cfg->c_standard, sizeof(cfg->c_standard), "%s", valbuf);
+        else if (strcmp(key, "cflags") == 0) snprintf(cfg->cflags, sizeof(cfg->cflags), "%s", valbuf);
+        else if (strcmp(key, "targets") == 0 && cfg->n_configured_targets < 16) {
+            snprintf(cfg->configured_targets[cfg->n_configured_targets++], 64, "%s", valbuf);
+        }
+    }
+    if (strncmp(cur_sec, "target.", 7) == 0) {
+        TargetConfig* tc = get_or_create_target_config(cfg, cur_sec + 7);
+        if (tc) {
+            if (strcmp(key, "kind") == 0) snprintf(tc->build_kind, sizeof(tc->build_kind), "%s", valbuf);
+            else if (strcmp(key, "c-standard") == 0 || strcmp(key, "standard") == 0) snprintf(tc->standard, sizeof(tc->standard), "%s", valbuf);
+            else if (strcmp(key, "cflags") == 0) snprintf(tc->cflags, sizeof(tc->cflags), "%s", valbuf);
+            else if (strcmp(key, "cc") == 0) snprintf(tc->cc, sizeof(tc->cc), "%s", valbuf);
+            else if (strcmp(key, "ar") == 0) snprintf(tc->ar, sizeof(tc->ar), "%s", valbuf);
+            else if (strcmp(key, "api") == 0) tc->android_api = atoi(valbuf);
+            else if (strcmp(key, "ndk") == 0) snprintf(tc->android_ndk, sizeof(tc->android_ndk), "%s", valbuf);
+            else if (strcmp(key, "arch") == 0 || strcmp(key, "archs") == 0) {
+                if (tc->n_archs < 8) snprintf(tc->archs[tc->n_archs++], 32, "%s", valbuf);
+            }
+        }
+    }
     return 0;
 }
 
@@ -574,8 +651,9 @@ static int read_project_config(const char* proj_dir, ProjectConfig* cfg) {
     FILE* f = fopen(toml_path, "r");
     if (!f) return 0;
     char line[4096];
+    char cur_sec[128] = "";
     while (fgets(line, sizeof(line), f)) {
-        parse_toml_line(line, cfg);
+        parse_toml_line(line, cfg, cur_sec, sizeof(cur_sec));
     }
     fclose(f);
     return cfg->name[0] != '\0';
@@ -648,7 +726,21 @@ static int do_new(const char* name) {
 
 /* ---------- build command ---------- */
 
-static int do_build(const char* proj_path) {
+static void mkdir_p(const char* path) {
+    char buf[4096];
+    snprintf(buf, sizeof buf, "%s", path);
+    for (char* p = buf + 1; *p; p++) {
+        if (*p == '/' || *p == '\\') {
+            char save = *p;
+            *p = '\0';
+            mkdir(buf, 0755);
+            *p = save;
+        }
+    }
+    mkdir(buf, 0755);
+}
+
+static int do_build(const char* proj_path, const char* cli_target, int build_all) {
     char cwd[4096];
     if (!proj_path) {
         if (!getcwd(cwd, sizeof(cwd))) return 1;
@@ -659,14 +751,6 @@ static int do_build(const char* proj_path) {
     if (!read_project_config(proj_path, &cfg)) {
         fprintf(stderr, "error: %s/rokade.toml not found or invalid\n", proj_path);
         fprintf(stderr, "  (run 'rokade new <name>' to create a project)\n");
-        return 1;
-    }
-
-    int is_lib = strcmp(cfg.build_kind, "static-lib") == 0 ||
-                 strcmp(cfg.build_kind, "shared-lib") == 0;
-    if (!is_lib && strcmp(cfg.build_kind, "exe") != 0) {
-        fprintf(stderr, "error: unknown [build] kind '%s' (use exe, static-lib, shared-lib)\n",
-                cfg.build_kind);
         return 1;
     }
 
@@ -681,18 +765,14 @@ static int do_build(const char* proj_path) {
 
     /* Ensure build/generated/ exists for transpiled output. */
     char gen_dir[4096];
-    snprintf(gen_dir, sizeof(gen_dir), "%s/build", proj_path);
-    mkdir(gen_dir, 0755);
     snprintf(gen_dir, sizeof(gen_dir), "%s/build/generated", proj_path);
-    mkdir(gen_dir, 0755);
+    mkdir_p(gen_dir);
 
-    char* cmake_src_paths[128];
     char* c_file_paths[128];
     size_t n_src = 0;
     struct dirent* entry;
 
-    /* Pre-scan: collect filenames and find which .rook files are included.
-       Included files should NOT be compiled separately (they're inlined). */
+    /* Pre-scan: collect filenames and find which .rook files are included. */
     char* all_files[128];
     size_t n_all = 0;
     while ((entry = readdir(d)) != NULL) {
@@ -701,7 +781,6 @@ static int do_build(const char* proj_path) {
         if (mlen < 5 || strcmp(entry->d_name + mlen - 5, ".rook") != 0) continue;
         all_files[n_all++] = strdup(entry->d_name);
     }
-    /* Mark which files are included by others */
     int* is_included = calloc(n_all, sizeof(int));
     for (size_t i = 0; i < n_all; i++) {
         char fpath[4096];
@@ -713,7 +792,6 @@ static int do_build(const char* proj_path) {
             char** incs = scan_includes(fsrc, flen, src_dir, &n_inc);
             for (size_t j = 0; j < n_inc; j++) {
                 const char* incname = incs[j];
-                /* Match by basename or full name */
                 const char* base = strrchr(incname, '/');
                 base = base ? base + 1 : incname;
                 for (size_t k = 0; k < n_all; k++) {
@@ -729,7 +807,6 @@ static int do_build(const char* proj_path) {
         }
     }
 
-    /* Rewind directory for main compilation loop */
     closedir(d);
     d = opendir(src_dir);
     if (!d) {
@@ -744,7 +821,6 @@ static int do_build(const char* proj_path) {
         if (n_src >= 128) break;
         if (mlen < 5 || strcmp(entry->d_name + mlen - 5, ".rook") != 0) continue;
 
-        /* Skip files that are included by others (they'll be inlined) */
         int skip = 0;
         for (size_t i = 0; i < n_all; i++) {
             if (is_included[i] && strcmp(all_files[i], entry->d_name) == 0) {
@@ -764,7 +840,6 @@ static int do_build(const char* proj_path) {
         char* source = util_read_file(rook_path, &len);
         if (!source) { fprintf(stderr, "warning: could not read %s\n", rook_path); continue; }
 
-        /* Resolve #include <file.rook> and #comprise directives */
         const char* inc_list[16];
         for (size_t j = 0; j < cfg.n_include_dirs; j++) inc_list[j] = cfg.include_dirs[j];
         char* expanded = resolve_includes(source, len, src_dir, inc_list, cfg.n_include_dirs, 0);
@@ -819,8 +894,6 @@ static int do_build(const char* proj_path) {
         c_file_paths[n_src++] = strdup(c_path);
     }
     closedir(d);
-
-    /* Cleanup pre-scan data */
     free(is_included);
     for (size_t i = 0; i < n_all; i++) free(all_files[i]);
 
@@ -829,9 +902,18 @@ static int do_build(const char* proj_path) {
         return 1;
     }
 
-    /* Compile generated C sources to object files using native toolchain */
-    char build_dir[4096];
-    snprintf(build_dir, sizeof(build_dir), "%s/build", proj_path);
+    /* Determine list of targets to build */
+    const char* targets_to_build[16];
+    size_t n_targets_to_build = 0;
+    if (cli_target && cli_target[0]) {
+        targets_to_build[n_targets_to_build++] = cli_target;
+    } else if ((build_all || cfg.n_configured_targets > 0) && cfg.n_configured_targets > 0) {
+        for (size_t i = 0; i < cfg.n_configured_targets; i++) {
+            targets_to_build[n_targets_to_build++] = cfg.configured_targets[i];
+        }
+    } else {
+        targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target : "linux";
+    }
 
     const char* inc_dirs[32];
     size_t n_inc = 0;
@@ -841,63 +923,138 @@ static int do_build(const char* proj_path) {
     for (size_t i = 0; i < cfg.n_include_dirs && n_inc < 32; i++) {
         inc_dirs[n_inc++] = cfg.include_dirs[i];
     }
-
-    char* obj_file_paths[128];
-    for (size_t i = 0; i < n_src; i++) {
-        char obj_path[4096];
-        const char* c_base = strrchr(c_file_paths[i], '/');
-        c_base = c_base ? c_base + 1 : c_file_paths[i];
-        size_t blen = strlen(c_base);
-        snprintf(obj_path, sizeof(obj_path), "%s/%.*s.o",
-                 build_dir, (int)(blen > 2 ? blen - 2 : blen), c_base);
-        obj_file_paths[i] = strdup(obj_path);
-
-        printf("  compiling: %s -> %s\n", c_base, obj_path);
-        int ret = toolchain_compile_obj(obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
-        if (ret != 0) {
-            fprintf(stderr, "error: compilation failed for %s\n", c_file_paths[i]);
-            for (size_t j = 0; j <= i; j++) free(obj_file_paths[j]);
-            for (size_t j = 0; j < n_src; j++) free(c_file_paths[j]);
-            return ret;
-        }
-    }
-
-    /* Link object files */
     const char* libs[16];
     for (size_t i = 0; i < cfg.n_libraries; i++) libs[i] = cfg.libraries[i];
 
-    char target_path[4096];
-    int link_ret = 0;
-    if (is_lib) {
-        int is_shared = strcmp(cfg.build_kind, "shared-lib") == 0;
-        snprintf(target_path, sizeof(target_path), "%s/lib%s.%s",
-                 build_dir, cfg.name, is_shared ? "so" : "a");
-        printf("  linking: %s\n", target_path);
-        link_ret = toolchain_link_lib(target_path, (const char**)obj_file_paths, n_src, is_shared, NULL);
-    } else {
-        snprintf(target_path, sizeof(target_path), "%s/%s", build_dir, cfg.name);
-        printf("  linking: %s\n", target_path);
-        link_ret = toolchain_link_exe(target_path, (const char**)obj_file_paths, n_src, libs, cfg.n_libraries, NULL);
+    int any_err = 0;
+    int is_multi = (n_targets_to_build > 1) || (cfg.n_configured_targets > 1);
+
+    /* Build each target */
+    for (size_t t = 0; t < n_targets_to_build; t++) {
+        const char* target_name = targets_to_build[t];
+        TargetConfig* tc_cfg = NULL;
+        for (size_t i = 0; i < cfg.n_target_configs; i++) {
+            if (strcmp(cfg.target_configs[i].target_os, target_name) == 0) {
+                tc_cfg = &cfg.target_configs[i];
+                break;
+            }
+        }
+
+        size_t n_archs = 1;
+        const char* archs[8] = { "" };
+        if (strcmp(target_name, "android") == 0) {
+            if (tc_cfg && tc_cfg->n_archs > 0) {
+                n_archs = tc_cfg->n_archs;
+                for (size_t a = 0; a < n_archs; a++) archs[a] = tc_cfg->archs[a];
+            } else {
+                archs[0] = "arm64-v8a";
+            }
+        }
+
+        for (size_t a = 0; a < n_archs; a++) {
+            const char* arch = archs[a];
+            TargetSpec spec;
+            memset(&spec, 0, sizeof spec);
+            snprintf(spec.target_os, sizeof spec.target_os, "%s", target_name);
+            snprintf(spec.target_arch, sizeof spec.target_arch, "%s", arch);
+            snprintf(spec.build_kind, sizeof spec.build_kind, "%s",
+                     (tc_cfg && tc_cfg->build_kind[0]) ? tc_cfg->build_kind : cfg.build_kind);
+            snprintf(spec.standard, sizeof spec.standard, "%s",
+                     (tc_cfg && tc_cfg->standard[0]) ? tc_cfg->standard : cfg.c_standard);
+            snprintf(spec.cflags, sizeof spec.cflags, "%s",
+                     (tc_cfg && tc_cfg->cflags[0]) ? tc_cfg->cflags : cfg.cflags);
+            if (tc_cfg && tc_cfg->cc[0]) snprintf(spec.custom_cc, sizeof spec.custom_cc, "%s", tc_cfg->cc);
+            if (tc_cfg && tc_cfg->ar[0]) snprintf(spec.custom_ar, sizeof spec.custom_ar, "%s", tc_cfg->ar);
+            if (tc_cfg && tc_cfg->android_ndk[0]) snprintf(spec.ndk_path, sizeof spec.ndk_path, "%s", tc_cfg->android_ndk);
+            spec.android_api = (tc_cfg && tc_cfg->android_api > 0) ? tc_cfg->android_api : 24;
+
+            char target_out_dir[4096];
+            if (is_multi) {
+                if (strcmp(target_name, "android") == 0 && arch[0]) {
+                    snprintf(target_out_dir, sizeof target_out_dir, "%s/build/android/%s", proj_path, arch);
+                } else {
+                    snprintf(target_out_dir, sizeof target_out_dir, "%s/build/%s", proj_path, target_name);
+                }
+            } else {
+                snprintf(target_out_dir, sizeof target_out_dir, "%s/build", proj_path);
+            }
+            mkdir_p(target_out_dir);
+
+            Toolchain tc;
+            int det_ret = toolchain_detect_target(&tc, &spec);
+            if (det_ret != 0) {
+                fprintf(stderr, "error: failed to detect toolchain for target '%s'%s%s\n",
+                        target_name, arch[0] ? ":" : "", arch);
+                any_err = 1;
+                continue;
+            }
+
+            char* obj_file_paths[128];
+            int compile_failed = 0;
+            for (size_t i = 0; i < n_src; i++) {
+                char obj_path[4096];
+                const char* c_base = strrchr(c_file_paths[i], '/');
+                c_base = c_base ? c_base + 1 : c_file_paths[i];
+                size_t blen = strlen(c_base);
+                snprintf(obj_path, sizeof(obj_path), "%s/%.*s.o",
+                         target_out_dir, (int)(blen > 2 ? blen - 2 : blen), c_base);
+                obj_file_paths[i] = strdup(obj_path);
+
+                printf("  [%s%s%s] compiling: %s -> %s\n",
+                       target_name, arch[0] ? ":" : "", arch, c_base, obj_path);
+                int ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
+                if (ret != 0) {
+                    fprintf(stderr, "error: compilation failed for %s (target %s)\n", c_file_paths[i], target_name);
+                    compile_failed = 1;
+                    for (size_t j = 0; j <= i; j++) free(obj_file_paths[j]);
+                    break;
+                }
+            }
+            if (compile_failed) {
+                toolchain_free(&tc);
+                any_err = 1;
+                continue;
+            }
+
+            char target_bin[4096];
+            int is_shared = strcmp(spec.build_kind, "shared-lib") == 0;
+            int is_static = strcmp(spec.build_kind, "static-lib") == 0;
+            if (is_shared) {
+                snprintf(target_bin, sizeof(target_bin), "%s/lib%s.%s",
+                         target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? "dll" : "so");
+            } else if (is_static) {
+                snprintf(target_bin, sizeof(target_bin), "%s/lib%s.a",
+                         target_out_dir, cfg.name);
+            } else {
+                snprintf(target_bin, sizeof(target_bin), "%s/%s%s",
+                         target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? ".exe" : "");
+            }
+
+            printf("  [%s%s%s] linking: %s\n",
+                   target_name, arch[0] ? ":" : "", arch, target_bin);
+            int link_ret = toolchain_link_target(&spec, &tc, target_bin, (const char**)obj_file_paths, n_src, libs, cfg.n_libraries, NULL);
+
+            for (size_t i = 0; i < n_src; i++) free(obj_file_paths[i]);
+            toolchain_free(&tc);
+
+            if (link_ret != 0) {
+                fprintf(stderr, "error: linking failed for %s\n", target_bin);
+                any_err = 1;
+            } else {
+                printf("  [%s%s%s] build successful: %s\n",
+                       target_name, arch[0] ? ":" : "", arch, target_bin);
+            }
+        }
     }
 
-    for (size_t i = 0; i < n_src; i++) {
-        free(obj_file_paths[i]);
-        free(c_file_paths[i]);
-    }
-
-    if (link_ret != 0) {
-        fprintf(stderr, "error: linking failed\n");
-        return link_ret;
-    }
-
-    printf("  build successful: %s\n", target_path);
-    return 0;
+    for (size_t i = 0; i < n_src; i++) free(c_file_paths[i]);
+    return any_err;
 }
 
 /* ---------- run command ---------- */
 
 static int do_run(const char* proj_path) {
-    int ret = do_build(proj_path);
+    int ret = do_build(proj_path, "linux", 0);
     if (ret != 0) return ret;
 
     ProjectConfig cfg;
@@ -906,12 +1063,13 @@ static int do_run(const char* proj_path) {
         return 1;
     }
 
-    char build_dir[4096];
-    if (proj_path) snprintf(build_dir, sizeof(build_dir), "%s/build", proj_path);
-    else snprintf(build_dir, sizeof(build_dir), "build");
-
     char exe_path[4096];
-    snprintf(exe_path, sizeof(exe_path), "%s/%s", build_dir, cfg.name);
+    if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/linux/%s", proj_path, cfg.name);
+    else snprintf(exe_path, sizeof(exe_path), "build/linux/%s", cfg.name);
+    if (access(exe_path, X_OK) != 0) {
+        if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/%s", proj_path, cfg.name);
+        else snprintf(exe_path, sizeof(exe_path), "build/%s", cfg.name);
+    }
     printf("running: %s\n", exe_path);
 
     char cmd[8192];
@@ -1083,24 +1241,40 @@ static int cmd_doctor(void) {
         }
     }
 
-    /* 5) Android tooling (optional on host; required to target Android) */
+    /* 5) Cross-compilation tooling (Android NDK & Windows MinGW) */
     {
-        const char* ndk = getenv("ANDROID_NDK_HOME");
-        if (!ndk || !*ndk) ndk = getenv("ANDROID_HOME");
-        if (ndk && access(ndk, X_OK) == 0) {
-            char probe[4096];
-            snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", ndk);
-            if (access(probe, X_OK) == 0)
-                printf("[PASS] android NDK: %s\n", ndk);
-            else
-                printf("[WARN] android NDK env=%s but toolchain/ not found\n", ndk);
+        char* ndk = toolchain_find_ndk(NULL);
+        if (ndk) {
+            printf("[PASS] android NDK: %s\n", ndk);
+            TargetSpec aspec;
+            memset(&aspec, 0, sizeof aspec);
+            snprintf(aspec.target_os, sizeof aspec.target_os, "android");
+            snprintf(aspec.target_arch, sizeof aspec.target_arch, "arm64-v8a");
+            aspec.android_api = 24;
+            Toolchain atc;
+            if (toolchain_detect_target(&atc, &aspec) == 0) {
+                printf("[PASS] android clang: %s (%s)\n",
+                       atc.cc_path ? atc.cc_path : "?",
+                       atc.target_triple ? atc.target_triple : "aarch64");
+                toolchain_free(&atc);
+            }
+            free(ndk);
         } else {
             printf("[WARN] android NDK: not detected (set ANDROID_NDK_HOME)\n");
         }
+
+        char* mingw = toolchain_find_mingw();
+        if (mingw) {
+            printf("[PASS] windows cross-compiler: %s\n", mingw);
+            free(mingw);
+        } else {
+            printf("[INFO] windows cross-compiler: not found (optional for Windows PE .exe)\n");
+        }
+
         if (has_on_path("cmake"))  printf("[PASS] cmake: found on PATH\n");
         else                       printf("[WARN] cmake: not on PATH\n");
+        if (has_on_path("ninja"))  printf("[PASS] ninja: found on PATH\n");
         if (has_on_path("gradle")) printf("[PASS] gradle: found on PATH\n");
-        else                       printf("[WARN] gradle: not on PATH (a gradlew may still work)\n");
     }
 
     printf("=========================================\n");
@@ -1744,12 +1918,28 @@ int main(int argc, char** argv) {
     }
 
     if (strcmp(argv[1], "build") == 0) {
-        const char* proj_path = (argc > 2) ? argv[2] : NULL;
-        return do_build(proj_path);
+        const char* proj_path = NULL;
+        const char* cli_target = NULL;
+        int build_all = 0;
+        for (int a = 2; a < argc; a++) {
+            if (strcmp(argv[a], "--all") == 0) {
+                build_all = 1;
+            } else if (strncmp(argv[a], "--target=", 9) == 0) {
+                cli_target = argv[a] + 9;
+            } else if (strcmp(argv[a], "-t") == 0 && a + 1 < argc) {
+                cli_target = argv[++a];
+            } else if (argv[a][0] != '-') {
+                proj_path = argv[a];
+            }
+        }
+        return do_build(proj_path, cli_target, build_all);
     }
 
     if (strcmp(argv[1], "run") == 0) {
-        const char* proj_path = (argc > 2) ? argv[2] : NULL;
+        const char* proj_path = NULL;
+        for (int a = 2; a < argc; a++) {
+            if (argv[a][0] != '-') proj_path = argv[a];
+        }
         return do_run(proj_path);
     }
 

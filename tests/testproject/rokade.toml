@@ -1,3 +1,19 @@
 [package]
 name = "testproject"
 version = "0.1.0"
+
+[build]
+kind = "exe"
+standard = "c2x"
+targets = ["linux", "android", "windows"]
+
+[target.linux]
+kind = "exe"
+
+[target.android]
+kind = "shared-lib"
+api = 24
+arch = ["arm64-v8a", "x86_64"]
+
+[target.windows]
+kind = "exe"

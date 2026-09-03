@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -95,11 +96,19 @@ static char* probe_dumpversion(const char* cc_path) {
     return r;
 }
 
+static const char* get_tmp_dir(void) {
+    const char* t = getenv("TMPDIR");
+    if (!t || !*t) t = getenv("TEMP");
+    if (!t || !*t) t = getenv("TMP");
+    if (!t || !*t) t = "/tmp";
+    return (access(t, W_OK) == 0) ? t : ".";
+}
+
 /* Try to compile `int main(){return 0;}` with `-std=<std>`; return 1 if the
    compiler accepts it. */
 static int probe_std(const char* cc, const char* std) {
     char path[4096];
-    snprintf(path, sizeof path, "/tmp/rook_probe_%d.c", (int)getpid());
+    snprintf(path, sizeof path, "%s/rook_probe_%d.c", get_tmp_dir(), (int)getpid());
     FILE* f = fopen(path, "w");
     if (!f) return 0;
     fputs("int main(void){return 0;}\n", f);
@@ -110,6 +119,106 @@ static int probe_std(const char* cc, const char* std) {
     int rc = system(cmd);
     unlink(path);
     return rc == 0;
+}
+
+/* Auto-discover Android NDK root path if installed. Caller frees returned string. */
+char* toolchain_find_ndk(const char* explicit_path) {
+    if (explicit_path && explicit_path[0]) {
+        char probe[4096];
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", explicit_path);
+        if (access(probe, X_OK) == 0) return strdup(explicit_path);
+    }
+    const char* env_ndk = getenv("ANDROID_NDK_HOME");
+    if (!env_ndk || !*env_ndk) env_ndk = getenv("ANDROID_NDK_ROOT");
+    if (env_ndk && *env_ndk) {
+        char probe[4096];
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", env_ndk);
+        if (access(probe, X_OK) == 0) return strdup(env_ndk);
+    }
+    const char* env_sdk = getenv("ANDROID_HOME");
+    if (!env_sdk || !*env_sdk) env_sdk = getenv("ANDROID_SDK_ROOT");
+    if (env_sdk && *env_sdk) {
+        /* Check $ANDROID_HOME/ndk/<version> */
+        char ndk_dir[4096];
+        snprintf(ndk_dir, sizeof ndk_dir, "%s/ndk", env_sdk);
+        DIR* d = opendir(ndk_dir);
+        if (d) {
+            struct dirent* de;
+            char best[4096] = "";
+            while ((de = readdir(d)) != NULL) {
+                if (de->d_name[0] == '.') continue;
+                char cand[4096];
+                snprintf(cand, sizeof cand, "%s/%s", ndk_dir, de->d_name);
+                char probe[4096];
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                    snprintf(best, sizeof best, "%s", cand);
+                }
+            }
+            closedir(d);
+            if (best[0]) return strdup(best);
+        }
+        char probe[4096];
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", env_sdk);
+        if (access(probe, X_OK) == 0) return strdup(env_sdk);
+    }
+
+    const char* standard_paths[] = {
+        "/opt/android-ndk",
+        "/opt/android-sdk/ndk",
+        NULL
+    };
+    for (int i = 0; standard_paths[i]; i++) {
+        char probe[4096];
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", standard_paths[i]);
+        if (access(probe, X_OK) == 0) return strdup(standard_paths[i]);
+        DIR* d = opendir(standard_paths[i]);
+        if (d) {
+            struct dirent* de;
+            char best[4096] = "";
+            while ((de = readdir(d)) != NULL) {
+                if (de->d_name[0] == '.') continue;
+                char cand[4096];
+                snprintf(cand, sizeof cand, "%s/%s", standard_paths[i], de->d_name);
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                    snprintf(best, sizeof best, "%s", cand);
+                }
+            }
+            closedir(d);
+            if (best[0]) return strdup(best);
+        }
+    }
+    const char* home = getenv("HOME");
+    if (home) {
+        char user_sdk_ndk[4096];
+        snprintf(user_sdk_ndk, sizeof user_sdk_ndk, "%s/Android/Sdk/ndk", home);
+        DIR* d = opendir(user_sdk_ndk);
+        if (d) {
+            struct dirent* de;
+            char best[4096] = "";
+            while ((de = readdir(d)) != NULL) {
+                if (de->d_name[0] == '.') continue;
+                char cand[4096];
+                snprintf(cand, sizeof cand, "%s/%s", user_sdk_ndk, de->d_name);
+                char probe[4096];
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                    snprintf(best, sizeof best, "%s", cand);
+                }
+            }
+            closedir(d);
+            if (best[0]) return strdup(best);
+        }
+    }
+    return NULL;
+}
+
+/* Discover Windows cross-compiler on Linux (e.g. x86_64-w64-mingw32-gcc). Caller frees returned string. */
+char* toolchain_find_mingw(void) {
+    char* p = find_in_path("x86_64-w64-mingw32-gcc");
+    if (p) return p;
+    return find_in_path("i686-w64-mingw32-gcc");
 }
 
 static const char* CC_CANDS[] = { "gcc", "clang", "cc", "tcc", "musl-gcc", NULL };
@@ -199,33 +308,112 @@ static int read_cache(Toolchain* tc) {
     return ok;
 }
 
-int toolchain_detect(Toolchain* tc) {
+int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
     memset(tc, 0, sizeof *tc);
+    const char* tos = (spec && spec->target_os[0]) ? spec->target_os : "host";
 
-    RookConfig cfg;
-    config_load(&cfg);
-
-    int cc_overridden = config_key_source("cc") != 0;
-    int ar_overridden = config_key_source("ar") != 0;
-
-    /* cc: explicit override wins; else cached detection; else fresh detect. */
-    char* p = cc_overridden ? resolve_exe(cfg.cc) : NULL;
-    if (p) {
-        tc->cc_path = p;
-        tc->from_config = 1;
-    } else if (!cc_overridden && read_cache(tc) && tc->cc_path) {
-        /* nothing: reused from cache */
-    } else {
-        for (int i = 0; CC_CANDS[i]; i++) {
-            char* q = find_in_path(CC_CANDS[i]);
-            if (q) { tc->cc_path = q; break; }
+    /* 1. Explicit compiler override in spec */
+    if (spec && spec->custom_cc[0]) {
+        char* resolved = resolve_exe(spec->custom_cc);
+        if (resolved) {
+            tc->cc_path = resolved;
+            tc->from_config = 1;
         }
     }
 
-    if (!tc->cc_path) {
-        config_free(&cfg);
-        return 1;
+    /* 2. Target OS: Android */
+    if (!tc->cc_path && strcmp(tos, "android") == 0) {
+        char* ndk = toolchain_find_ndk(spec ? spec->ndk_path : NULL);
+        if (!ndk) return 1; /* NDK not found */
+
+        const char* hosts[] = { "linux-x86_64", "windows-x86_64", "darwin-x86_64", "darwin-arm64", NULL };
+        char prebuilt_bin[4096] = "";
+        for (int i = 0; hosts[i]; i++) {
+            char pdir[4096];
+            snprintf(pdir, sizeof pdir, "%s/toolchains/llvm/prebuilt/%s/bin", ndk, hosts[i]);
+            if (access(pdir, X_OK) == 0) {
+                snprintf(prebuilt_bin, sizeof prebuilt_bin, "%s", pdir);
+                break;
+            }
+        }
+        if (!prebuilt_bin[0]) { free(ndk); return 1; }
+
+        const char* arch = (spec && spec->target_arch[0]) ? spec->target_arch : "arm64-v8a";
+        const char* triple_prefix = "aarch64-linux-android";
+        if (strcmp(arch, "x86_64") == 0) {
+            triple_prefix = "x86_64-linux-android";
+        } else if (strcmp(arch, "armeabi-v7a") == 0 || strcmp(arch, "armv7") == 0 || strcmp(arch, "arm") == 0) {
+            triple_prefix = "armv7a-linux-androideabi";
+        } else if (strcmp(arch, "x86") == 0 || strcmp(arch, "i686") == 0) {
+            triple_prefix = "i686-linux-android";
+        }
+
+        int api = (spec && spec->android_api > 0) ? spec->android_api : 24;
+        char cc_bin[4096];
+        snprintf(cc_bin, sizeof cc_bin, "%s/%s%d-clang", prebuilt_bin, triple_prefix, api);
+        if (access(cc_bin, X_OK) != 0) {
+            snprintf(cc_bin, sizeof cc_bin, "%s/clang", prebuilt_bin);
+        }
+        tc->cc_path = strdup(cc_bin);
+
+        char ar_bin[4096];
+        snprintf(ar_bin, sizeof ar_bin, "%s/llvm-ar", prebuilt_bin);
+        if (access(ar_bin, X_OK) == 0) tc->ar_path = strdup(ar_bin);
+
+        char trip_buf[128];
+        snprintf(trip_buf, sizeof trip_buf, "%s%d", triple_prefix, api);
+        tc->target_triple = strdup(trip_buf);
+        tc->cc_vendor = strdup("clang");
+        free(ndk);
     }
+
+    /* 3. Target OS: Windows */
+    if (!tc->cc_path && strcmp(tos, "windows") == 0) {
+#if defined(_WIN32)
+        const char* win_cands[] = { "gcc", "clang", "cl", NULL };
+        for (int i = 0; win_cands[i]; i++) {
+            char* q = find_in_path(win_cands[i]);
+            if (q) { tc->cc_path = q; break; }
+        }
+        tc->target_triple = strdup("x86_64-w64-windows");
+#else
+        char* mingw_cc = toolchain_find_mingw();
+        if (mingw_cc) {
+            tc->cc_path = mingw_cc;
+            tc->target_triple = strdup("x86_64-w64-mingw32");
+            char* mingw_ar = find_in_path("x86_64-w64-mingw32-ar");
+            if (mingw_ar) tc->ar_path = mingw_ar;
+        }
+#endif
+    }
+
+    /* 4. Host OS / Linux / fallback */
+    if (!tc->cc_path) {
+        const char* env_cc = getenv("ROKADE_CC");
+        if (!env_cc || !*env_cc) env_cc = getenv("CC");
+        if (env_cc && *env_cc) {
+            tc->cc_path = resolve_exe(env_cc);
+        }
+        if (!tc->cc_path) {
+            RookConfig cfg;
+            config_load(&cfg);
+            int cc_overridden = config_key_source("cc") != 0;
+            if (cc_overridden) {
+                tc->cc_path = resolve_exe(cfg.cc);
+                tc->from_config = 1;
+            } else if (read_cache(tc) && tc->cc_path) {
+                /* reused from cache */
+            } else {
+                for (int i = 0; CC_CANDS[i]; i++) {
+                    char* q = find_in_path(CC_CANDS[i]);
+                    if (q) { tc->cc_path = q; break; }
+                }
+            }
+            config_free(&cfg);
+        }
+    }
+
+    if (!tc->cc_path) return 1;
 
     const char* b = strrchr(tc->cc_path, '/');
     b = b ? b + 1 : tc->cc_path;
@@ -236,29 +424,34 @@ int toolchain_detect(Toolchain* tc) {
         char* dv = probe_dumpversion(tc->cc_path);
         if (dv) { tc->cc_version = dv; }
     }
-    if (!tc->cc_version) probe_version(tc); /* ensure we have something */
+    if (!tc->cc_version) probe_version(tc);
     if (!tc->supports_c11) tc->supports_c11 = probe_std(tc->cc_path, "c11");
     if (!tc->supports_c17) tc->supports_c17 = probe_std(tc->cc_path, "c17");
     if (!tc->supports_c23) tc->supports_c23 = probe_std(tc->cc_path, "c23");
 
-    /* ar */
-    char* ap = ar_overridden ? resolve_exe(cfg.ar) : NULL;
-    if (ap) {
-        tc->ar_path = ap;
-    } else if (!ar_overridden && tc->ar_path) {
-        /* already loaded from cache */
-    } else {
-        for (int i = 0; AR_CANDS[i]; i++) {
-            char* q = find_in_path(AR_CANDS[i]);
-            if (q) { tc->ar_path = q; break; }
+    /* Archiver */
+    if (!tc->ar_path) {
+        if (spec && spec->custom_ar[0]) {
+            tc->ar_path = resolve_exe(spec->custom_ar);
+        }
+        if (!tc->ar_path) {
+            const char* env_ar = getenv("ROKADE_AR");
+            if (!env_ar || !*env_ar) env_ar = getenv("AR");
+            if (env_ar && *env_ar) tc->ar_path = resolve_exe(env_ar);
+        }
+        if (!tc->ar_path) {
+            for (int i = 0; AR_CANDS[i]; i++) {
+                char* q = find_in_path(AR_CANDS[i]);
+                if (q) { tc->ar_path = q; break; }
+            }
         }
     }
 
-    /* Cache the freshly detected (non-overridden) result. */
-    if (!cc_overridden && !ar_overridden) write_cache(tc);
-
-    config_free(&cfg);
     return 0;
+}
+
+int toolchain_detect(Toolchain* tc) {
+    return toolchain_detect_target(tc, NULL);
 }
 
 void toolchain_free(Toolchain* tc) {
@@ -268,12 +461,10 @@ void toolchain_free(Toolchain* tc) {
     free(tc->cc_vendor);
     free(tc->cc_version);
     free(tc->ar_path);
+    free(tc->target_triple);
     memset(tc, 0, sizeof *tc);
 }
 
-/* Return the C compiler binary to invoke, honoring config and falling back to
-   auto-detection. Never returns NULL (falls back to "gcc" so callers stay
-   runnable). Caller frees the result. */
 char* toolchain_cc(void) {
     Toolchain tc;
     if (toolchain_detect(&tc) == 0) {
@@ -284,64 +475,32 @@ char* toolchain_cc(void) {
     return strdup("gcc");
 }
 
-/* Compile a single .c file into an executable, honoring the resolved compiler
-   and the user's `cflags` / `standard` config. Always links `-lm`. Returns the
-   system() status (0 on success).
-
-   The C code Rookal emits uses C23 features (`auto` type inference), so the
-   effective standard must be C23-or-later. We honor an explicit `standard`
-   override from config; otherwise we pick a C23-capable standard (preferring
-   gnu23) when the toolchain supports it, so the output builds on both gcc and
-   clang. */
 int toolchain_compile_exe(const char* out_exe, const char* c_file) {
-    RookConfig cfg;
-    config_load(&cfg);
-
     Toolchain tc;
     toolchain_detect(&tc);
-    char* cc = tc.cc_path ? strdup(tc.cc_path) : strdup("gcc");
-
-    const char* std = cfg.standard && cfg.standard[0] ? cfg.standard : "c11";
-    int user_std = config_key_source("standard") != 0;
-    if (!user_std && tc.supports_c23) std = "gnu23";
-
-    char cmd[16384];
-    int n = snprintf(cmd, sizeof cmd, "%s", cc);
-    if (std && std[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -std=%s", std);
-    }
-    if (cfg.cflags && cfg.cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", cfg.cflags);
-    }
-    n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -o %s %s -lm",
-                  out_exe ? out_exe : "a.out", c_file ? c_file : "a.c");
-
-    int rc = system(cmd);
-    free(cc);
+    TargetSpec spec;
+    memset(&spec, 0, sizeof spec);
+    snprintf(spec.build_kind, sizeof spec.build_kind, "exe");
+    const char* objs[1] = { c_file };
+    int rc = toolchain_link_target(&spec, &tc, out_exe, objs, 1, NULL, 0, NULL);
     toolchain_free(&tc);
-    config_free(&cfg);
     return rc;
 }
 
-int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags) {
-    RookConfig cfg;
-    config_load(&cfg);
-
-    Toolchain tc;
-    toolchain_detect(&tc);
-    char* cc = tc.cc_path ? strdup(tc.cc_path) : strdup("gcc");
-
-    const char* std = cfg.standard && cfg.standard[0] ? cfg.standard : "c11";
-    int user_std = config_key_source("standard") != 0;
-    if (!user_std && tc.supports_c23) std = "gnu23";
+int toolchain_compile_obj_target(const TargetSpec* spec, const Toolchain* tc, const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags) {
+    const char* cc = tc && tc->cc_path ? tc->cc_path : "gcc";
+    const char* std = (spec && spec->standard[0]) ? spec->standard : "c2x";
 
     char cmd[32768];
     int n = snprintf(cmd, sizeof cmd, "%s", cc);
     if (std && std[0]) {
         n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -std=%s", std);
     }
-    if (cfg.cflags && cfg.cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", cfg.cflags);
+    if (spec && (strcmp(spec->target_os, "android") == 0 || strcmp(spec->build_kind, "shared-lib") == 0)) {
+        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -fPIC");
+    }
+    if (spec && spec->cflags[0]) {
+        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", spec->cflags);
     }
     if (extra_cflags && extra_cflags[0]) {
         n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", extra_cflags);
@@ -352,28 +511,47 @@ int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** 
     n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -c -o \"%s\" \"%s\"",
                   out_obj ? out_obj : "out.o", c_file ? c_file : "in.c");
 
-    int rc = system(cmd);
-    free(cc);
+    return system(cmd);
+}
+
+int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags) {
+    Toolchain tc;
+    toolchain_detect(&tc);
+    int rc = toolchain_compile_obj_target(NULL, &tc, out_obj, c_file, inc_dirs, n_inc, extra_cflags);
     toolchain_free(&tc);
-    config_free(&cfg);
     return rc;
 }
 
-int toolchain_link_exe(const char* out_exe, const char** obj_files, size_t n_objs, const char** libs, size_t n_libs, const char* extra_cflags) {
-    RookConfig cfg;
-    config_load(&cfg);
-
-    Toolchain tc;
-    toolchain_detect(&tc);
-    char* cc = tc.cc_path ? strdup(tc.cc_path) : strdup("gcc");
+int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const char* out_bin, const char** obj_files, size_t n_objs, const char** libs, size_t n_libs, const char* extra_cflags) {
+    const char* kind = (spec && spec->build_kind[0]) ? spec->build_kind : "exe";
+    const char* tos = (spec && spec->target_os[0]) ? spec->target_os : "linux";
 
     char cmd[32768];
-    int n = snprintf(cmd, sizeof cmd, "%s -o \"%s\"", cc, out_exe ? out_exe : "a.out");
+    if (strcmp(kind, "static-lib") == 0) {
+        const char* ar = tc && tc->ar_path ? tc->ar_path : "ar";
+        int n = snprintf(cmd, sizeof cmd, "%s rcs \"%s\"", ar, out_bin ? out_bin : "lib.a");
+        for (size_t i = 0; i < n_objs; i++) {
+            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
+        }
+        return system(cmd);
+    }
+
+    const char* cc = tc && tc->cc_path ? tc->cc_path : "gcc";
+    int n = snprintf(cmd, sizeof cmd, "%s", cc);
+
+    if (strcmp(kind, "shared-lib") == 0) {
+        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -shared");
+        if (strcmp(tos, "windows") != 0) {
+            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -fPIC");
+        }
+    }
+
+    n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -o \"%s\"", out_bin ? out_bin : "a.out");
     for (size_t i = 0; i < n_objs; i++) {
         n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
     }
-    if (cfg.cflags && cfg.cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", cfg.cflags);
+    if (spec && spec->cflags[0]) {
+        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", spec->cflags);
     }
     if (extra_cflags && extra_cflags[0]) {
         n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", extra_cflags);
@@ -383,43 +561,24 @@ int toolchain_link_exe(const char* out_exe, const char** obj_files, size_t n_obj
         n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -l%s", libs[i]);
     }
 
-    int rc = system(cmd);
-    free(cc);
+    return system(cmd);
+}
+
+int toolchain_link_exe(const char* out_exe, const char** obj_files, size_t n_objs, const char** libs, size_t n_libs, const char* extra_cflags) {
+    Toolchain tc;
+    toolchain_detect(&tc);
+    int rc = toolchain_link_target(NULL, &tc, out_exe, obj_files, n_objs, libs, n_libs, extra_cflags);
     toolchain_free(&tc);
-    config_free(&cfg);
     return rc;
 }
 
 int toolchain_link_lib(const char* out_lib, const char** obj_files, size_t n_objs, int is_shared, const char* extra_cflags) {
-    RookConfig cfg;
-    config_load(&cfg);
-
     Toolchain tc;
     toolchain_detect(&tc);
-
-    char cmd[32768];
-    int rc = 0;
-    if (is_shared) {
-        char* cc = tc.cc_path ? strdup(tc.cc_path) : strdup("gcc");
-        int n = snprintf(cmd, sizeof cmd, "%s -shared -o \"%s\"", cc, out_lib ? out_lib : "lib.so");
-        for (size_t i = 0; i < n_objs; i++) {
-            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
-        }
-        if (extra_cflags && extra_cflags[0]) {
-            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", extra_cflags);
-        }
-        rc = system(cmd);
-        free(cc);
-    } else {
-        char* ar = tc.ar_path ? strdup(tc.ar_path) : strdup("ar");
-        int n = snprintf(cmd, sizeof cmd, "%s rcs \"%s\"", ar, out_lib ? out_lib : "lib.a");
-        for (size_t i = 0; i < n_objs; i++) {
-            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
-        }
-        rc = system(cmd);
-        free(ar);
-    }
+    TargetSpec spec;
+    memset(&spec, 0, sizeof spec);
+    snprintf(spec.build_kind, sizeof spec.build_kind, "%s", is_shared ? "shared-lib" : "static-lib");
+    int rc = toolchain_link_target(&spec, &tc, out_lib, obj_files, n_objs, NULL, 0, extra_cflags);
     toolchain_free(&tc);
-    config_free(&cfg);
     return rc;
 }
