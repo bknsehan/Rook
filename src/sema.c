@@ -1641,7 +1641,7 @@ static void ck_check_returns(Checker* ck, FnDef* f) {
     if (ck_block_returns(ck, f->body)) return;
     char msg[256];
     snprintf(msg, sizeof msg, "function '%s' does not return a value on all paths", f->name);
-    ck_err_at(ck, f->body->start, 1, msg);
+    ck_err_at(ck, f->start ? f->start : (f->body ? f->body->start : 0), f->len ? f->len : 1, msg);
 }
 
 static void ck_scan_defer_body(Checker* ck, Stmt* s) {

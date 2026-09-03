@@ -43,9 +43,4 @@ const char* diag_reset(void);
    newline). Used by build/run pipelines. */
 void diag_stage(const char* stage);
 
-/* Source map mapping expanded buffer offsets to original file and line */
-void sourcemap_clear(void);
-void sourcemap_add(int exp_start, int exp_len, const char* file, int orig_line);
-int  sourcemap_resolve_src(const char* src, int offset, const char** out_file, int* out_line, int* out_col, int* out_line_start);
-
 #endif

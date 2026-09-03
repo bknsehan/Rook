@@ -706,6 +706,7 @@ static Stmt* parse_stmt(Parser* p) {
         Stmt* body = parse_stmt(p);
         if (!body) return NULL;
         Stmt* s = ast_stmt_new(S_WHILE);
+        s->start = t->start; s->len = t->len; s->line = t->line; s->col = t->col;
         s->cond = cond;
         s->body = body;
         return s;
@@ -716,6 +717,7 @@ static Stmt* parse_stmt(Parser* p) {
     if (is_kw(t, "return")) {
         adv(p);
         Stmt* s = ast_stmt_new(S_RETURN);
+        s->start = t->start; s->len = t->len; s->line = t->line; s->col = t->col;
         if (!tok_is(cur(p), ";")) {
             s->e = parse_expr(p);
             if (!s->e) return NULL;
@@ -726,12 +728,16 @@ static Stmt* parse_stmt(Parser* p) {
     if (is_kw(t, "break")) {
         adv(p);
         if (!expect_punct(p, ";")) return NULL;
-        return ast_stmt_new(S_BREAK);
+        Stmt* s = ast_stmt_new(S_BREAK);
+        s->start = t->start; s->len = t->len; s->line = t->line; s->col = t->col;
+        return s;
     }
     if (is_kw(t, "continue")) {
         adv(p);
         if (!expect_punct(p, ";")) return NULL;
-        return ast_stmt_new(S_CONTINUE);
+        Stmt* s = ast_stmt_new(S_CONTINUE);
+        s->start = t->start; s->len = t->len; s->line = t->line; s->col = t->col;
+        return s;
     }
     if (is_kw(t, "defer")) {
         adv(p);
@@ -777,8 +783,15 @@ static Stmt* parse_stmt(Parser* p) {
 }
 
 static Stmt* parse_block(Parser* p) {
+    Token* open = cur(p);
     if (!expect_punct(p, "{")) return NULL;
     Stmt* b = ast_stmt_new(S_BLOCK);
+    if (open) {
+        b->start = open->start;
+        b->len = open->len;
+        b->line = open->line;
+        b->col = open->col;
+    }
     while (!tok_is(cur(p), "}")) {
         Stmt* s = parse_stmt(p);
         if (!s) return NULL;
@@ -786,11 +799,16 @@ static Stmt* parse_block(Parser* p) {
         if (!b->stmts) exit(1);
         b->stmts[b->nstmts++] = s;
     }
+    Token* close = cur(p);
     if (!expect_punct(p, "}")) return NULL;
+    if (open && close) {
+        b->len = (close->start + close->len) - open->start;
+    }
     return b;
 }
 
 static Stmt* parse_if(Parser* p) {
+    Token* if_tok = cur(p);
     if (!expect_kw(p, "if")) return NULL;
     if (!expect_punct(p, "(")) return NULL;
     Expr* cond = parse_expr(p);
@@ -809,6 +827,7 @@ static Stmt* parse_if(Parser* p) {
         if (!els) return NULL;
     }
     Stmt* s = ast_stmt_new(S_IF);
+    if (if_tok) { s->start = if_tok->start; s->len = if_tok->len; s->line = if_tok->line; s->col = if_tok->col; }
     s->cond = cond;
     s->then = then;
     s->els = els;
@@ -816,6 +835,7 @@ static Stmt* parse_if(Parser* p) {
 }
 
 static Stmt* parse_for(Parser* p) {
+    Token* for_tok = cur(p);
     if (!expect_kw(p, "for")) return NULL;
     if (cur(p)->kind == TK_IDENT && is_kw(peek(p, 1), "in")) {
         char* var = ident(p);
@@ -826,6 +846,7 @@ static Stmt* parse_for(Parser* p) {
         Stmt* body = parse_stmt(p);
         if (!body) return NULL;
         Stmt* s = ast_stmt_new(S_FORIN);
+        if (for_tok) { s->start = for_tok->start; s->len = for_tok->len; s->line = for_tok->line; s->col = for_tok->col; }
         s->var = var;
         s->iter = iter;
         s->body = body;
@@ -833,6 +854,7 @@ static Stmt* parse_for(Parser* p) {
     }
     if (!expect_punct(p, "(")) return NULL;
     Stmt* s = ast_stmt_new(S_FOR);
+    if (for_tok) { s->start = for_tok->start; s->len = for_tok->len; s->line = for_tok->line; s->col = for_tok->col; }
     Token* t = cur(p);
     if (t->kind == TK_IDENT) {
         Token* n = peek(p, 1);
@@ -876,6 +898,7 @@ static Stmt* parse_switch_colon_body(Parser* p) {
 }
 
 static Stmt* parse_switch(Parser* p) {
+    Token* sw_tok = cur(p);
     if (!expect_kw(p, "switch")) return NULL;
     if (!expect_punct(p, "(")) return NULL;
     Expr* e = parse_expr(p);
@@ -883,6 +906,7 @@ static Stmt* parse_switch(Parser* p) {
     if (!expect_punct(p, ")")) return NULL;
     if (!expect_punct(p, "{")) return NULL;
     Stmt* s = ast_stmt_new(S_SWITCH);
+    if (sw_tok) { s->start = sw_tok->start; s->len = sw_tok->len; s->line = sw_tok->line; s->col = sw_tok->col; }
     s->e = e;
     while (!tok_is(cur(p), "}")) {
         SwitchArm arm;
@@ -998,7 +1022,7 @@ static FnDef* parse_fn_def(Parser* p) {
     Token* name_tok = cur(p);
     f->name = ident(p);
     if (!f->name) return NULL;
-    if (name_tok) { f->line = name_tok->line; f->col = name_tok->col; }
+    if (name_tok) { f->start = name_tok->start; f->len = name_tok->len; f->line = name_tok->line; f->col = name_tok->col; }
     if (!expect_punct(p, "(")) return NULL;
     while (!tok_is(cur(p), ")")) {
         Param param;

@@ -279,7 +279,8 @@ typedef struct VisitedInc {
    Applies #pragma once deduplication across included files.
    Returns a malloc'd string with includes expanded, or NULL on error. */
 static char* resolve_includes_rec(const char* src, int src_len, const char* basedir,
-                                  const char** inc_dirs, size_t n_inc, int depth, VisitedInc** visited) {
+                                  const char** inc_dirs, size_t n_inc, int depth,
+                                  VisitedInc** visited, const char* current_file) {
     if (depth > 32) {
         fprintf(stderr, "error: include depth limit exceeded (circular include?)\n");
         return NULL;
@@ -293,6 +294,8 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
 
     /* Track original line number in this chunk's source */
     int cur_orig_line = 1;
+    /* Whether the current file should stamp @rk:src markers (only depth==0 = user file) */
+    int stamp = (depth == 0 && current_file && current_file[0]);
 
     while (p < end) {
         /* Find #include at start of line */
@@ -339,7 +342,6 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 if (strcmp(v->path, track_path) == 0) { seen = 1; break; }
                             }
                             if (seen) {
-                                /* Already included; skip */
                                 free(resolved);
                                 p = nl ? nl + 1 : end;
                                 cur_orig_line++;
@@ -371,7 +373,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                             } else {
                                 snprintf(nested_dir, sizeof(nested_dir), ".");
                             }
-                            char* expanded = resolve_includes_rec(isrc, ilen, nested_dir, inc_dirs, n_inc, depth + 1, visited);
+                            char* expanded = resolve_includes_rec(isrc, ilen, nested_dir, inc_dirs, n_inc, depth + 1, visited, track_path);
                             free(isrc);
                             free(resolved);
                             if (!expanded) {
@@ -379,13 +381,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 free(work);
                                 return NULL;
                             }
-                            /* Expanded content is from the included file — don't register
-                               sourcemap for it here (child call registers its own segments).
-                               Just skip it in the map so diagnostics from included files
-                               resolve to the included file's own lines, not the parent. */
                             sb_append(&out, expanded);
-                            /* Ensure inlined module content ends with a newline
-                               so the next source line starts on its own line */
                             if (out.len == 0 || out.data[out.len - 1] != '\n')
                                 sb_append(&out, "\n");
                             free(expanded);
@@ -396,20 +392,21 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                     }
                 }
             }
-            /* Not a .rook include — pass through verbatim */
+            /* Not a .rook include — pass through verbatim with marker */
+            if (stamp) sb_appendf(&out, "// @rk:src %s:%d\n", current_file, cur_orig_line);
             sb_appendn(&out, p, line_len);
             p = nl ? nl + 1 : end;
             cur_orig_line++;
         } else {
             /* Non-include line — copy until next #include or newline */
             const char* next_hash = p;
-            while (next_hash < end) {
-                if (next_hash[0] == '\n') { next_hash++; break; }
-                if (next_hash[0] == '#') break;
-                next_hash++;
-            }
-            sb_appendn(&out, p, (int)(next_hash - p));
-            p = next_hash;
+            /* Find end of this line first */
+            const char* nl_here = memchr(p, '\n', end - p);
+            int this_line_len = nl_here ? (int)(nl_here - p + 1) : (int)(end - p);
+            if (stamp) sb_appendf(&out, "// @rk:src %s:%d\n", current_file, cur_orig_line);
+            sb_appendn(&out, p, this_line_len);
+            p += this_line_len;
+            cur_orig_line++;
         }
     }
     char* r = sb_strdup(&out);
@@ -419,7 +416,8 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
 }
 
 static char* resolve_includes(const char* src, int src_len, const char* basedir,
-                              const char** inc_dirs, size_t n_inc, int depth) {
+                              const char** inc_dirs, size_t n_inc, int depth,
+                              const char* current_file) {
     const char* all_dirs[64];
     size_t total_inc = 0;
     if (inc_dirs) {
@@ -441,7 +439,7 @@ static char* resolve_includes(const char* src, int src_len, const char* basedir,
     }
 
     VisitedInc* visited = NULL;
-    char* r = resolve_includes_rec(src, src_len, basedir, all_dirs, total_inc, depth, &visited);
+    char* r = resolve_includes_rec(src, src_len, basedir, all_dirs, total_inc, depth, &visited, current_file);
     while (visited) {
         VisitedInc* n = visited->next;
         free(visited);
@@ -1128,6 +1126,16 @@ static void mkdir_p(const char* path) {
     mkdir(buf, 0755);
 }
 
+static void print_diag_stderr(const char* fallback_path, const char* diag) {
+    if (!diag) return;
+    const char* colon = strchr(diag, ':');
+    if (colon && colon > diag && !('0' <= diag[0] && diag[0] <= '9')) {
+        fputs(diag, stderr);
+    } else {
+        fprintf(stderr, "%s:%s", fallback_path ? fallback_path : "", diag);
+    }
+}
+
 static int do_build(const char* proj_path, const char* cli_target, int build_all) {
     char cwd[4096];
     if (!proj_path) {
@@ -1230,7 +1238,7 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
 
         const char* inc_list[16];
         for (size_t j = 0; j < cfg.n_include_dirs; j++) inc_list[j] = cfg.include_dirs[j];
-        char* expanded = resolve_includes(source, len, src_dir, inc_list, cfg.n_include_dirs, 0);
+        char* expanded = resolve_includes(source, len, src_dir, inc_list, cfg.n_include_dirs, 0, rook_path);
         free(source);
         if (!expanded) { fprintf(stderr, "warning: include resolution failed for %s\n", rook_path); continue; }
         len = (int)strlen(expanded);
@@ -1240,7 +1248,7 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
         Token* toks = lex_all(expanded, len, &ntoks);
         Program* p = parse_program(expanded, len, toks, ntoks);
         if (!p) {
-            fprintf(stderr, "%s:%s", rook_path, parse_error());
+            print_diag_stderr(rook_path, parse_error());
             free(expanded);
             free(toks);
             continue;
@@ -1250,7 +1258,7 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
-            fprintf(stderr, "%s:%s", rook_path, sema->err);
+            print_diag_stderr(rook_path, sema->err);
             program_free(p);
             free(expanded);
             free(toks);
@@ -1689,7 +1697,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     int len = 0;
     char* src = util_read_file(path, &len);
     if (!src) return NULL;
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
     free(src);
     if (!expanded) return NULL;
     len = (int)strlen(expanded);
@@ -1698,7 +1706,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     Token* toks = lex_all(expanded, len, &ntoks);
     Program* p = parse_program(expanded, len, toks, ntoks);
     if (!p) {
-        fprintf(stderr, "%s:%s", path, parse_error());
+        print_diag_stderr(path, parse_error());
         free(expanded);
         free(toks);
         return NULL;
@@ -1709,7 +1717,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     sema_collect(sema, p);
     sema_check(sema, p);
     if (sema->err) {
-        fprintf(stderr, "%s:\n%s", path, sema->err);
+        print_diag_stderr(path, sema->err);
         sema_free(sema);
         free(expanded);
         free(toks);
@@ -1866,7 +1874,7 @@ static int check_file(const char* path, int verbose) {
     } else {
         snprintf(basedir, sizeof(basedir), ".");
     }
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
     free(src);
     if (!expanded) {
         printf("FAIL %s (include resolution)\n", path);
@@ -2210,7 +2218,7 @@ static int do_def_at(int argc, char** argv) {
     }
     sema_load_commandlist(basedir, NULL);
 
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
     free(src);
     if (!expanded) {
         fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
@@ -2270,7 +2278,7 @@ static int do_symbols(int argc, char** argv) {
     } else {
         snprintf(basedir, sizeof(basedir), ".");
     }
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
     free(src);
     if (!expanded) {
         fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
@@ -2463,26 +2471,13 @@ int main(int argc, char** argv) {
     } else {
         snprintf(basedir, sizeof(basedir), ".");
     }
-    sourcemap_clear();
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
     free(src);
     if (!expanded) {
         fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
         return 1;
     }
     len = (int)strlen(expanded);
-
-    /* Register the main file in the sourcemap so diagnostics can map
-       back to the original file even when #comprise inlines have shifted lines.
-       We register the entire expanded buffer as originating from path.
-       Lines that came from included files will be resolved by the inner
-       child blocks whose diagnostics carry their own file:line prefix. */
-    {
-        /* Count lines not in included files – simplest approach: register
-           the expanded buffer. diag_render uses the first matching segment,
-           so included fragments that don't match fall through to raw counting. */
-        sourcemap_add(0, len, path, 1);
-    }
 
     int ntoks = 0;
     Token* toks = lex_all(expanded, len, &ntoks);
@@ -2515,7 +2510,7 @@ int main(int argc, char** argv) {
     }
 
     if (!p) {
-        fprintf(stderr, "%s:%s", path, parse_error());
+        print_diag_stderr(path, parse_error());
         free(expanded);
         free(toks);
         return 1;
@@ -2541,7 +2536,7 @@ int main(int argc, char** argv) {
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
-            fprintf(stderr, "%s:%s", path, sema->err);
+            print_diag_stderr(path, sema->err);
             sema_free(sema);
             free(expanded);
             free(toks);

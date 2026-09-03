@@ -159,6 +159,8 @@ typedef struct FnDef {
     AstType* ret;           /* NULL when absent */
     Stmt* body;             /* S_BLOCK */
     int is_extern;          /* 1 for `extern fn` (declared in C, no body) */
+    int start;
+    int len;
     int line;
     int col;
 } FnDef;

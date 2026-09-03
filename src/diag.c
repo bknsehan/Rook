@@ -27,54 +27,70 @@ const char* diag_bold(void)   { return g_color ? "\033[1m"  : ""; }
 const char* diag_dim(void)    { return g_color ? "\033[2m"  : ""; }
 const char* diag_reset(void)  { return g_color ? "\033[0m"  : ""; }
 
-typedef struct {
-    int exp_start;
-    int exp_end;
-    char file[512];
-    int orig_line;
-} SourceMapEntry;
+/* ── Marker-based source location resolution ──────────────────────────────
+ * During #comprise expansion, resolve_includes_rec injects comment markers:
+ *     // @rk:src /path/to/file.rook:LINE\n
+ * immediately before each verbatim source line.  diag_render scans backward
+ * from the error offset to find the nearest such marker, then counts the
+ * remaining newlines between the marker line and the error position to get
+ * the exact file + line inside the user's original source file.
+ * ──────────────────────────────────────────────────────────────────────── */
 
-static SourceMapEntry* g_sm_entries = NULL;
-static int g_sm_count = 0;
-static int g_sm_cap = 0;
+#define RKSRC_MARKER  "// @rk:src "
+#define RKSRC_MLEN    (sizeof(RKSRC_MARKER) - 1)
 
-void sourcemap_clear(void) {
-    g_sm_count = 0;
-}
+/* Resolve `offset` in the expanded buffer back to the original file/line.
+ * Returns 1 on success (out_* set), 0 if no marker found (caller falls back
+ * to raw line counting). */
+static int resolve_src_marker(const char* src, int offset,
+                               const char** out_file, int* out_line,
+                               int* out_col,  int* out_line_start) {
+    if (!src || offset < 0) return 0;
 
-void sourcemap_add(int exp_start, int exp_len, const char* file, int orig_line) {
-    if (exp_len <= 0) return;
-    if (g_sm_count == g_sm_cap) {
-        g_sm_cap = g_sm_cap ? g_sm_cap * 2 : 32;
-        g_sm_entries = realloc(g_sm_entries, g_sm_cap * sizeof *g_sm_entries);
-        if (!g_sm_entries) exit(1);
-    }
-    SourceMapEntry* e = &g_sm_entries[g_sm_count++];
-    e->exp_start = exp_start;
-    e->exp_end = exp_start + exp_len;
-    snprintf(e->file, sizeof(e->file), "%s", file ? file : "");
-    e->orig_line = orig_line;
-}
+    /* Walk backward line by line from offset to find the most recent marker */
+    int scan = offset;
+    while (scan > 0 && src[scan - 1] != '\n') scan--;
 
-int sourcemap_resolve_src(const char* src, int offset, const char** out_file, int* out_line, int* out_col, int* out_line_start) {
-    if (!g_sm_entries || g_sm_count == 0) return 0;
-    for (int i = 0; i < g_sm_count; i++) {
-        SourceMapEntry* e = &g_sm_entries[i];
-        if (offset >= e->exp_start && offset < e->exp_end) {
-            int lines_in_chunk = 0;
-            int last_ls = e->exp_start;
-            for (int k = e->exp_start; k < offset; k++) {
-                if (src[k] == '\n') {
-                    lines_in_chunk++;
-                    last_ls = k + 1;
-                }
+    while (scan >= 0) {
+        if (strncmp(src + scan, RKSRC_MARKER, RKSRC_MLEN) == 0) {
+            const char* rest = src + scan + RKSRC_MLEN;
+            const char* nl = strchr(rest, '\n');
+            if (!nl) nl = rest + strlen(rest);
+            /* Find last colon before newline — separates path from line number */
+            const char* last_colon = NULL;
+            for (const char* q = rest; q < nl; q++) {
+                if (*q == ':') last_colon = q;
             }
-            if (out_file) *out_file = e->file;
-            if (out_line) *out_line = e->orig_line + lines_in_chunk;
-            if (out_col) *out_col = offset - last_ls + 1;
+            if (!last_colon || last_colon == rest) goto next_line;
+
+            int orig_line = atoi(last_colon + 1);
+            if (orig_line <= 0) goto next_line;
+
+            static char fbuf[1024];
+            size_t flen = (size_t)(last_colon - rest);
+            if (flen >= sizeof(fbuf)) flen = sizeof(fbuf) - 1;
+            memcpy(fbuf, rest, flen);
+            fbuf[flen] = '\0';
+
+            /* Count lines from end-of-marker-line to offset */
+            int marker_end = (int)(nl - src) + 1;
+            int extra_lines = 0;
+            int last_ls = marker_end;
+            for (int k = marker_end; k < offset; k++) {
+                if (src[k] == '\n') { extra_lines++; last_ls = k + 1; }
+            }
+
+            if (out_file)       *out_file = fbuf;
+            if (out_line)       *out_line = orig_line + extra_lines;
+            if (out_col)        *out_col  = (offset >= last_ls) ? (offset - last_ls + 1) : 1;
             if (out_line_start) *out_line_start = last_ls;
             return 1;
         }
+
+next_line:
+        if (scan == 0) break;
+        scan--;
+        while (scan > 0 && src[scan - 1] != '\n') scan--;
     }
     return 0;
 }
@@ -96,14 +112,19 @@ void diag_render(const char* src, int offset, int width,
     int line_start = 0;
     int col = 1;
 
-    if (!sourcemap_resolve_src(src, offset, &resolved_file, &line_no, &col, &line_start)) {
+    if (!resolve_src_marker(src, offset, &resolved_file, &line_no, &col, &line_start)) {
+        /* No marker — raw line count */
         for (int i = 0; i < offset && src[i]; i++) {
-            if (src[i] == '\n') {
-                line_no++;
-                line_start = i + 1;
-            }
+            if (src[i] == '\n') { line_no++; line_start = i + 1; }
         }
         col = offset - line_start + 1;
+    }
+
+    /* Find the source line to display. If line_start is a marker line itself,
+     * advance to the next line (the actual code line). */
+    if (strncmp(src + line_start, RKSRC_MARKER, RKSRC_MLEN) == 0) {
+        while (src[line_start] && src[line_start] != '\n') line_start++;
+        if (src[line_start] == '\n') line_start++;
     }
 
     int line_end = line_start;
@@ -120,7 +141,7 @@ void diag_render(const char* src, int offset, int width,
 
     int marker = width;
     if (marker < 1) marker = 1;
-    if (marker > (int)ln) marker = (int)ln;
+    if (marker > (int)ln && ln > 0) marker = (int)ln;
 
     int used;
     if (resolved_file && resolved_file[0]) {
