@@ -291,6 +291,9 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
     const char* p = work;
     const char* end = work + strlen(work);
 
+    /* Track original line number in this chunk's source */
+    int cur_orig_line = 1;
+
     while (p < end) {
         /* Find #include at start of line */
         if (*p == '#') {
@@ -339,6 +342,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 /* Already included; skip */
                                 free(resolved);
                                 p = nl ? nl + 1 : end;
+                                cur_orig_line++;
                                 continue;
                             }
                             VisitedInc* vi = malloc(sizeof *vi);
@@ -375,6 +379,10 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 free(work);
                                 return NULL;
                             }
+                            /* Expanded content is from the included file — don't register
+                               sourcemap for it here (child call registers its own segments).
+                               Just skip it in the map so diagnostics from included files
+                               resolve to the included file's own lines, not the parent. */
                             sb_append(&out, expanded);
                             /* Ensure inlined module content ends with a newline
                                so the next source line starts on its own line */
@@ -382,6 +390,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 sb_append(&out, "\n");
                             free(expanded);
                             p = nl ? nl + 1 : end;
+                            cur_orig_line++;
                             continue;
                         }
                     }
@@ -390,6 +399,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
             /* Not a .rook include — pass through verbatim */
             sb_appendn(&out, p, line_len);
             p = nl ? nl + 1 : end;
+            cur_orig_line++;
         } else {
             /* Non-include line — copy until next #include or newline */
             const char* next_hash = p;
@@ -1983,14 +1993,50 @@ static void strip_ansi_codes(char* str) {
 static void emit_diag_json(SB* out, const char* file, const char* diag) {
     int line = 1, col = 1;
     const char* msg = diag ? diag : "";
-    char* e1;
-    long lv = strtol(diag ? diag : "0", &e1, 10);
-    if (e1 != (diag ? diag : "0") && *e1 == ':') {
-        const char* p = e1 + 1;
-        char* e2;
-        long cv = strtol(p, &e2, 10);
-        if (e2 != p && *e2 == ':') { line = (int)lv; col = (int)cv; msg = e2 + 1; }
+    const char* resolved_file = file; /* may be overridden by sourcemap prefix */
+
+    /* diag_render now emits either:
+       - "line:col: kind: msg\n..." (no sourcemap)
+       - "file:line:col: kind: msg\n..." (sourcemap resolved)
+       Try to parse the optional file: prefix first. */
+    if (diag && diag[0] && diag[0] != ' ') {
+        /* Try file:line:col: first - look for a string prefix before a digit-only segment */
+        const char* colon1 = strchr(diag, ':');
+        if (colon1 && colon1 > diag && !('0' <= diag[0] && diag[0] <= '9')) {
+            /* Possible file:line:col format */
+            const char* p2 = colon1 + 1;
+            char* e1;
+            long lv = strtol(p2, &e1, 10);
+            if (e1 != p2 && *e1 == ':') {
+                const char* p3 = e1 + 1;
+                char* e2;
+                long cv = strtol(p3, &e2, 10);
+                if (e2 != p3 && *e2 == ':') {
+                    /* Successfully parsed file:line:col: format */
+                    static char fb[512];
+                    size_t flen = (size_t)(colon1 - diag);
+                    if (flen >= sizeof(fb)) flen = sizeof(fb) - 1;
+                    memcpy(fb, diag, flen);
+                    fb[flen] = '\0';
+                    resolved_file = fb;
+                    line = (int)lv;
+                    col = (int)cv;
+                    msg = e2 + 1;
+                    goto extract_message;
+                }
+            }
+        }
+        /* Fall back to simple line:col: format */
+        char* e1;
+        long lv = strtol(diag, &e1, 10);
+        if (e1 != diag && *e1 == ':') {
+            const char* p = e1 + 1;
+            char* e2;
+            long cv = strtol(p, &e2, 10);
+            if (e2 != p && *e2 == ':') { line = (int)lv; col = (int)cv; msg = e2 + 1; }
+        }
     }
+extract_message:;
     const char* kerr = strstr(msg, "error:");
     const char* kw = kerr;
     const char* severity = "error";
@@ -2002,7 +2048,7 @@ static void emit_diag_json(SB* out, const char* file, const char* diag) {
 
     if (out->len > 1) sb_append(out, ",");
     sb_append(out, "{\"file\":");
-    json_append_str(out, file);
+    json_append_str(out, resolved_file);
     sb_appendf(out, ", \"line\":%d, \"character\":%d, \"severity\":\"%s\", \"message\":",
                line, col, severity);
     char* m = malloc(mlen + 1);
@@ -2417,6 +2463,7 @@ int main(int argc, char** argv) {
     } else {
         snprintf(basedir, sizeof(basedir), ".");
     }
+    sourcemap_clear();
     char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0);
     free(src);
     if (!expanded) {
@@ -2424,6 +2471,18 @@ int main(int argc, char** argv) {
         return 1;
     }
     len = (int)strlen(expanded);
+
+    /* Register the main file in the sourcemap so diagnostics can map
+       back to the original file even when #comprise inlines have shifted lines.
+       We register the entire expanded buffer as originating from path.
+       Lines that came from included files will be resolved by the inner
+       child blocks whose diagnostics carry their own file:line prefix. */
+    {
+        /* Count lines not in included files – simplest approach: register
+           the expanded buffer. diag_render uses the first matching segment,
+           so included fragments that don't match fall through to raw counting. */
+        sourcemap_add(0, len, path, 1);
+    }
 
     int ntoks = 0;
     Token* toks = lex_all(expanded, len, &ntoks);

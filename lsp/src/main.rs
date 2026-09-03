@@ -262,7 +262,9 @@ pub fn scan_rook_symbols(text: &str, file_path: &Path) -> Vec<RookSymbol> {
                 let ret_or_kw = words.next().unwrap_or("");
                 let fn_name = words.next().unwrap_or("");
                 if !fn_name.is_empty() && fn_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                    if ret_or_kw != "if" && ret_or_kw != "while" && ret_or_kw != "for" && ret_or_kw != "switch" {
+                    if ret_or_kw != "if" && ret_or_kw != "while" && ret_or_kw != "for"
+                        && ret_or_kw != "switch" && ret_or_kw != "fn" && ret_or_kw != "def"
+                        && ret_or_kw != "func" && ret_or_kw != "match" && ret_or_kw != "return" {
                         let sig = if let Some(close) = line[paren..].find(')') {
                             format!("{} {}{}", ret_or_kw, fn_name, &line[paren..paren + close + 1])
                         } else {
@@ -528,10 +530,18 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
             ..Default::default()
         },
         CompletionItem {
-            label: "fn".to_string(),
-            kind: Some(CompletionItemKind::KEYWORD),
-            detail: Some("Function definition".to_string()),
-            insert_text: Some("fn ${1:name}(${2}) -> ${3:void} {\n\t${0}\n}".to_string()),
+            label: "void fn".to_string(),
+            kind: Some(CompletionItemKind::SNIPPET),
+            detail: Some("void function definition (standard C style)".to_string()),
+            insert_text: Some("void ${1:name}(${2}) {\n\t${0}\n}".to_string()),
+            insert_text_format: Some(InsertTextFormat::SNIPPET),
+            ..Default::default()
+        },
+        CompletionItem {
+            label: "int fn".to_string(),
+            kind: Some(CompletionItemKind::SNIPPET),
+            detail: Some("int-returning function definition (standard C style)".to_string()),
+            insert_text: Some("int ${1:name}(${2}) {\n\treturn ${0};\n}".to_string()),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             ..Default::default()
         },
@@ -777,6 +787,7 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
         "match" => Some("`match <expr> { <pattern> => <stmt> }`\n\nPattern matches on a value or sum type."),
         "let" => Some("`let <name> [: <type>] = <expr>;`\n\nDeclares a local variable with optional type inference."),
         "comprise" | "#comprise" => Some("`#comprise <module>`\n\nImports a Rook module. Searches standard library `<std/...>` or relative directory."),
+        "fn" | "def" | "func" => Some("⚠️ **Not supported in Rook**\n\nRook uses standard C function declaration syntax:\n```c\nvoid name(params) {\n    ...\n}\n\nint add(int a, int b) {\n    return a + b;\n}\n```"),
         _ => None,
     };
 

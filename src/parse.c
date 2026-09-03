@@ -649,6 +649,26 @@ static Stmt* stmt_decl(Decl* d) {
 static Stmt* parse_stmt(Parser* p) {
     Token* t = cur(p);
     if (tok_is(t, "{")) return parse_block(p);
+    if (is_kw(t, "object")) {
+        error_at(p, t, "'object' declarations are only allowed at file scope (outside functions)");
+        return NULL;
+    }
+    if (is_kw(t, "impl")) {
+        error_at(p, t, "'impl' blocks are only allowed at file scope (outside functions)");
+        return NULL;
+    }
+    if (is_kw(t, "sum") || is_kw(t, "enum")) {
+        error_at(p, t, "'%.*s' declarations are only allowed at file scope (outside functions)", t->len, t->text);
+        return NULL;
+    }
+    if (is_kw(t, "fn")) {
+        error_at(p, t, "'fn' is not supported; Rook uses standard C function syntax 'Type name(...)' (e.g. 'void name(...)')");
+        return NULL;
+    }
+    if (is_kw(t, "def") || is_kw(t, "func") || is_kw(t, "class") || is_kw(t, "trait")) {
+        error_at(p, t, "'%.*s' is not supported in Rook", t->len, t->text);
+        return NULL;
+    }
     /* Rook rejects goto in source code. */
     if (is_kw(t, "goto")) {
         error_at(p, t, "'goto' is not supported in Rook");
@@ -737,6 +757,11 @@ static Stmt* parse_stmt(Parser* p) {
             if (!e) return NULL;
             if (!expect_punct(p, ";")) return NULL;
             return stmt_expr(e);
+        }
+        Token* n2 = peek(p, 2);
+        if (n && n->kind == TK_IDENT && n2 && tok_is(n2, "(")) {
+            error_at(p, n, "nested functions are not supported; declare function '%.*s' at file scope outside the function", n->len, n->text);
+            return NULL;
         }
         Decl* d = parse_c_decl(p, 1);
         return d ? stmt_decl(d) : NULL;
@@ -1322,8 +1347,12 @@ static Item* parse_top(Parser* p) {
          error_at(p, t, "'class' is not supported; use 'object Name { ... }'");
          return NULL;
      }
+     if (is_kw(t, "fn")) {
+         error_at(p, t, "'fn' is not supported; Rook uses standard C function syntax 'Type name(...)' (e.g. 'void name(...)')");
+         return NULL;
+     }
      if (is_kw(t, "def") || is_kw(t, "func")) {
-         error_at(p, t, "'%.*s' is not supported; use 'fn name(...)' or C function syntax 'Type name(...)'", t->len, t->text);
+         error_at(p, t, "'%.*s' is not supported; Rook uses standard C function syntax 'Type name(...)' (e.g. 'void name(...)')", t->len, t->text);
          return NULL;
      }
     /* C-style free function: `Type name ( params ) { body }` */
@@ -1351,7 +1380,7 @@ static int is_construct_kw(Token* t) {
     return is_kw(t, "struct") || is_kw(t, "object") || is_kw(t, "impl") ||
            is_kw(t, "sum") || is_kw(t, "enum") || is_kw(t, "extern") ||
            is_kw(t, "alias") || is_kw(t, "class") || is_kw(t, "trait") ||
-           is_kw(t, "def") || is_kw(t, "func");
+           is_kw(t, "def") || is_kw(t, "func") || is_kw(t, "fn");
 }
 
 Program* parse_program(const char* src, int len, Token* toks, int ntoks) {

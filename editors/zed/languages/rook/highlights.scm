@@ -15,7 +15,7 @@
 
 ; Rook language keywords
 ((identifier) @keyword
- (#match? @keyword "^(object|impl|sum|defer|let|match|comprise|fn)$"))
+ (#match? @keyword "^(object|impl|sum|defer|let|match|comprise)$"))
 
 ; Boolean & Null constants
 ((identifier) @constant
