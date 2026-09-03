@@ -1,3 +1,7 @@
 #comprise <std/io>
 #comprise <std/math>
 #comprise <std/os>
+#comprise <std/result>
+#comprise <std/str>
+#comprise <std/mem>
+#comprise <std/fs>

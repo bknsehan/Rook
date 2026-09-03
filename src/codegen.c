@@ -382,7 +382,7 @@ static void cg_expr(CG* g, Expr* x) {
         AstType* st = x->a ? x->a->type : NULL;
         EnumDef* ed = (st && st->name) ? find_enum_def(g, st->name) : NULL;
         int payload = ed && enum_has_payload(ed);
-        int is_void = !rt || (rt->name && strcmp(rt->name, "void") == 0);
+        int is_void = !rt || (rt->name && strcmp(rt->name, "void") == 0 && rt->ptrs == 0);
         const char* pfx = ed ? ed->name : "unknown";
         sb_append(&g->sb, "({ ");
         if (!is_void) { cg_type(g, rt); sb_append(&g->sb, " __rk_mv; "); }

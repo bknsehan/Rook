@@ -1,0 +1,86 @@
+// Rook Standard Library - std/str.rook
+// Safe, non-owning string slice (Str) with bounds-checked slicing and comparison.
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+object Str {
+    data: const char*
+    len: size_t
+}
+
+Str str_from_cstr(const char* s) {
+    if (s == NULL) return Str { data: "", len: 0 };
+    return Str { data: s, len: strlen(s) };
+}
+
+Str str_from_parts(const char* data, size_t len) {
+    if (data == NULL) return Str { data: "", len: 0 };
+    return Str { data: data, len: len };
+}
+
+impl Str {
+    bool is_empty(self) {
+        return self.len == 0;
+    }
+
+    Str slice(self, size_t start, size_t end) {
+        if (start >= self.len || start >= end) {
+            return Str { data: "", len: 0 };
+        }
+        if (end > self.len) end = self.len;
+        return Str {
+            data: self.data + start,
+            len: end - start
+        };
+    }
+
+    bool equals(self, Str other) {
+        if (self.len != other.len) return false;
+        if (self.len == 0) return true;
+        return memcmp(self.data, other.data, self.len) == 0;
+    }
+
+    bool equals_cstr(self, const char* s) {
+        if (s == NULL) return self.len == 0;
+        size_t slen = strlen(s);
+        if (self.len != slen) return false;
+        return memcmp(self.data, s, self.len) == 0;
+    }
+
+    bool starts_with(self, Str prefix) {
+        if (prefix.len > self.len) return false;
+        if (prefix.len == 0) return true;
+        return memcmp(self.data, prefix.data, prefix.len) == 0;
+    }
+
+    bool ends_with(self, Str suffix) {
+        if (suffix.len > self.len) return false;
+        if (suffix.len == 0) return true;
+        size_t offset = self.len - suffix.len;
+        return memcmp(self.data + offset, suffix.data, suffix.len) == 0;
+    }
+
+    char char_at(self, size_t index) {
+        if (index >= self.len) return '\0';
+        return self.data[index];
+    }
+
+    void print(self) {
+        printf("%.*s", (int)self.len, self.data);
+    }
+
+    void println(self) {
+        printf("%.*s\n", (int)self.len, self.data);
+    }
+
+    char* to_cstr(self) {
+        char* buf = malloc(self.len + 1);
+        if (!buf) return NULL;
+        memcpy(buf, self.data, self.len);
+        buf[self.len] = '\0';
+        return buf;
+    }
+}

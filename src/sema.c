@@ -653,8 +653,22 @@ static int is_c_type_word(const char* name) {
 
 static AstType* ck_mk_type(const char* name, int ptrs) {
     AstType* t = ast_type_new();
-    t->name = strdup(name);
-    t->ptrs = ptrs;
+    const char* p = name ? strchr(name, '*') : NULL;
+    if (p) {
+        size_t nlen = (size_t)(p - name);
+        char base[256];
+        if (nlen >= sizeof(base)) nlen = sizeof(base) - 1;
+        memcpy(base, name, nlen);
+        base[nlen] = '\0';
+        while (nlen > 0 && base[nlen - 1] == ' ') base[--nlen] = '\0';
+        t->name = strdup(base);
+        int extra = 0;
+        for (const char* q = p; *q; q++) { if (*q == '*') extra++; }
+        t->ptrs = ptrs + extra;
+    } else {
+        t->name = name ? strdup(name) : NULL;
+        t->ptrs = ptrs;
+    }
     return t;
 }
 
@@ -688,6 +702,18 @@ static int ck_type_eq(AstType* a, AstType* b) {
     if (a->ptrs != b->ptrs) return 0;
     if (strcmp(a->name, b->name) != 0) return 0;
     return 1;
+}
+
+static int ck_types_compatible(AstType* want, AstType* got) {
+    if (!want || !got) return 0;
+    if (ck_type_is_numeric(want->name) && ck_type_is_numeric(got->name) &&
+        want->ptrs == 0 && got->ptrs == 0) return 1;
+    if (ck_type_eq(want, got)) return 1;
+    /* void* is compatible with any pointer type (standard C: NULL and malloc) */
+    if (want->ptrs > 0 && got->ptrs > 0) {
+        if (strcmp(want->name, "void") == 0 || strcmp(got->name, "void") == 0) return 1;
+    }
+    return 0;
 }
 
 static char* ck_type_str(AstType* t) {
@@ -979,6 +1005,8 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
     switch (e->kind) {
     case E_IDENT: {
         if (ck_is_self(ck, e)) return ck->self_t ? ck_clone_type(ck->self_t) : NULL;
+        if (strcmp(e->str, "true") == 0 || strcmp(e->str, "false") == 0) return ck_mk_type("bool", 0);
+        if (strcmp(e->str, "NULL") == 0 || strcmp(e->str, "null") == 0) return ck_mk_type("void", 1);
         Sym* sym = ck_lookup_local(ck, e->str);
         if (sym) return sym->type ? ck_clone_type(sym->type) : NULL;
         Sym* g = sema_lookup(ck->s, e->str);
@@ -1149,10 +1177,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
                 AstType* want = ck_clone_type(f->params[pi].type);
                 AstType* got = ck_resolve_type(ck, x->items[i]);
                 if (!want || !got) { free(want); free(got); continue; }
-                int ok = 0;
-                if (ck_type_is_numeric(want->name) && ck_type_is_numeric(got->name) &&
-                         want->ptrs == 0 && got->ptrs == 0) ok = 1;
-                else if (ck_type_eq(want, got)) ok = 1;
+                int ok = ck_types_compatible(want, got);
                 if (!ok) {
                     char* ws = ck_type_str(want);
                     char* gs = ck_type_str(got);
@@ -1224,10 +1249,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
                     AstType* want = ck_clone_type(mdef->params[pi].type);
                     AstType* got = ck_resolve_type(ck, x->items[j]);
                     if (!want || !got) { free(want); free(got); continue; }
-                    int ok = 0;
-                    if (ck_type_is_numeric(want->name) && ck_type_is_numeric(got->name) &&
-                             want->ptrs == 0 && got->ptrs == 0) ok = 1;
-                    else if (ck_type_eq(want, got)) ok = 1;
+                    int ok = ck_types_compatible(want, got);
                     if (!ok) {
                         char* ws = ck_type_str(want);
                         char* gs = ck_type_str(got);
@@ -1421,10 +1443,7 @@ static void ck_expr(Checker* ck, Expr* x) {
         AstType* lt = ck_resolve_type(ck, x->a);
         AstType* rt = ck_resolve_type(ck, x->b);
         if (lt && rt) {
-            int ok = 0;
-            if (ck_type_is_numeric(lt->name) && ck_type_is_numeric(rt->name) &&
-                     lt->ptrs == 0 && rt->ptrs == 0) ok = 1;
-            else if (ck_type_eq(lt, rt)) ok = 1;
+            int ok = ck_types_compatible(lt, rt);
             if (!ok) {
                 char* ls = ck_type_str(lt);
                 char* rs = ck_type_str(rt);
@@ -1507,7 +1526,7 @@ static void ck_expr(Checker* ck, Expr* x) {
             ck_expr(ck, x->marms[i].pattern);
             ck_expr(ck, x->marms[i].body);
             AstType* bt = ck_resolve_type(ck, x->marms[i].body);
-            if (bt && bt->name && strcmp(bt->name, "void") != 0) {
+            if (bt && bt->name && (strcmp(bt->name, "void") != 0 || bt->ptrs > 0)) {
                 if (!result) result = bt;
                 else free(bt);
             } else free(bt);
@@ -1583,11 +1602,8 @@ static void ck_decl(Checker* ck, Decl* d) {
     if (d->type && d->init) {
         AstType* got = ck_resolve_type(ck, d->init);
         if (got) {
-            int ok = 0;
-            if (ck_type_is_numeric(d->type->name) && ck_type_is_numeric(got->name) &&
-                     d->type->ptrs == 0 && got->ptrs == 0) ok = 1;
-            else if (ck_type_eq(d->type, got)) ok = 1;
-            else if (raw_has(d->type->name)) ok = 1;
+            int ok = ck_types_compatible(d->type, got);
+            if (!ok && raw_has(d->type->name)) ok = 1;
             if (!ok) {
                 char* ws = ck_type_str(d->type);
                 char* gs = ck_type_str(got);
@@ -1778,10 +1794,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
             if (want && s->e) {
                 AstType* got = ck_resolve_type(ck, s->e);
                 if (want && got && strcmp(want->name, "void") != 0) {
-                    int ok = 0;
-                    if (ck_type_is_numeric(want->name) && ck_type_is_numeric(got->name) &&
-                             want->ptrs == 0 && got->ptrs == 0) ok = 1;
-                    else if (ck_type_eq(want, got)) ok = 1;
+                    int ok = ck_types_compatible(want, got);
                     if (!ok) {
                         char* ws = ck_type_str(want);
                         char* gs = ck_type_str(got);

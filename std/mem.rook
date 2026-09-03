@@ -1,0 +1,57 @@
+// Rook Standard Library - std/mem.rook
+// Fast Arena Allocator and memory management utilities.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+object Arena {
+    buffer: char*
+    capacity: size_t
+    offset: size_t
+}
+
+Arena arena_new(size_t capacity) {
+    char* buf = malloc(capacity);
+    return Arena {
+        buffer: buf,
+        capacity: capacity,
+        offset: 0
+    };
+}
+
+impl Arena {
+    void* alloc(Arena* self, size_t size) {
+        if (!self->buffer) return NULL;
+        // Align allocations to 8-byte boundaries
+        size_t aligned = (size + 7) & ~7;
+        if (self->offset + aligned > self->capacity) {
+            return NULL;
+        }
+        void* ptr = self->buffer + self->offset;
+        self->offset = self->offset + aligned;
+        return ptr;
+    }
+
+    void reset(Arena* self) {
+        self->offset = 0;
+    }
+
+    void destroy(Arena* self) {
+        if (self->buffer) {
+            free(self->buffer);
+            self->buffer = NULL;
+        }
+        self->capacity = 0;
+        self->offset = 0;
+    }
+
+    size_t used(Arena* self) {
+        return self->offset;
+    }
+
+    size_t available(Arena* self) {
+        if (self->offset >= self->capacity) return 0;
+        return self->capacity - self->offset;
+    }
+}

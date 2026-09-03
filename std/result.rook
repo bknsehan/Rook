@@ -1,0 +1,84 @@
+// Rook Standard Library - std/result.rook
+// Zero-cost canonical error handling and optional values using algebraic sum types.
+
+#include <stdio.h>
+#include <stdbool.h>
+
+sum Result {
+    Ok { val: void*; };
+    Err { msg: const char*; };
+}
+
+impl Result {
+    bool is_ok(Result* self) {
+        return match (*self) {
+            Ok { val } => true,
+            _ => false,
+        };
+    }
+
+    bool is_err(Result* self) {
+        return match (*self) {
+            Err { msg } => true,
+            _ => false,
+        };
+    }
+
+    void* unwrap(Result* self) {
+        return match (*self) {
+            Ok { val } => val,
+            _ => NULL,
+        };
+    }
+
+    const char* unwrap_err(Result* self) {
+        return match (*self) {
+            Err { msg } => msg,
+            _ => "",
+        };
+    }
+}
+
+Result result_ok(void* val) {
+    return Ok { val: val };
+}
+
+Result result_err(const char* msg) {
+    return Err { msg: msg };
+}
+
+sum Option {
+    Some { val: void*; };
+    None;
+}
+
+impl Option {
+    bool is_some(Option* self) {
+        return match (*self) {
+            Some { val } => true,
+            _ => false,
+        };
+    }
+
+    bool is_none(Option* self) {
+        return match (*self) {
+            None => true,
+            _ => false,
+        };
+    }
+
+    void* unwrap(Option* self) {
+        return match (*self) {
+            Some { val } => val,
+            _ => NULL,
+        };
+    }
+}
+
+Option option_some(void* val) {
+    return Some { val: val };
+}
+
+Option option_none() {
+    return None;
+}

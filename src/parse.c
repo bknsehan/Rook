@@ -92,8 +92,12 @@ static Expr* parse_assignment(Parser* p);
 static Expr* parse_ternary(Parser* p);
 static Expr* parse_or(Parser* p);
 static Expr* parse_and(Parser* p);
+static Expr* parse_bitor(Parser* p);
+static Expr* parse_bitxor(Parser* p);
+static Expr* parse_bitand(Parser* p);
 static Expr* parse_eq(Parser* p);
 static Expr* parse_rel(Parser* p);
+static Expr* parse_shift(Parser* p);
 static Expr* parse_add(Parser* p);
 static Expr* parse_mul(Parser* p);
 static Expr* parse_unary(Parser* p);
@@ -232,6 +236,21 @@ static Expr* parse_or(Parser* p) {
 
 static Expr* parse_and(Parser* p) {
     static const char* ops[] = {"&&"};
+    return parse_binop(p, parse_bitor, ops, 1);
+}
+
+static Expr* parse_bitor(Parser* p) {
+    static const char* ops[] = {"|"};
+    return parse_binop(p, parse_bitxor, ops, 1);
+}
+
+static Expr* parse_bitxor(Parser* p) {
+    static const char* ops[] = {"^"};
+    return parse_binop(p, parse_bitand, ops, 1);
+}
+
+static Expr* parse_bitand(Parser* p) {
+    static const char* ops[] = {"&"};
     return parse_binop(p, parse_eq, ops, 1);
 }
 
@@ -242,7 +261,12 @@ static Expr* parse_eq(Parser* p) {
 
 static Expr* parse_rel(Parser* p) {
     static const char* ops[] = {"<", ">", "<=", ">="};
-    return parse_binop(p, parse_add, ops, 4);
+    return parse_binop(p, parse_shift, ops, 4);
+}
+
+static Expr* parse_shift(Parser* p) {
+    static const char* ops[] = {"<<", ">>"};
+    return parse_binop(p, parse_add, ops, 2);
 }
 
 static Expr* parse_add(Parser* p) {
@@ -260,7 +284,7 @@ static int is_primary_start(Token* t) {
         t->kind == TK_CHAR)
         return 1;
     if (t->kind == TK_PUNCT) {
-        return tok_is(t, "(") || tok_is(t, "-") || tok_is(t, "!") ||
+        return tok_is(t, "(") || tok_is(t, "-") || tok_is(t, "!") || tok_is(t, "~") ||
                tok_is(t, "*") || tok_is(t, "&");
     }
     return 0;
@@ -319,7 +343,7 @@ static Expr* parse_unary(Parser* p) {
     }
     if (t->kind == TK_PUNCT) {
         if (tok_is(t, "(")) return parse_paren_or_cast(p);
-        if (tok_is(t, "-") || tok_is(t, "!") || tok_is(t, "*") || tok_is(t, "&") ||
+        if (tok_is(t, "-") || tok_is(t, "!") || tok_is(t, "~") || tok_is(t, "*") || tok_is(t, "&") ||
             tok_is(t, "++") || tok_is(t, "--")) {
             char* op = tok_strdup(t);
             adv(p);

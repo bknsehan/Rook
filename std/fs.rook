@@ -1,0 +1,52 @@
+// Rook Standard Library - std/fs.rook
+// Safe file system operations returning Result.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+#comprise <std/result>
+
+Result fs_read_to_string(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return result_err("could not open file for reading");
+
+    fseek(f, 0, 2); // SEEK_END
+    long int sz = ftell(f);
+    rewind(f);
+
+    if (sz < 0) {
+        fclose(f);
+        return result_err("could not determine file size");
+    }
+
+    char* buf = malloc((size_t)sz + 1);
+    if (!buf) {
+        fclose(f);
+        return result_err("out of memory while reading file");
+    }
+
+    size_t read_bytes = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    buf[read_bytes] = '\0';
+
+    return result_ok(buf);
+}
+
+Result fs_write_file(const char* path, const char* content, size_t len) {
+    FILE* f = fopen(path, "wb");
+    if (!f) return result_err("could not open file for writing");
+
+    size_t written = fwrite(content, 1, len, f);
+    fclose(f);
+
+    if (written < len) {
+        return result_err("failed to write complete file contents");
+    }
+    return result_ok(NULL);
+}
+
+bool fs_exists(const char* path) {
+    return access(path, 0) == 0;
+}
