@@ -1959,6 +1959,23 @@ static void json_append_str(SB* out, const char* s) {
     sb_append(out, "\"");
 }
 
+/* Strip ANSI escape codes in-place (e.g. \033[0m, \033[31m) */
+static void strip_ansi_codes(char* str) {
+    if (!str) return;
+    char* src = str;
+    char* dst = str;
+    while (*src) {
+        if (*src == '\033' && *(src + 1) == '[') {
+            src += 2;
+            while (*src && *src != 'm') src++;
+            if (*src == 'm') src++;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+}
+
 /* Parse a diag_render line ("<line>:<col>: <kind>: <msg>") and append one
    JSON diagnostic object to `out`. Emits a leading comma only when `out`
    already holds content past the opening "[". Line/character are 1-based to
@@ -1990,6 +2007,7 @@ static void emit_diag_json(SB* out, const char* file, const char* diag) {
                line, col, severity);
     char* m = malloc(mlen + 1);
     memcpy(m, msg, mlen); m[mlen] = '\0';
+    strip_ansi_codes(m);
     json_append_str(out, m);
     free(m);
     sb_append(out, "}");
@@ -2357,7 +2375,11 @@ int main(int argc, char** argv) {
     else if (i < argc && strcmp(argv[i], "--check") == 0) { mode = 3; i++; }
     else if (i < argc && strcmp(argv[i], "--check-dir") == 0) { mode = 4; i++; }
     else if (i < argc && (strcmp(argv[i], "--diagnostics") == 0 ||
-                          strcmp(argv[i], "diagnostics") == 0)) { mode = 5; i++; }
+                          strcmp(argv[i], "diagnostics") == 0)) {
+        mode = 5;
+        diag_init(DIAG_NEVER);
+        i++;
+    }
 
     if (mode == 4) {
         int failed = 0;
@@ -2386,7 +2408,10 @@ int main(int argc, char** argv) {
     /* Resolve #include <file.rook> directives */
     char* slash = strrchr(path, '/');
     char basedir[4096];
-    if (slash) {
+    const char* env_base = getenv("ROKADE_BASE_DIR");
+    if (env_base && env_base[0]) {
+        snprintf(basedir, sizeof(basedir), "%s", env_base);
+    } else if (slash) {
         size_t dlen = (size_t)(slash - path);
         snprintf(basedir, sizeof(basedir), "%.*s", (int)dlen, path);
     } else {

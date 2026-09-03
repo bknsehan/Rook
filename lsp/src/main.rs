@@ -21,7 +21,8 @@ use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
     CompletionParams, DeclarationCapability, DidChangeTextDocumentParams,
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, Diagnostic,
-    DiagnosticSeverity, Hover, HoverParams, HoverProviderCapability,
+    DiagnosticSeverity, DocumentLink, DocumentLinkOptions, DocumentLinkParams,
+    Hover, HoverParams, HoverProviderCapability,
     InsertTextFormat, Location, MarkupContent, MarkupKind, OneOf, Position,
     PublishDiagnosticsParams, Range, SaveOptions, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
@@ -787,10 +788,120 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
 
 // ─── Goto Definition ───────────────────────────────────────────────────
 
-pub fn find_definition(state: &mut ServerState, text: &str, uri: &str, position: Position) -> Option<Location> {
-    let word = word_at(text, position)?;
+pub fn get_document_links(state: &mut ServerState, uri: &str, text: &str) -> Vec<DocumentLink> {
+    let mut links = Vec::new();
     let doc_path = uri_to_path(uri);
     let doc_dir = doc_path.as_ref().and_then(|p| p.parent());
+
+    for (idx, raw_line) in text.lines().enumerate() {
+        let line_num = idx as u32;
+        let line = raw_line.trim_end();
+        if let Some(inc_idx) = line.find("#include") {
+            let rest = &line[inc_idx + "#include".len()..];
+            if let Some(start_rel) = rest.find(['<', '"']) {
+                let quote = rest.chars().nth(start_rel).unwrap();
+                let close = if quote == '<' { '>' } else { '"' };
+                if let Some(end_rel) = rest[start_rel + 1..].find(close) {
+                    let h = rest[start_rel + 1..start_rel + 1 + end_rel].trim();
+                    if let Some(target_p) = state.resolve_c_header(h, doc_dir) {
+                        if let Ok(target_uri) = format!("file://{}", target_p.display()).parse() {
+                            let start_char = (inc_idx + "#include".len() + start_rel) as u32;
+                            let end_char = (inc_idx + "#include".len() + start_rel + 1 + end_rel + 1) as u32;
+                            links.push(DocumentLink {
+                                range: Range {
+                                    start: Position { line: line_num, character: start_char },
+                                    end: Position { line: line_num, character: end_char },
+                                },
+                                target: Some(target_uri),
+                                tooltip: Some(format!("Open {}", target_p.display())),
+                                data: None,
+                            });
+                        }
+                    }
+                }
+            }
+        } else if let Some(comp_idx) = line.find("#comprise").or_else(|| line.find("comprise")) {
+            let kw_len = if line[comp_idx..].starts_with('#') { "#comprise".len() } else { "comprise".len() };
+            let rest = &line[comp_idx + kw_len..];
+            if let Some(start_rel) = rest.find(['<', '"']) {
+                let quote = rest.chars().nth(start_rel).unwrap();
+                let close = if quote == '<' { '>' } else { '"' };
+                if let Some(end_rel) = rest[start_rel + 1..].find(close) {
+                    let mut m = rest[start_rel + 1..start_rel + 1 + end_rel].trim().to_string();
+                    if m.contains('.') && !m.ends_with(".rook") {
+                        m = m.replace('.', "/");
+                    }
+                    if let Some(target_p) = state.resolve_rook_module(&m, doc_dir) {
+                        if let Ok(target_uri) = format!("file://{}", target_p.display()).parse() {
+                            let start_char = (comp_idx + kw_len + start_rel) as u32;
+                            let end_char = (comp_idx + kw_len + start_rel + 1 + end_rel + 1) as u32;
+                            links.push(DocumentLink {
+                                range: Range {
+                                    start: Position { line: line_num, character: start_char },
+                                    end: Position { line: line_num, character: end_char },
+                                },
+                                target: Some(target_uri),
+                                tooltip: Some(format!("Open {}", target_p.display())),
+                                data: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    links
+}
+
+pub fn find_definition(state: &mut ServerState, text: &str, uri: &str, position: Position) -> Option<Location> {
+    let lines: Vec<&str> = text.lines().collect();
+    let line_idx = position.line as usize;
+    let doc_path = uri_to_path(uri);
+    let doc_dir = doc_path.as_ref().and_then(|p| p.parent());
+
+    // 0. Check if the line under cursor is an #include or #comprise line
+    if let Some(&raw_line) = lines.get(line_idx) {
+        let trimmed = raw_line.trim();
+        if trimmed.starts_with("#include") {
+            if let Some(start) = trimmed.find(['<', '"']) {
+                let quote = trimmed.chars().nth(start).unwrap();
+                let close = if quote == '<' { '>' } else { '"' };
+                if let Some(end) = trimmed[start + 1..].find(close) {
+                    let h = trimmed[start + 1..start + 1 + end].trim();
+                    if let Some(target_p) = state.resolve_c_header(h, doc_dir) {
+                        if let Ok(target_uri) = format!("file://{}", target_p.display()).parse() {
+                            let pos = Position { line: 0, character: 0 };
+                            return Some(Location { uri: target_uri, range: Range { start: pos, end: pos } });
+                        }
+                    }
+                }
+            }
+        } else if trimmed.starts_with("#comprise") || trimmed.starts_with("comprise") {
+            let kw_len = if trimmed.starts_with('#') { "#comprise".len() } else { "comprise".len() };
+            let rest = trimmed[kw_len..].trim().trim_end_matches(';').trim();
+            let mod_name = if let Some(start) = rest.find(['<', '"']) {
+                let quote = rest.chars().nth(start).unwrap();
+                let close = if quote == '<' { '>' } else { '"' };
+                rest[start + 1..].find(close).map(|end| rest[start + 1..start + 1 + end].trim().to_string())
+            } else {
+                let bare = rest.split_whitespace().next().unwrap_or("");
+                if !bare.is_empty() { Some(bare.to_string()) } else { None }
+            };
+            if let Some(mut m) = mod_name {
+                if m.contains('.') && !m.ends_with(".rook") {
+                    m = m.replace('.', "/");
+                }
+                if let Some(target_p) = state.resolve_rook_module(&m, doc_dir) {
+                    if let Ok(target_uri) = format!("file://{}", target_p.display()).parse() {
+                        let pos = Position { line: 0, character: 0 };
+                        return Some(Location { uri: target_uri, range: Range { start: pos, end: pos } });
+                    }
+                }
+            }
+        }
+    }
+
+    let word = word_at(text, position)?;
 
     // 1. Current document
     let cur_path = doc_path.clone().unwrap_or_else(|| PathBuf::from("current.rook"));
@@ -940,15 +1051,35 @@ fn send_notification<W: Write>(w: &mut W, method: &str, params: Value) {
 #[derive(Debug)]
 struct RDiag { line: u32, character: u32, severity: u8, message: String }
 
-fn rook_diagnostics(rokade: &str, commandlist_dir: &str, content: &str) -> Vec<RDiag> {
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                for sc in chars.by_ref() {
+                    if sc == 'm' { break; }
+                }
+            }
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}
+
+fn rook_diagnostics(rokade: &str, commandlist_dir: &str, content: &str, doc_dir: Option<&Path>) -> Vec<RDiag> {
     let mut tmp = std::env::temp_dir();
     tmp.push(format!("rook_lsp_{}.rook", DOC_SEQ.fetch_add(1, Ordering::Relaxed)));
     let _ = std::fs::write(&tmp, content);
-    let out = Command::new(rokade)
-        .arg("--diagnostics")
-        .arg(&tmp)
-        .env("ROKADE_DATA_DIR", commandlist_dir)
-        .output();
+    let mut cmd = Command::new(rokade);
+    cmd.arg("--diagnostics").arg(&tmp);
+    cmd.env("ROKADE_DATA_DIR", commandlist_dir);
+    if let Some(dir) = doc_dir {
+        cmd.env("ROKADE_BASE_DIR", dir);
+    }
+    let out = cmd.output();
     let _ = std::fs::remove_file(&tmp);
     let out = match out {
         Ok(o) => o,
@@ -967,7 +1098,8 @@ fn parse_rokade_json(json: &str) -> Vec<RDiag> {
     for d in arr {
         let line = d.get("line").and_then(|x| x.as_u64()).unwrap_or(1) as u32;
         let character = d.get("character").and_then(|x| x.as_u64()).unwrap_or(1) as u32;
-        let message = d.get("message").and_then(|x| x.as_str()).unwrap_or("").to_string();
+        let raw_msg = d.get("message").and_then(|x| x.as_str()).unwrap_or("");
+        let message = strip_ansi(raw_msg);
         let sev = match d.get("severity").and_then(|x| x.as_str()).unwrap_or("error") {
             "warning" => 2, "info" => 3, "hint" => 4, _ => 1,
         };
@@ -1078,6 +1210,10 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                     definition_provider: Some(OneOf::Left(true)),
                     declaration_provider: Some(DeclarationCapability::Simple(true)),
                     document_symbol_provider: Some(OneOf::Left(true)),
+                    document_link_provider: Some(DocumentLinkOptions {
+                        resolve_provider: Some(false),
+                        work_done_progress_options: Default::default(),
+                    }),
                     completion_provider: Some(CompletionOptions {
                         trigger_characters: Some(vec![
                             ".".to_string(),
@@ -1099,7 +1235,8 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                 let content = p.text_document.text;
                 let ver = p.text_document.version;
                 state.docs.insert(uri.clone(), (content.clone(), ver));
-                let diags = rook_diagnostics(&state.rokade, cmdir, &content);
+                let doc_path = uri_to_path(&uri);
+                let diags = rook_diagnostics(&state.rokade, cmdir, &content, doc_path.as_ref().and_then(|p| p.parent()));
                 publish_diagnostics(w, &uri, &diags);
             }
         }
@@ -1110,7 +1247,8 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                     .next().map(|c| c.text).unwrap_or_default();
                 let ver = p.text_document.version;
                 state.docs.insert(uri.clone(), (content.clone(), ver));
-                let diags = rook_diagnostics(&state.rokade, cmdir, &content);
+                let doc_path = uri_to_path(&uri);
+                let diags = rook_diagnostics(&state.rokade, cmdir, &content, doc_path.as_ref().and_then(|p| p.parent()));
                 publish_diagnostics(w, &uri, &diags);
             }
         }
@@ -1185,6 +1323,14 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
             let content = state.docs.get(&uri).map(|(c, _)| c.as_str()).unwrap_or("");
             let symbols = rook_symbols(&state.rokade, cmdir, content, &uri);
             send_response(w, frame.id.clone(), serde_json::to_value(symbols).unwrap());
+        }
+        Some("textDocument/documentLink") => {
+            if let Ok(p) = serde_json::from_value::<DocumentLinkParams>(params) {
+                let uri = p.text_document.uri.to_string();
+                let content = state.docs.get(&uri).map(|(c, _)| c.clone()).unwrap_or_default();
+                let links = get_document_links(state, &uri, &content);
+                send_response(w, frame.id.clone(), serde_json::to_value(links).unwrap());
+            }
         }
         Some("shutdown") => send_response(w, frame.id.clone(), Value::Null),
         Some("exit") => std::process::exit(0),
@@ -1380,5 +1526,52 @@ mod tests {
             _ => panic!("expected markup"),
         };
         assert!(content.contains("defer"), "hover content should explain defer");
+    }
+
+    #[test]
+    fn test_document_links() {
+        let mut state = ServerState {
+            docs: HashMap::new(),
+            cfuncs: parse_commandlist(COMMANDLIST_JSON),
+            rokade: "rokade".to_string(),
+            c_header_cache: HashMap::new(),
+            rook_module_cache: HashMap::new(),
+            std_dir: find_std_dir(),
+        };
+
+        let code = "#include <stdio.h>\n#comprise <std/io>\n";
+        let links = get_document_links(&mut state, "file:///tmp/main.rook", code);
+        assert_eq!(links.len(), 2, "expected 2 links for include and comprise");
+        let stdio_link = &links[0];
+        assert_eq!(stdio_link.range.start.line, 0);
+        assert!(stdio_link.target.as_ref().unwrap().to_string().contains("stdio.h"));
+
+        let io_link = &links[1];
+        assert_eq!(io_link.range.start.line, 1);
+        assert!(io_link.target.as_ref().unwrap().to_string().contains("io.rook"));
+    }
+
+    #[test]
+    fn test_find_definition_for_includes_and_comprises() {
+        let mut state = ServerState {
+            docs: HashMap::new(),
+            cfuncs: parse_commandlist(COMMANDLIST_JSON),
+            rokade: "rokade".to_string(),
+            c_header_cache: HashMap::new(),
+            rook_module_cache: HashMap::new(),
+            std_dir: find_std_dir(),
+        };
+
+        let code = "#include <stdio.h>\n#comprise <std/io>\n";
+
+        // Definition on line 0 (#include <stdio.h>)
+        let loc1 = find_definition(&mut state, code, "file:///tmp/main.rook", Position { line: 0, character: 10 });
+        assert!(loc1.is_some(), "expected definition for #include <stdio.h>");
+        assert!(loc1.unwrap().uri.to_string().contains("stdio.h"));
+
+        // Definition on line 1 (#comprise <std/io>)
+        let loc2 = find_definition(&mut state, code, "file:///tmp/main.rook", Position { line: 1, character: 11 });
+        assert!(loc2.is_some(), "expected definition for #comprise <std/io>");
+        assert!(loc2.unwrap().uri.to_string().contains("std/io.rook"));
     }
 }

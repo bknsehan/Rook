@@ -1004,10 +1004,16 @@ static FnDef* parse_fn_def(Parser* p) {
         break;
     }
     if (!expect_punct(p, ")")) return NULL;
-    if (tok_is(cur(p), ";")) { adv(p); }
-    else if (tok_is(cur(p), "{")) { f->body = parse_block(p); }
-    else { error_at(p, cur(p), "expected function body '{' or ';'"); return NULL; }
-    if (!f->body) f->is_extern = 1; /* signature-only = extern declaration */
+    if (tok_is(cur(p), ";")) {
+        adv(p);
+        f->is_extern = 1;
+    } else if (tok_is(cur(p), "{")) {
+        f->body = parse_block(p);
+        if (!f->body) return NULL;
+    } else {
+        error_at(p, cur(p), "expected function body '{' or ';'");
+        return NULL;
+    }
     return f;
 }
 
@@ -1312,6 +1318,14 @@ static Item* parse_top(Parser* p) {
          error_at(p, t, "'trait' is not supported; Rook is plain C + object/impl");
          return NULL;
      }
+     if (is_kw(t, "class")) {
+         error_at(p, t, "'class' is not supported; use 'object Name { ... }'");
+         return NULL;
+     }
+     if (is_kw(t, "def") || is_kw(t, "func")) {
+         error_at(p, t, "'%.*s' is not supported; use 'fn name(...)' or C function syntax 'Type name(...)'", t->len, t->text);
+         return NULL;
+     }
     /* C-style free function: `Type name ( params ) { body }` */
     {
         int save = p->idx;
@@ -1336,7 +1350,8 @@ static Item* parse_top(Parser* p) {
 static int is_construct_kw(Token* t) {
     return is_kw(t, "struct") || is_kw(t, "object") || is_kw(t, "impl") ||
            is_kw(t, "sum") || is_kw(t, "enum") || is_kw(t, "extern") ||
-           is_kw(t, "alias");
+           is_kw(t, "alias") || is_kw(t, "class") || is_kw(t, "trait") ||
+           is_kw(t, "def") || is_kw(t, "func");
 }
 
 Program* parse_program(const char* src, int len, Token* toks, int ntoks) {

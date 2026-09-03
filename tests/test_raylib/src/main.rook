@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <raylib.h>
+#comprise <std/io>
 
 int main() {
     InitWindow(400, 300, "Rook + Raylib Demo");
@@ -8,4 +9,5 @@ int main() {
     CloseWindow();
     printf("Window closed cleanly!\n");
     return 0;
+
 }
