@@ -242,7 +242,7 @@ Token* lex_all(const char* src, int len, int* out_n) {
     if (!arr) exit(1);
     arr[n++] = eof;
 
-    *out_n = n;
+    if (out_n) *out_n = n;
     return arr;
 }
 

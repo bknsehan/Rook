@@ -51,7 +51,7 @@ static void cl_load(const char* basedir, const char* override) {
     if (cl_loaded) return;
     cl_loaded = 1;
 
-    char path[4096];
+    char path[8192];
     path[0] = '\0';
 
     /* 1) explicit override from config (or the caller) */
@@ -139,7 +139,7 @@ static void cl_load(const char* basedir, const char* override) {
                         cl_cap = cl_cap ? cl_cap * 2 : 64;
                         cl_funcs = realloc(cl_funcs, cl_cap * sizeof(ClFunc));
                     }
-                    strncpy(cl_funcs[cl_count].name, name_cand, 127);
+                    snprintf(cl_funcs[cl_count].name, sizeof(cl_funcs[cl_count].name), "%s", name_cand);
                     snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret),
                              "%.*s", (int)(tl < 127 ? tl : 127), buf + i + 1);
                     cl_funcs[cl_count].param_types[0] = '\0';
@@ -418,6 +418,8 @@ static void collect_program(Sema* sema, Program* prog) {
         Item* it = prog->items[i];
         switch (it->kind) {
         case TOP_RAW:
+        case TOP_MODULE:
+        case TOP_IMPORT:
             break;
         case TOP_FN: {
             Sym* sym = sym_new_fn(it->fn->name, it->fn);
@@ -648,6 +650,7 @@ static Sym* ck_lookup_local(Checker* ck, const char* name) {
    struct fields) so the arm body can type-check against them. Unit-variant,
    wildcard, and integer/literal patterns bind nothing. */
 static void ck_bind_match_pattern(Checker* ck, Expr* p, AstType* scrut) {
+    (void)scrut;
     if (!p) return;
     if (p->kind == E_IDENT) return;                 /* wildcard "_" or unit variant */
     const char* vname = NULL;
@@ -1073,6 +1076,7 @@ static void scan_raw_region(Checker* ck, const char* raw, int len) {
 /* ── expression type inference (best effort) ───────────────────────── */
 
 static int ck_is_self(Checker* ck, Expr* e) {
+    (void)ck;
     return e && e->kind == E_IDENT && strcmp(e->str, "self") == 0;
 }
 

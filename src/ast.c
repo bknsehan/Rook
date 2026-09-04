@@ -240,6 +240,10 @@ int item_eq(Item* a, Item* b) {
         return impl_eq(a->im, b->im);
     case TOP_ENUM:
         return enumdef_eq(a->ed, b->ed);
+    case TOP_MODULE:
+        return (a->modname && b->modname) ? (strcmp(a->modname, b->modname) == 0) : (a->modname == b->modname);
+    case TOP_IMPORT:
+        return (a->impname && b->impname) ? (strcmp(a->impname, b->impname) == 0) : (a->impname == b->impname);
     }
     return 0;
 }
@@ -334,6 +338,7 @@ static void dump_expr(Expr* e) {
         printf("]");
         break;
     case E_RANGE: dump_expr(e->a); printf("..="); dump_expr(e->b); break;
+    case E_QUESTION: dump_expr(e->a); printf("?"); break;
     case E_MATCH: {
         printf("match ("); dump_expr(e->a); printf(") { ");
         for (int i = 0; i < e->nmarms; i++) {
@@ -438,6 +443,10 @@ static void dump_stmt(Stmt* s, int d) {
     case S_BREAK: printf("break"); break;
     case S_CONTINUE: printf("continue"); break;
     case S_EMPTY: printf(";"); break;
+    case S_DEFER:
+        printf("defer ");
+        dump_stmt(s->body, d);
+        break;
     }
 }
 
@@ -513,10 +522,16 @@ void ast_dump(Program* p) {
                      printf(" };");
                  }
                  printf(",\n");
-}
-               printf("}\n");
-               break;
-          }
+            }
+            printf("}\n");
+            break;
+        case TOP_MODULE:
+            printf("module %s;\n", it->modname ? it->modname : "");
+            break;
+        case TOP_IMPORT:
+            printf("import %s;\n", it->impname ? it->impname : "");
+            break;
+        }
     }
 }
 
@@ -619,6 +634,7 @@ static void param_free(Param* p) {
 static void fndef_free(FnDef* f) {
     if (!f || freed_has(f)) return;
     freed_add(f);
+    for (int i = 0; i < f->nparams; i++) param_free(&f->params[i]);
     free(f->params);              /* array of Param structs (name is borrowed) */
     ast_type_free(f->ret);
     stmt_free(f->body);

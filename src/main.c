@@ -401,7 +401,6 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
             cur_orig_line++;
         } else {
             /* Non-include line — copy until next #include or newline */
-            const char* next_hash = p;
             /* Find end of this line first */
             const char* nl_here = memchr(p, '\n', end - p);
             int this_line_len = nl_here ? (int)(nl_here - p + 1) : (int)(end - p);
@@ -452,7 +451,7 @@ static char* resolve_includes(const char* src, int src_len, const char* basedir,
 }
 
 /* Forward declaration: defined later in the test command section. */
-static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip);
+static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet);
 
 static void usage(void) {
     printf("rokade - the Rook compiler\n");
@@ -1073,12 +1072,12 @@ static int do_new(const char* name) {
 
     if (mkdir(proj_dir, 0755) != 0) { perror("mkdir"); return 1; }
 
-    char subdir[4096];
+    char subdir[8192];
     snprintf(subdir, sizeof(subdir), "%s/src", proj_dir);
     if (mkdir(subdir, 0755) != 0) { perror("mkdir src"); return 1; }
 
     /* Write rokade.toml */
-    char fpath[4096];
+    char fpath[8192];
     snprintf(fpath, sizeof(fpath), "%s/rokade.toml", proj_dir);
     FILE* f = fopen(fpath, "w");
     if (!f) { perror("fopen rokade.toml"); return 1; }
@@ -1399,7 +1398,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             char* obj_file_paths[128];
             int compile_failed = 0;
             for (size_t i = 0; i < n_src; i++) {
-                char obj_path[4096];
+                char obj_path[8192];
                 const char* c_base = strrchr(c_file_paths[i], '/');
                 c_base = c_base ? c_base + 1 : c_file_paths[i];
                 size_t blen = strlen(c_base);
@@ -1435,7 +1434,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 continue;
             }
 
-            char target_bin[4096];
+            char target_bin[8192];
             int is_shared = strcmp(spec.build_kind, "shared-lib") == 0;
             int is_static = strcmp(spec.build_kind, "static-lib") == 0;
             if (is_shared) {
@@ -1711,7 +1710,29 @@ static int cmd_doctor(void) {
     /* 1b) backend & interop tooling */
     printf("[PASS] backend: c (C23 / C11)\n");
 #ifdef ROKADE_HAS_LLVM
-    printf("[PASS] backend: llvm (%s)\n", ROKADE_LLVM_VERSION);
+    {
+        Sema* j_sema = sema_new();
+        const char* j_src = "int main() { return 0; }";
+        int j_ntoks = 0;
+        Token* j_toks = lex_all(j_src, (int)strlen(j_src), &j_ntoks);
+        Program* j_prog = parse_program(j_src, (int)strlen(j_src), j_toks, j_ntoks);
+        int j_rc = -1;
+        if (j_prog) {
+            sema_collect(j_sema, j_prog);
+            sema_check(j_sema, j_prog);
+            if (!j_sema->err) {
+                j_rc = llvm_backend_jit_run(j_sema, j_prog, 0, NULL);
+            }
+            program_free(j_prog);
+        }
+        if (j_toks) free(j_toks);
+        sema_free(j_sema);
+        if (j_rc == 0) {
+            printf("[PASS] backend: llvm (%s) [JIT verified]\n", ROKADE_LLVM_VERSION);
+        } else {
+            printf("[WARN] backend: llvm (%s) [JIT verification failed]\n", ROKADE_LLVM_VERSION);
+        }
+    }
 #else
     printf("[INFO] backend: llvm (not enabled in this build)\n");
 #endif
@@ -1735,7 +1756,7 @@ static int cmd_doctor(void) {
         if (access(corpus, R_OK) != 0) {
             printf("[WARN] corpus: %s not found (skipped)\n", corpus);
         } else {
-            int r = test_run_dir(corpus, &pass, &fail, &skip);
+            int r = test_run_dir(corpus, &pass, &fail, &skip, 1);
             if (r == 0) printf("[PASS] corpus: %d pass, %d skip\n", pass, skip);
             else { printf("[FAIL] corpus: %d failed\n", fail); any_fail = 1; }
         }
@@ -1787,8 +1808,8 @@ static int cmd_doctor(void) {
 
 /* Parse a .rook file (resolving includes) and produce C.
    Returns malloc'd C via *out (len via *out_len), or NULL on failure
-   (after printing a diagnostic). */
-static char* transpile_to_c(const char* path, int* out_len) {
+   (after printing a diagnostic if !silent). */
+static char* transpile_to_c(const char* path, int* out_len, int silent) {
     char* slash = strrchr(path, '/');
     char basedir[4096];
     if (slash) {
@@ -1810,7 +1831,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     Token* toks = lex_all(expanded, len, &ntoks);
     Program* p = parse_program(expanded, len, toks, ntoks);
     if (!p) {
-        print_diag_stderr(path, parse_error());
+        if (!silent) print_diag_stderr(path, parse_error());
         free(expanded);
         free(toks);
         return NULL;
@@ -1822,7 +1843,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     sema_collect(sema, p);
     sema_check(sema, p);
     if (sema->err) {
-        print_diag_stderr(path, sema->err);
+        if (!silent) print_diag_stderr(path, sema->err);
         sema_free(sema);
         free(expanded);
         free(toks);
@@ -1851,7 +1872,7 @@ static int write_all(const char* path, const char* data, int len) {
 }
 
 /* Run the output-driven corpus test protocol on every *.rook in `dir`. */
-static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip) {
+static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet) {
     int pass = 0, fail = 0, skip = 0;
     char work[] = "/tmp/rook_test_XXXXXX";
     if (!mkdtemp(work)) {
@@ -1877,7 +1898,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip) 
         memcpy(base, ent->d_name, bl);
         base[bl] = '\0';
 
-        char src[4096], failref[4096], outref[4096], inref[4096];
+        char src[16384], failref[16384], outref[16384], inref[16384];
         snprintf(src, sizeof src, "%s/%s", dir, ent->d_name);
         snprintf(failref, sizeof failref, "%s/%s.fail", dir, base);
         snprintf(outref, sizeof outref, "%s/%s.out", dir, base);
@@ -1886,18 +1907,18 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip) 
         /* ---- expected-error test ---- */
         if (access(failref, F_OK) == 0) {
             int clen = 0;
-            char* c = transpile_to_c(src, &clen);
+            char* c = transpile_to_c(src, &clen, 1);
             if (c) {
                 free(c);
                 if (strcmp(base, "fail_syntax") == 0) {
-                    printf("  KNOWN (gap) %s\n", base);
+                    if (!quiet) printf("  KNOWN (gap) %s\n", base);
                 } else {
                     fail++;
-                    printf("  FAIL (expected error, compiled) %s\n", base);
+                    if (!quiet) printf("  FAIL (expected error, compiled) %s\n", base);
                 }
             } else {
                 pass++;
-                printf("  PASS (rejected) %s\n", base);
+                if (!quiet) printf("  PASS (rejected) %s\n", base);
             }
             continue;
         }
@@ -1905,33 +1926,32 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip) 
         /* ---- expected-output test ---- */
         if (access(outref, F_OK) == 0) {
             int clen = 0;
-            char* c = transpile_to_c(src, &clen);
-            if (!c) { fail++; printf("  FAIL (emit) %s\n", base); continue; }
-            if (write_all(c_path, c, clen)) { free(c); fail++; printf("  FAIL (write) %s\n", base); continue; }
+            char* c = transpile_to_c(src, &clen, 0);
+            if (!c) { fail++; if (!quiet) printf("  FAIL (emit) %s\n", base); continue; }
+            if (write_all(c_path, c, clen)) { free(c); fail++; if (!quiet) printf("  FAIL (write) %s\n", base); continue; }
             free(c);
 
-            char cmd[8192];
+            char cmd[32768];
             if (toolchain_compile_exe(exe_path, c_path) != 0) {
-                fail++; printf("  FAIL (compile) %s\n", base); continue;
+                fail++; if (!quiet) printf("  FAIL (compile) %s\n", base); continue;
             }
 
             if (access(inref, F_OK) == 0)
                 snprintf(cmd, sizeof cmd, "%s < %s > %s 2>/dev/null", exe_path, inref, got_path);
             else
                 snprintf(cmd, sizeof cmd, "%s < /dev/null > %s 2>/dev/null", exe_path, got_path);
-            if (system(cmd) != 0) { fail++; printf("  FAIL (run) %s\n", base); continue; }
+            if (system(cmd) != 0) { fail++; if (!quiet) printf("  FAIL (run) %s\n", base); continue; }
 
             int glen = 0, elen = 0;
             char* got = util_read_file(got_path, &glen);
             char* expected = util_read_file(outref, &elen);
             int same = got && expected && glen == elen && memcmp(got, expected, (size_t)glen) == 0;
             free(got); free(expected);
-            if (same) { pass++; printf("  PASS %s\n", base); }
-            else { fail++; printf("  FAIL (output) %s\n", base); }
+            if (same) { pass++; if (!quiet) printf("  PASS %s\n", base); }
+            else { fail++; if (!quiet) printf("  FAIL (output) %s\n", base); }
             continue;
         }
 
-        (void)skip;
         skip++;
     }
     closedir(d);
@@ -1949,7 +1969,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip) 
 
 static int cmd_test(const char* dir) {
     int pass = 0, fail = 0, skip = 0;
-    int r = test_run_dir(dir, &pass, &fail, &skip);
+    int r = test_run_dir(dir, &pass, &fail, &skip, 0);
     printf("\n---------------------------\n");
     printf("PASS         : %d\n", pass);
     printf("FAIL         : %d\n", fail);
@@ -1958,9 +1978,6 @@ static int cmd_test(const char* dir) {
     if (r) return 1;
     return pass == 0 ? 1 : 0;
 }
-
-/* force a reference to util_endswith to avoid an unused warning if unused */
-static int dummy_endswith(void) { return util_endswith("x", "y"); }
 
 static int check_file(const char* path, int verbose) {
     int len = 0;
@@ -2178,13 +2195,13 @@ extract_message:;
 static void path_to_uri(const char* path, char* buf, size_t cap) {
     const char* prefix = "file://";
     if (path[0] == '/') {
-        snprintf(buf, cap, "%s%s", prefix, path);   /* -> file:///abs/... */
+        snprintf(buf, cap, "%s%.4080s", prefix, path);   /* -> file:///abs/... */
     } else {
         char abs[4096];
         if (realpath(path, abs))
-            snprintf(buf, cap, "%s%s", prefix, abs);
+            snprintf(buf, cap, "%s%.4080s", prefix, abs);
         else
-            snprintf(buf, cap, "%s%s", prefix, path);
+            snprintf(buf, cap, "%s%.4080s", prefix, path);
     }
 }
 
@@ -2519,6 +2536,10 @@ int main(int argc, char** argv) {
 
     if (strcmp(argv[1], "doctor") == 0) {
         return cmd_doctor();
+    }
+    if (strcmp(argv[1], "test") == 0) {
+        const char* dir = (argc > 2) ? argv[2] : "tests/corpus";
+        return cmd_test(dir);
     }
     if (strcmp(argv[1], "--def-at") == 0 || strcmp(argv[1], "def-at") == 0) {
         return do_def_at(argc, argv);

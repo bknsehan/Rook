@@ -370,7 +370,7 @@ static void e_stmt_plain(Emit* e, Stmt* s, int ind) {
 
 /* Print a method/function signature only (no body), used for `trait` items
    whose methods are declared without implementation. C-style: ret name(params); */
-static void e_fn_sig(Emit* e, FnDef* f, int ind) {
+__attribute__((unused)) static void e_fn_sig(Emit* e, FnDef* f, int ind) {
     e_indent(e, ind);
     if (f->ret) {
         e_type(e, f->ret);
@@ -513,6 +513,12 @@ char* emit_program(Program* p, int* out_len) {
             break;
         case TOP_ENUM:
             e_enum(&e, it->ed);
+            break;
+        case TOP_MODULE:
+            if (it->modname) sb_appendf(&e.sb, "module %s;\n", it->modname);
+            break;
+        case TOP_IMPORT:
+            if (it->impname) sb_appendf(&e.sb, "import %s;\n", it->impname);
             break;
         }
     }

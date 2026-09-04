@@ -722,6 +722,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         return LLVMSizeOf(lt);
     }
 
+    case E_ARROW:
     case E_MEMBER: {
         LLVMTypeRef elem_type = NULL;
         LLVMValueRef lptr = gen_lvalue(g, e, &elem_type);
@@ -865,6 +866,65 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             return LLVMBuildLoad2(g->builder, st_type, alloca_ref, "load_brace");
         }
         return NULL;
+    }
+
+    case E_COMPOUND: {
+        LLVMTypeRef st_type = e->type ? gen_llvm_type(g, e->type) : (out_type ? *out_type : NULL);
+        if (!st_type) st_type = LLVMInt32TypeInContext(g->ctx);
+        LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, st_type, "compound_init");
+        StructDef* st = (e->type && e->type->name) ? sema_lookup_struct(g->sema, e->type->name) : NULL;
+        int pos_idx = 0;
+        for (int i = 0; i < e->ncitems; i++) {
+            int fidx = -1;
+            if (e->citems[i].name && st) {
+                for (int j = 0; j < st->nfields; j++) {
+                    if (strcmp(st->fields[j].name, e->citems[i].name) == 0) { fidx = j; break; }
+                }
+            } else {
+                fidx = pos_idx++;
+            }
+            if (fidx >= 0 && (!st || fidx < st->nfields)) {
+                LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, fidx, "comp_f");
+                LLVMTypeRef ft = (st && fidx < st->nfields) ? gen_llvm_type(g, st->fields[fidx].type) : LLVMInt32TypeInContext(g->ctx);
+                LLVMTypeRef rt = NULL;
+                LLVMValueRef fval = gen_expr(g, e->citems[i].e, &rt);
+                if (fval) {
+                    fval = cast_to_type(g, fval, rt, ft);
+                    LLVMBuildStore(g->builder, fval, fptr);
+                }
+            }
+        }
+        if (out_type) *out_type = st_type;
+        return LLVMBuildLoad2(g->builder, st_type, alloca_ref, "load_compound");
+    }
+
+    case E_ARR_LIT: {
+        LLVMTypeRef elem_type = NULL;
+        if (out_type && *out_type && LLVMGetTypeKind(*out_type) == LLVMArrayTypeKind) {
+            elem_type = LLVMGetElementType(*out_type);
+        }
+        if (!elem_type && e->nitems > 0) {
+            gen_expr(g, e->items[0], &elem_type);
+        }
+        if (!elem_type) elem_type = LLVMInt32TypeInContext(g->ctx);
+
+        LLVMTypeRef arr_type = LLVMArrayType(elem_type, (unsigned)e->nitems);
+        LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, arr_type, "arr_lit");
+        for (int i = 0; i < e->nitems; i++) {
+            LLVMValueRef idx_vals[2] = {
+                LLVMConstInt(LLVMInt32TypeInContext(g->ctx), 0, 0),
+                LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)i, 0)
+            };
+            LLVMValueRef elem_ptr = LLVMBuildGEP2(g->builder, arr_type, alloca_ref, idx_vals, 2, "arr_elem");
+            LLVMTypeRef it_type = NULL;
+            LLVMValueRef it_val = gen_expr(g, e->items[i], &it_type);
+            if (it_val) {
+                it_val = cast_to_type(g, it_val, it_type, elem_type);
+                LLVMBuildStore(g->builder, it_val, elem_ptr);
+            }
+        }
+        if (out_type) *out_type = arr_type;
+        return LLVMBuildLoad2(g->builder, arr_type, alloca_ref, "load_arr_lit");
     }
 
     default:

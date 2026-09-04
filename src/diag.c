@@ -179,7 +179,7 @@ void diag_emit(const char* file, int line, int col, const char* kind, const char
                 diag_dim(), file, line, col, diag_reset(),
                 kc, kind ? kind : "error", diag_reset(), msg ? msg : "");
     } else {
-        fprintf(stderr, "%s%s:%s %s%s\n",
+        fprintf(stderr, "%s%s:%s %s\n",
                 kc, kind ? kind : "error", diag_reset(), msg ? msg : "");
     }
 }

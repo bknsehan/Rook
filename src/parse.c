@@ -73,10 +73,6 @@ static Expr* e_at(Expr* e, Token* t) {
 static void e_inherit(Expr* e, Expr* from) {
     if (e && from) { e->start = from->start; e->len = from->len; e->line = from->line; e->col = from->col; }
 }
-static Stmt* s_at(Stmt* s, Token* t) {
-    if (s) { s->start = t->start; s->len = t->len; s->line = t->line; s->col = t->col; }
-    return s;
-}
 
 static char* tok_strdup(Token* t) {
     char* s = malloc(t->len + 1);

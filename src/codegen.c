@@ -66,7 +66,6 @@ static void cg_expr(CG* g, Expr* x);
 static void cg_stmt(CG* g, Stmt* s);
 static void cg_decl(CG* g, Decl* d);
 static void cg_call(CG* g, Expr* callee, Expr** args, int nargs);
-static void cg_items(CG* g, Expr** items, int n);
 static char* type_to_str(AstType* t);
 static AstType* infer_let_type(CG* g, Expr* init);
 static void cg_struct(CG* g, StructDef* st);
@@ -106,19 +105,6 @@ static int field_owner_levels(CG* g, StructDef* st, const char* field) {
         levels++;
     }
     return 0;
-}
-
-/* Find the type of a field reached via `obj_type` (walking the inheritance chain). */
-static AstType* member_field_type(CG* g, AstType* obj_type, const char* field) {
-    if (!obj_type || !obj_type->name || !field) return NULL;
-    StructDef* st = lookup_struct(g, obj_type->name);
-    while (st) {
-        for (int i = 0; i < st->nfields; i++) {
-            if (strcmp(st->fields[i].name, field) == 0) return st->fields[i].type;
-        }
-        st = st->parent ? lookup_struct(g, st->parent) : NULL;
-    }
-    return NULL;
 }
 
 static int impl_has_method(CG* g, const char* struct_name, const char* method) {
@@ -225,13 +211,6 @@ static AstType* cg_resolve_type(CG* g, Expr* e) {
 
 static void cg_indent(CG* g) {
     for (int i = 0; i < g->ind; i++) sb_append(&g->sb, "    ");
-}
-
-static void cg_items(CG* g, Expr** items, int n) {
-    for (int i = 0; i < n; i++) {
-        if (i) sb_append(&g->sb, ", ");
-        cg_expr(g, items[i]);
-    }
 }
 
 static char* type_to_str(AstType* t) {
@@ -1306,6 +1285,9 @@ static void cg_stmt(CG* g, Stmt* s) {
     }
     case S_EMPTY:
         sb_append(&g->sb, ";\n");
+        break;
+    case S_DEFER:
+        cg_add_defer(g, s->defer);
         break;
     }
 }

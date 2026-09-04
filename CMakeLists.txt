@@ -22,6 +22,10 @@ add_executable(rokade
   src/c_import.c
 )
 
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(rokade PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation)
+endif()
+
 # ─── Optional LLVM & libclang support ────────────────────────────────
 option(ROKADE_ENABLE_LLVM "Enable experimental LLVM backend and libclang C-interop" ON)
 

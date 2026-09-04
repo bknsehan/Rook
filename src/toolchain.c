@@ -148,9 +148,9 @@ char* toolchain_find_ndk(const char* explicit_path) {
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%s/%s", ndk_dir, de->d_name);
+                snprintf(cand, sizeof cand, "%.3800s/%s", ndk_dir, de->d_name);
                 char probe[4096];
-                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
                 if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
                     snprintf(best, sizeof best, "%s", cand);
                 }
@@ -159,7 +159,7 @@ char* toolchain_find_ndk(const char* explicit_path) {
             if (best[0]) return strdup(best);
         }
         char probe[4096];
-        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", env_sdk);
+        snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", env_sdk);
         if (access(probe, X_OK) == 0) return strdup(env_sdk);
     }
 
@@ -170,7 +170,7 @@ char* toolchain_find_ndk(const char* explicit_path) {
     };
     for (int i = 0; standard_paths[i]; i++) {
         char probe[4096];
-        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", standard_paths[i]);
+        snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", standard_paths[i]);
         if (access(probe, X_OK) == 0) return strdup(standard_paths[i]);
         DIR* d = opendir(standard_paths[i]);
         if (d) {
@@ -179,8 +179,8 @@ char* toolchain_find_ndk(const char* explicit_path) {
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%s/%s", standard_paths[i], de->d_name);
-                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                snprintf(cand, sizeof cand, "%.3800s/%s", standard_paths[i], de->d_name);
+                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
                 if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
                     snprintf(best, sizeof best, "%s", cand);
                 }
@@ -192,7 +192,7 @@ char* toolchain_find_ndk(const char* explicit_path) {
     const char* home = getenv("HOME");
     if (home) {
         char user_sdk_ndk[4096];
-        snprintf(user_sdk_ndk, sizeof user_sdk_ndk, "%s/Android/Sdk/ndk", home);
+        snprintf(user_sdk_ndk, sizeof user_sdk_ndk, "%.3800s/Android/Sdk/ndk", home);
         DIR* d = opendir(user_sdk_ndk);
         if (d) {
             struct dirent* de;
@@ -200,9 +200,9 @@ char* toolchain_find_ndk(const char* explicit_path) {
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%s/%s", user_sdk_ndk, de->d_name);
+                snprintf(cand, sizeof cand, "%.3800s/%s", user_sdk_ndk, de->d_name);
                 char probe[4096];
-                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
                 if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
                     snprintf(best, sizeof best, "%s", cand);
                 }
@@ -218,25 +218,23 @@ char* toolchain_find_ndk(const char* explicit_path) {
 char* toolchain_find_mingw(void) {
     char* p = find_in_path("x86_64-w64-mingw32-gcc");
     if (p) return p;
-    return find_in_path("i686-w64-mingw32-gcc");
+    p = find_in_path("x86_64-w64-mingw32-clang");
+    if (p) return p;
+    return NULL;
 }
 
 static const char* CC_CANDS[] = { "gcc", "clang", "cc", "tcc", "musl-gcc", NULL };
 static const char* AR_CANDS[] = { "ar", "llvm-ar", "gcc-ar", "mingw-ar", NULL };
 
-/* ---- detection cache --------------------------------------------------------
-   To keep runs deterministic and fast, auto-detected results are cached in a
-   dedicated cache file (NOT the user's config). The cache is only used when the
-   user has not explicitly overridden cc/ar; it is invalidated automatically
-   when the cached binary is missing. */
+/* Read / write toolchain cache to avoid re-detecting on every compile. */
 static char* toolchain_cache_path(void) {
     const char* xdg = getenv("XDG_CACHE_HOME");
     char base[4096];
-    if (xdg) {
+    if (xdg && *xdg) {
         snprintf(base, sizeof base, "%s/rokade", xdg);
     } else {
         const char* home = getenv("HOME");
-        if (!home) home = ".";
+        if (!home) return NULL;
         snprintf(base, sizeof base, "%s/.cache/rokade", home);
     }
     size_t need = strlen(base) + strlen("/toolchain.toml") + 1;
@@ -245,7 +243,7 @@ static char* toolchain_cache_path(void) {
     return p;
 }
 
-static void write_cache(const Toolchain* tc) {
+__attribute__((unused)) static void write_cache(const Toolchain* tc) {
     char* cp = toolchain_cache_path();
     if (!cp) return;
     char* dir = strdup(cp);

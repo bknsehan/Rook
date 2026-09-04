@@ -79,6 +79,7 @@ typedef struct {
 } StructFieldCollector;
 
 static enum CXChildVisitResult field_collector_cb(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+    (void)parent;
     StructFieldCollector* sfc = (StructFieldCollector*)client_data;
     if (clang_getCursorKind(cursor) == CXCursor_FieldDecl) {
         CXString fname = clang_getCursorSpelling(cursor);
@@ -110,6 +111,7 @@ typedef struct {
 } ImportContext;
 
 static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXClientData client_data) {
+    (void)parent;
     ImportContext* ctx = (ImportContext*)client_data;
     enum CXCursorKind kind = clang_getCursorKind(cursor);
 
