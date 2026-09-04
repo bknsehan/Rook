@@ -226,6 +226,36 @@ void sema_load_commandlist(const char* basedir, const char* override) {
     cl_load(basedir, override);
 }
 
+int sema_register_cfunc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic) {
+    if (!name || !name[0]) return 0;
+    for (size_t i = 0; i < cl_count; i++) {
+        if (strcmp(cl_funcs[i].name, name) == 0) {
+            if (ret && ret[0]) snprintf(cl_funcs[i].ret, sizeof(cl_funcs[i].ret), "%s", ret);
+            if (param_types) snprintf(cl_funcs[i].param_types, sizeof(cl_funcs[i].param_types), "%s", param_types);
+            cl_funcs[i].nparams = nparams;
+            cl_funcs[i].is_variadic = is_variadic;
+            return 1;
+        }
+    }
+    if (cl_count >= cl_cap) {
+        cl_cap = cl_cap ? cl_cap * 2 : 64;
+        cl_funcs = realloc(cl_funcs, cl_cap * sizeof(ClFunc));
+    }
+    strncpy(cl_funcs[cl_count].name, name, 127);
+    cl_funcs[cl_count].name[127] = '\0';
+    snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret), "%s", ret ? ret : "void");
+    if (param_types) {
+        strncpy(cl_funcs[cl_count].param_types, param_types, sizeof(cl_funcs[cl_count].param_types) - 1);
+        cl_funcs[cl_count].param_types[sizeof(cl_funcs[cl_count].param_types) - 1] = '\0';
+    } else {
+        cl_funcs[cl_count].param_types[0] = '\0';
+    }
+    cl_funcs[cl_count].nparams = nparams;
+    cl_funcs[cl_count].is_variadic = is_variadic;
+    cl_count++;
+    return 1;
+}
+
 static Scope* scope_new(Scope* parent) {
     Scope* s = calloc(1, sizeof *s);
     if (!s) exit(1);
@@ -245,6 +275,7 @@ static void scope_free(Scope* s) {
 }
 
 static Sym* scope_lookup(Scope* s, const char* name) {
+    if (!s || !name) return NULL;
     for (int i = s->nsyms - 1; i >= 0; i--) {
         if (strcmp(s->syms[i]->name, name) == 0) return s->syms[i];
     }
@@ -321,7 +352,7 @@ static Sym* sym_new_var(const char* name, Decl* decl) {
 static Sym* sym_new_type(const char* name, AstType* type) {
     Sym* s = calloc(1, sizeof *s);
     if (!s) exit(1);
-    s->name = (char*)name;    /* borrowed from the item name (token text) */
+    s->name = strdup(name);
     s->kind = SYM_TYPE;
     s->type = type;
     return s;
@@ -330,11 +361,56 @@ static Sym* sym_new_type(const char* name, AstType* type) {
 static Sym* sym_new_variant(const char* name, EnumDef* ed, int idx) {
     Sym* s = calloc(1, sizeof *s);
     if (!s) exit(1);
-    s->name = (char*)name;    /* borrowed from the enum variant token text */
+    s->name = strdup(name);
     s->kind = SYM_ENUMVARIANT;
     s->ed = ed;
     s->variant_idx = idx;
     return s;
+}
+
+AstType* sema_mk_type(const char* qual, const char* name, int ptrs) {
+    AstType* t = calloc(1, sizeof *t);
+    t->qual = qual ? strdup(qual) : strdup("");
+    t->name = name ? strdup(name) : strdup("void");
+    t->ptrs = ptrs;
+    return t;
+}
+
+int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nfields) {
+    if (!s || !s->scope || !name || !name[0]) return 0;
+    Sym* existing = sema_lookup(s, name);
+    if (existing && (existing->kind == SYM_STRUCT || existing->kind == SYM_IMPL)) {
+        return 0;
+    }
+    StructDef* st = calloc(1, sizeof *st);
+    st->name = strdup(name);
+    st->fields = fields;
+    st->nfields = nfields;
+    st->is_object = 0;
+    Sym* sym = sym_new_struct(name, st);
+    scope_add(s->scope, sym);
+    return 1;
+}
+
+int sema_register_ctypedef(Sema* s, const char* name, AstType* type) {
+    if (!s || !s->scope || !name || !name[0] || !type) return 0;
+    Sym* existing = sema_lookup(s, name);
+    if (existing) return 0;
+    Sym* sym = sym_new_type(name, type);
+    scope_add(s->scope, sym);
+    return 1;
+}
+
+int sema_register_cvar(Sema* s, const char* name, AstType* type) {
+    if (!s || !s->scope || !name || !name[0] || !type) return 0;
+    Sym* existing = sema_lookup(s, name);
+    if (existing) return 0;
+    Decl* d = calloc(1, sizeof *d);
+    d->name = strdup(name);
+    d->type = type;
+    Sym* sym = sym_new_var(name, d);
+    scope_add(s->scope, sym);
+    return 1;
 }
 
 static void collect_program(Sema* sema, Program* prog) {

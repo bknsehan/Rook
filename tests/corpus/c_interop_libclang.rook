@@ -1,0 +1,8 @@
+#include <stdio.h>
+#include <math.h>
+
+int main() {
+    double h = hypot(3.0, 4.0);
+    printf("hypot: %d\n", (int)h);
+    return 0;
+}

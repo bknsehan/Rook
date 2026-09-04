@@ -18,7 +18,41 @@ add_executable(rokade
   src/c_backend.c
   src/config.c
   src/toolchain.c
+  src/llvm_backend.c
+  src/c_import.c
 )
+
+# ─── Optional LLVM & libclang support ────────────────────────────────
+option(ROKADE_ENABLE_LLVM "Enable experimental LLVM backend and libclang C-interop" ON)
+
+if(ROKADE_ENABLE_LLVM)
+  find_package(LLVM CONFIG)
+  if(LLVM_FOUND)
+    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+    target_compile_definitions(rokade PRIVATE ROKADE_HAS_LLVM=1 ROKADE_LLVM_VERSION="${LLVM_PACKAGE_VERSION}")
+    target_include_directories(rokade PRIVATE ${LLVM_INCLUDE_DIRS})
+    find_library(LLVM_LIB NAMES LLVM libLLVM HINTS ${LLVM_LIBRARY_DIRS})
+    if(LLVM_LIB)
+      target_link_libraries(rokade PRIVATE ${LLVM_LIB})
+    endif()
+
+    find_library(CLANG_LIB NAMES clang libclang HINTS ${LLVM_LIBRARY_DIRS})
+    find_path(CLANG_INCLUDE_DIR clang-c/Index.h HINTS ${LLVM_INCLUDE_DIRS})
+    if(CLANG_LIB AND CLANG_INCLUDE_DIR)
+      message(STATUS "Found libclang: ${CLANG_LIB}")
+      target_compile_definitions(rokade PRIVATE ROKADE_HAS_LIBCLANG=1)
+      target_include_directories(rokade PRIVATE ${CLANG_INCLUDE_DIR})
+      target_link_libraries(rokade PRIVATE ${CLANG_LIB})
+    endif()
+    find_library(M_LIB m)
+    if(M_LIB)
+      target_link_libraries(rokade PRIVATE ${M_LIB})
+    endif()
+    set_target_properties(rokade PROPERTIES ENABLE_EXPORTS ON)
+  else()
+    message(STATUS "LLVM not found; building with C backend only.")
+  endif()
+endif()
 
 # Sanitizer build (AddressSanitizer + UndefinedBehaviorSanitizer).
 # Configure with: cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug -USE_SANITIZER=ON

@@ -17,6 +17,8 @@
 #include "lexer.h"
 #include "parse.h"
 #include "sema.h"
+#include "c_import.h"
+#include "llvm_backend.h"
 #include "util.h"
 
 #ifndef ROKADE_VERSION
@@ -457,6 +459,8 @@ static void usage(void) {
     printf("usage:\n");
     printf("  rokade <file>             lex/parse and emit Rook source to stdout\n");
     printf("  rokade --emit-c <file>    parse and emit C to stdout\n");
+    printf("  rokade --emit-llvm <file> parse and emit LLVM IR to stdout\n");
+    printf("  rokade --emit-obj <file>  parse and emit native object (.o) via LLVM\n");
     printf("  rokade --ast <file>       dump the AST\n");
     printf("  rokade --check <file>     round-trip check (parse->emit->reparse, compare ASTs)\n");
     printf("  rokade --check-dir <dir>  round-trip check every *.rook under dir (recursive)\n");
@@ -466,8 +470,8 @@ static void usage(void) {
     printf("                              definition as one JSON LSP Location (or `null`)\n");
     printf("  rokade --symbols <file>    list top-level definitions as JSON (for LSP outline)\n");
     printf("  rokade new <name>         create a new Rook project\n");
-    printf("  rokade build [path] [--target=t] [--all]  build a Rook project (supports multi-target)\n");
-    printf("  rokade run [path]         build and run a Rook project\n");
+    printf("  rokade build [path] [--backend=c|llvm] [--target=t] [--all]  build a Rook project\n");
+    printf("  rokade run [path] [--backend=c|llvm] [--jit]  build and run a Rook project or script\n");
     printf("  rokade config             show effective configuration\n");
     printf("  rokade config get <key>   print one config value\n");
     printf("  rokade config set [--local] <key> <value>  set a config value\n");
@@ -483,9 +487,9 @@ static const char* help_detail(const char* cmd) {
     if (strcmp(cmd, "new") == 0)
         return "rokade new <name>\n  Create a new Rook project directory <name>/ with a\n  rokade.toml and a src/main.rook. Build/run with 'rokade build'.";
     if (strcmp(cmd, "build") == 0)
-        return "rokade build [path] [--target=<os>] [--all]\n  Build a Rook project (reads rokade.toml). Drives the C\n  toolchain (supports linux, android, windows, and multi-target matrix).";
+        return "rokade build [path] [--backend=<c|llvm>] [--target=<os>] [--all]\n  Build a Rook project (reads rokade.toml). Supports C and LLVM native backends.";
     if (strcmp(cmd, "run") == 0)
-        return "rokade run [path]\n  Build the project then run the resulting executable.";
+        return "rokade run [path] [--backend=<c|llvm>] [--jit]\n  Run a Rook project or single .rook file. Use --jit for instant in-memory execution.";
     if (strcmp(cmd, "config") == 0)
         return "rokade config                 show the effective merged config\n"
                "rokade config get <key>      print one config value\n"
@@ -616,6 +620,7 @@ typedef struct {
     char version[64];
     char build_kind[32];
     char build_target[64];
+    char backend[32];
     char c_standard[16];
     char cflags[4096];
     char libraries[32][256];
@@ -646,6 +651,7 @@ static void project_config_init(ProjectConfig* cfg) {
     snprintf(cfg->version, sizeof(cfg->version), "0.1.0");
     snprintf(cfg->build_kind, sizeof(cfg->build_kind), "exe");
     snprintf(cfg->build_target, sizeof(cfg->build_target), "linux");
+    snprintf(cfg->backend, sizeof(cfg->backend), "c");
     snprintf(cfg->c_standard, sizeof(cfg->c_standard), "c2x");
 }
 
@@ -818,6 +824,7 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
     if (strcmp(cur_sec, "build") == 0 || cur_sec[0] == '\0') {
         if (strcmp(key, "kind") == 0) snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
         else if (strcmp(key, "target") == 0) snprintf(cfg->build_target, sizeof(cfg->build_target), "%s", valbuf);
+        else if (strcmp(key, "backend") == 0) snprintf(cfg->backend, sizeof(cfg->backend), "%s", valbuf);
         else if (strcmp(key, "c-standard") == 0 || strcmp(key, "standard") == 0) snprintf(cfg->c_standard, sizeof(cfg->c_standard), "%s", valbuf);
         else if (strcmp(key, "cflags") == 0) snprintf(cfg->cflags, sizeof(cfg->cflags), "%s", valbuf);
         else if (strcmp(key, "pkg-config") == 0 || strcmp(key, "pkg_config") == 0) {
@@ -1136,7 +1143,7 @@ static void print_diag_stderr(const char* fallback_path, const char* diag) {
     }
 }
 
-static int do_build(const char* proj_path, const char* cli_target, int build_all) {
+static int do_build(const char* proj_path, const char* cli_target, const char* cli_backend, int build_all) {
     char cwd[4096];
     if (!proj_path) {
         if (!getcwd(cwd, sizeof(cwd))) return 1;
@@ -1149,6 +1156,8 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
         fprintf(stderr, "  (run 'rokade new <name>' to create a project)\n");
         return 1;
     }
+
+    const char* active_backend = (cli_backend && cli_backend[0]) ? cli_backend : (cfg.backend[0] ? cfg.backend : "c");
 
     /* Collect .rook files from src/ */
     char src_dir[4096];
@@ -1202,15 +1211,7 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
             free(fsrc);
         }
     }
-
-    closedir(d);
-    d = opendir(src_dir);
-    if (!d) {
-        fprintf(stderr, "error: %s/ not found\n", src_dir);
-        free(is_included);
-        for (size_t i = 0; i < n_all; i++) free(all_files[i]);
-        return 1;
-    }
+    rewinddir(d);
 
     while ((entry = readdir(d)) != NULL) {
         size_t mlen = strlen(entry->d_name);
@@ -1255,6 +1256,7 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
         }
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(src_dir, NULL);
+        c_import_scan_and_load(sema, expanded, len, src_dir, inc_list, cfg.n_include_dirs);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
@@ -1266,20 +1268,29 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
             continue;
         }
         int clen = 0;
-        Backend* be = backend_create("c");
+        Backend* be = backend_create(active_backend);
+        if (!be) {
+            fprintf(stderr, "error: backend '%s' not available\n", active_backend);
+            program_free(p);
+            free(expanded);
+            free(toks);
+            sema_free(sema);
+            continue;
+        }
         char* c_code = be->emit_program(sema, p, &clen, 0);
         backend_destroy(be);
 
         char c_path[4096];
-        snprintf(c_path, sizeof(c_path), "%s/build/generated/%.*s.c",
-                 proj_path, (int)(mlen - 5), entry->d_name);
+        const char* ext = (strcmp(active_backend, "llvm") == 0) ? "ll" : "c";
+        snprintf(c_path, sizeof(c_path), "%s/build/generated/%.*s.%s",
+                 proj_path, (int)(mlen - 5), entry->d_name, ext);
 
         FILE* fout = fopen(c_path, "w");
         if (fout) {
             fwrite(c_code, 1, clen, fout);
             fclose(fout);
         }
-        printf("  transpiled: %s -> %s\n", entry->d_name, c_path);
+        printf("  compiled [%s]: %s -> %s\n", active_backend, entry->d_name, c_path);
 
         free(expanded);
         free(toks);
@@ -1392,13 +1403,25 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
                 const char* c_base = strrchr(c_file_paths[i], '/');
                 c_base = c_base ? c_base + 1 : c_file_paths[i];
                 size_t blen = strlen(c_base);
+                const char* dot = strrchr(c_base, '.');
+                int stem_len = dot ? (int)(dot - c_base) : (int)blen;
                 snprintf(obj_path, sizeof(obj_path), "%s/%.*s.o",
-                         target_out_dir, (int)(blen > 2 ? blen - 2 : blen), c_base);
+                         target_out_dir, stem_len, c_base);
                 obj_file_paths[i] = strdup(obj_path);
 
                 printf("  [%s%s%s] compiling: %s -> %s\n",
                        target_name, arch[0] ? ":" : "", arch, c_base, obj_path);
-                int ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
+                int ret;
+                size_t c_base_len = strlen(c_base);
+                if (c_base_len >= 3 && strcmp(c_base + c_base_len - 3, ".ll") == 0) {
+#ifdef ROKADE_HAS_LLVM
+                    ret = llvm_backend_compile_ll_to_obj(c_file_paths[i], obj_path, 2);
+#else
+                    ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
+#endif
+                } else {
+                    ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
+                }
                 if (ret != 0) {
                     fprintf(stderr, "error: compilation failed for %s (target %s)\n", c_file_paths[i], target_name);
                     compile_failed = 1;
@@ -1449,8 +1472,76 @@ static int do_build(const char* proj_path, const char* cli_target, int build_all
 
 /* ---------- run command ---------- */
 
-static int do_run(const char* proj_path) {
-    int ret = do_build(proj_path, "linux", 0);
+static int run_single_file_jit(const char* path) {
+    int len = 0;
+    char* src = util_read_file(path, &len);
+    if (!src) {
+        fprintf(stderr, "rokade: cannot read '%s'\n", path);
+        return 1;
+    }
+    char* slash = strrchr(path, '/');
+    char basedir[4096];
+    if (slash) {
+        size_t dlen = (size_t)(slash - path);
+        snprintf(basedir, sizeof(basedir), "%.*s", (int)dlen, path);
+    } else {
+        snprintf(basedir, sizeof(basedir), ".");
+    }
+    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
+    free(src);
+    if (!expanded) {
+        fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
+        return 1;
+    }
+    len = (int)strlen(expanded);
+
+    int ntoks = 0;
+    Token* toks = lex_all(expanded, len, &ntoks);
+    Program* p = parse_program(expanded, len, toks, ntoks);
+    if (!p) {
+        print_diag_stderr(path, parse_error());
+        free(expanded);
+        free(toks);
+        return 1;
+    }
+    Sema* sema = sema_new();
+    sema_set_source(sema, expanded, len);
+    sema_load_commandlist(basedir, NULL);
+    c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+    sema_collect(sema, p);
+    sema_check(sema, p);
+    if (sema->err) {
+        print_diag_stderr(path, sema->err);
+        sema_free(sema);
+        free(expanded);
+        free(toks);
+        program_free(p);
+        return 1;
+    }
+
+    int rc = llvm_backend_jit_run(sema, p, 0, NULL);
+
+    sema_free(sema);
+    free(expanded);
+    free(toks);
+    program_free(p);
+    return rc;
+}
+
+static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
+    if (proj_path) {
+        size_t plen = strlen(proj_path);
+        if (plen >= 5 && strcmp(proj_path + plen - 5, ".rook") == 0) {
+            return run_single_file_jit(proj_path);
+        }
+    }
+    if (use_jit) {
+        char main_path[4096];
+        snprintf(main_path, sizeof(main_path), "%s/src/main.rook", proj_path ? proj_path : ".");
+        return run_single_file_jit(main_path);
+    }
+
+    int ret = do_build(proj_path, "linux", cli_backend, 0);
     if (ret != 0) return ret;
 
     ProjectConfig cfg;
@@ -1617,6 +1708,19 @@ static int cmd_doctor(void) {
         }
     }
 
+    /* 1b) backend & interop tooling */
+    printf("[PASS] backend: c (C23 / C11)\n");
+#ifdef ROKADE_HAS_LLVM
+    printf("[PASS] backend: llvm (%s)\n", ROKADE_LLVM_VERSION);
+#else
+    printf("[INFO] backend: llvm (not enabled in this build)\n");
+#endif
+#ifdef ROKADE_HAS_LIBCLANG
+    printf("[PASS] c-interop: libclang (dynamic C header AST)\n");
+#else
+    printf("[INFO] c-interop: commandlist.json (fallback)\n");
+#endif
+
     /* 2) corpus green */
     {
         char corpus[8192];
@@ -1714,6 +1818,7 @@ static char* transpile_to_c(const char* path, int* out_len) {
     Sema* sema = sema_new();
     sema_set_source(sema, expanded, len);
     sema_load_commandlist(basedir, NULL);
+    c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
     sema_collect(sema, p);
     sema_check(sema, p);
     if (sema->err) {
@@ -2370,10 +2475,13 @@ int main(int argc, char** argv) {
     if (strcmp(argv[1], "build") == 0) {
         const char* proj_path = NULL;
         const char* cli_target = NULL;
+        const char* cli_backend = NULL;
         int build_all = 0;
         for (int a = 2; a < argc; a++) {
             if (strcmp(argv[a], "--all") == 0) {
                 build_all = 1;
+            } else if (strncmp(argv[a], "--backend=", 10) == 0) {
+                cli_backend = argv[a] + 10;
             } else if (strncmp(argv[a], "--target=", 9) == 0) {
                 cli_target = argv[a] + 9;
             } else if (strcmp(argv[a], "-t") == 0 && a + 1 < argc) {
@@ -2382,15 +2490,23 @@ int main(int argc, char** argv) {
                 proj_path = argv[a];
             }
         }
-        return do_build(proj_path, cli_target, build_all);
+        return do_build(proj_path, cli_target, cli_backend, build_all);
     }
 
     if (strcmp(argv[1], "run") == 0) {
         const char* proj_path = NULL;
+        const char* cli_backend = NULL;
+        int use_jit = 0;
         for (int a = 2; a < argc; a++) {
-            if (argv[a][0] != '-') proj_path = argv[a];
+            if (strncmp(argv[a], "--backend=", 10) == 0) {
+                cli_backend = argv[a] + 10;
+            } else if (strcmp(argv[a], "--jit") == 0) {
+                use_jit = 1;
+            } else if (argv[a][0] != '-') {
+                proj_path = argv[a];
+            }
         }
-        return do_run(proj_path);
+        return do_run(proj_path, cli_backend, use_jit);
     }
 
     if (strcmp(argv[1], "config") == 0) {
@@ -2412,19 +2528,25 @@ int main(int argc, char** argv) {
     }
 
     /* File processing commands */
-    int mode = 0; /* 0 emit, 1 emit-c, 2 ast, 3 check, 4 checkdir, 5 diagnostics */
+    int mode = 0; /* 0 emit, 1 emit-c, 2 ast, 3 check, 4 checkdir, 5 diagnostics, 6 emit-llvm, 7 emit-obj */
     int bounds_check = 0;
+    const char* cli_backend = "c";
     int i = 1;
     /* Parse flags before the mode keyword */
     while (i < argc && argv[i][0] == '-') {
         if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bounds-check") == 0) {
             bounds_check = 1;
             i++;
+        } else if (strncmp(argv[i], "--backend=", 10) == 0) {
+            cli_backend = argv[i] + 10;
+            i++;
         } else {
             break;
         }
     }
-    if (i < argc && strcmp(argv[i], "--emit-c") == 0) { mode = 1; i++; }
+    if (i < argc && strcmp(argv[i], "--emit-c") == 0) { mode = 1; cli_backend = "c"; i++; }
+    else if (i < argc && strcmp(argv[i], "--emit-llvm") == 0) { mode = 6; cli_backend = "llvm"; i++; }
+    else if (i < argc && strcmp(argv[i], "--emit-obj") == 0) { mode = 7; cli_backend = "llvm"; i++; }
     else if (i < argc && strcmp(argv[i], "--ast") == 0) { mode = 2; i++; }
     else if (i < argc && strcmp(argv[i], "--check") == 0) { mode = 3; i++; }
     else if (i < argc && strcmp(argv[i], "--check-dir") == 0) { mode = 4; i++; }
@@ -2446,11 +2568,20 @@ int main(int argc, char** argv) {
         return failed == 0 ? 0 : 1;
     }
 
-    if (i >= argc) {
+    const char* out_obj_override = NULL;
+    const char* path = NULL;
+    for (; i < argc; i++) {
+        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            out_obj_override = argv[++i];
+        } else if (argv[i][0] != '-') {
+            if (!path) path = argv[i];
+        }
+    }
+
+    if (!path) {
         usage();
         return 1;
     }
-    const char* path = argv[i];
 
     int len = 0;
     char* src = util_read_file(path, &len);
@@ -2495,6 +2626,7 @@ int main(int argc, char** argv) {
             Sema* sema = sema_new();
             sema_set_source(sema, expanded, len);
             sema_load_commandlist(basedir, NULL);
+            c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
             sema_collect(sema, p);
             sema_check(sema, p);
             if (sema->err) emit_diag_json(&jbuf, path, sema->err);
@@ -2529,10 +2661,46 @@ int main(int argc, char** argv) {
         program_free(p);
         return check_file(path, 1);
     }
-    if (mode == 1) {
+    if (mode == 7) {
         Sema* sema = sema_new();
-            sema_set_source(sema, expanded, len);
+        sema_set_source(sema, expanded, len);
         sema_load_commandlist(basedir, NULL);
+        c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+        sema_collect(sema, p);
+        sema_check(sema, p);
+        if (sema->err) {
+            print_diag_stderr(path, sema->err);
+            sema_free(sema);
+            free(expanded);
+            free(toks);
+            program_free(p);
+            return 1;
+        }
+        char out_obj[4096];
+        if (out_obj_override) {
+            snprintf(out_obj, sizeof(out_obj), "%s", out_obj_override);
+        } else {
+            const char* base = strrchr(path, '/');
+            base = base ? base + 1 : path;
+            size_t blen = strlen(base);
+            snprintf(out_obj, sizeof(out_obj), "%.*s.o", (int)(blen > 5 ? blen - 5 : blen), base);
+        }
+
+        int rc = llvm_backend_emit_obj(sema, p, out_obj, 2);
+        if (rc == 0) {
+            printf("emitted: %s\n", out_obj);
+        }
+        sema_free(sema);
+        free(expanded);
+        free(toks);
+        program_free(p);
+        return rc;
+    }
+    if (mode == 1 || mode == 6 || (mode == 0 && strcmp(cli_backend, "llvm") == 0)) {
+        Sema* sema = sema_new();
+        sema_set_source(sema, expanded, len);
+        sema_load_commandlist(basedir, NULL);
+        c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
@@ -2544,11 +2712,22 @@ int main(int argc, char** argv) {
             return 1;
         }
         int elen = 0;
-        Backend* be = backend_create("c");
+        const char* bname = (mode == 6) ? "llvm" : cli_backend;
+        Backend* be = backend_create(bname);
+        if (!be) {
+            fprintf(stderr, "rokade: backend '%s' not available\n", bname);
+            sema_free(sema);
+            free(expanded);
+            free(toks);
+            program_free(p);
+            return 1;
+        }
         char* c = be->emit_program(sema, p, &elen, bounds_check);
         backend_destroy(be);
-        fwrite(c, 1, elen, stdout);
-        free(c);
+        if (c) {
+            fwrite(c, 1, elen, stdout);
+            free(c);
+        }
         sema_free(sema);
         free(expanded);
         free(toks);

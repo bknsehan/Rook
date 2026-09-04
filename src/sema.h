@@ -81,6 +81,11 @@ void sema_load_commandlist(const char* basedir, const char* override);
    receivers (e.g. v.items()[0]). */
 AstType* sema_resolve_type(Sema* s, Expr* e);
 AstType* sema_clone_type(AstType* t);
+AstType* sema_mk_type(const char* qual, const char* name, int ptrs);
 int sema_is_cfunc(const char* name);
+int sema_register_cfunc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic);
+int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nfields);
+int sema_register_ctypedef(Sema* s, const char* name, AstType* type);
+int sema_register_cvar(Sema* s, const char* name, AstType* type);
 
 #endif
