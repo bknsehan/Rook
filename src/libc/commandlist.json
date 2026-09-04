@@ -778,6 +778,70 @@
     ]
   },
   {
+    "name": "sqrtf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "sinf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "cosf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "floorf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "ceilf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "atan2f",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      },
+      {
+        "name": "arg1",
+        "type": "float"
+      }
+    ]
+  },
+  {
     "name": "srand",
     "ret": "void",
     "params": [

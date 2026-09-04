@@ -1,0 +1,161 @@
+// Rook Standard Library - std/vec.rook
+// High-performance dynamic array (Vec) and dynamic string builder (StringBuilder).
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#comprise <std/str>
+
+object Vec {
+    items: void**
+    len: size_t
+    cap: size_t
+}
+
+Vec vec_new(size_t cap) {
+    if (cap < 4) cap = 4;
+    void** items = malloc(cap * sizeof(void*));
+    return Vec {
+        items: items,
+        len: 0,
+        cap: cap
+    };
+}
+
+impl Vec {
+    void push(Vec* self, void* item) {
+        if (self->len >= self->cap) {
+            size_t new_cap = self->cap * 2;
+            void** new_items = realloc(self->items, new_cap * sizeof(void*));
+            if (!new_items) return;
+            self->items = new_items;
+            self->cap = new_cap;
+        }
+        self->items[self->len] = item;
+        self->len = self->len + 1;
+    }
+
+    void* pop(Vec* self) {
+        if (self->len == 0) return NULL;
+        self->len = self->len - 1;
+        return self->items[self->len];
+    }
+
+    void* get(Vec* self, size_t idx) {
+        if (idx >= self->len) return NULL;
+        return self->items[idx];
+    }
+
+    bool set(Vec* self, size_t idx, void* val) {
+        if (idx >= self->len) return false;
+        self->items[idx] = val;
+        return true;
+    }
+
+    void clear(Vec* self) {
+        self->len = 0;
+    }
+
+    bool is_empty(Vec* self) {
+        return self->len == 0;
+    }
+
+    void destroy(Vec* self) {
+        if (self->items) {
+            free(self->items);
+            self->items = NULL;
+        }
+        self->len = 0;
+        self->cap = 0;
+    }
+}
+
+object StringBuilder {
+    buf: char*
+    len: size_t
+    cap: size_t
+}
+
+StringBuilder sb_new(size_t cap) {
+    if (cap < 16) cap = 16;
+    char* buf = malloc(cap);
+    if (buf) buf[0] = '\0';
+    return StringBuilder {
+        buf: buf,
+        len: 0,
+        cap: cap
+    };
+}
+
+impl StringBuilder {
+    void append_cstr(StringBuilder* self, const char* s) {
+        if (!s) return;
+        size_t slen = strlen(s);
+        if (self->len + slen + 1 > self->cap) {
+            size_t new_cap = (self->cap * 2 > self->len + slen + 16) ? (self->cap * 2) : (self->len + slen + 16);
+            char* new_buf = realloc(self->buf, new_cap);
+            if (!new_buf) return;
+            self->buf = new_buf;
+            self->cap = new_cap;
+        }
+        memcpy(self->buf + self->len, s, slen);
+        self->len = self->len + slen;
+        self->buf[self->len] = '\0';
+    }
+
+    void append_str(StringBuilder* self, Str s) {
+        if (s.len == 0 || !s.data) return;
+        if (self->len + s.len + 1 > self->cap) {
+            size_t new_cap = (self->cap * 2 > self->len + s.len + 16) ? (self->cap * 2) : (self->len + s.len + 16);
+            char* new_buf = realloc(self->buf, new_cap);
+            if (!new_buf) return;
+            self->buf = new_buf;
+            self->cap = new_cap;
+        }
+        memcpy(self->buf + self->len, s.data, s.len);
+        self->len = self->len + s.len;
+        self->buf[self->len] = '\0';
+    }
+
+    void append_char(StringBuilder* self, char c) {
+        if (self->len + 2 > self->cap) {
+            size_t new_cap = self->cap * 2;
+            char* new_buf = realloc(self->buf, new_cap);
+            if (!new_buf) return;
+            self->buf = new_buf;
+            self->cap = new_cap;
+        }
+        self->buf[self->len] = c;
+        self->len = self->len + 1;
+        self->buf[self->len] = '\0';
+    }
+
+    void append_int(StringBuilder* self, int n) {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp), "%d", n);
+        self.append_cstr(tmp);
+    }
+
+    Str as_str(StringBuilder* self) {
+        return str_from_parts(self->buf, self->len);
+    }
+
+    char* to_cstr(StringBuilder* self) {
+        return self->buf;
+    }
+
+    void reset(StringBuilder* self) {
+        self->len = 0;
+        if (self->buf) self->buf[0] = '\0';
+    }
+
+    void destroy(StringBuilder* self) {
+        if (self->buf) {
+            free(self->buf);
+            self->buf = NULL;
+        }
+        self->len = 0;
+        self->cap = 0;
+    }
+}

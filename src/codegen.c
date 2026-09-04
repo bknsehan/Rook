@@ -1313,6 +1313,7 @@ static void cg_stmt(CG* g, Stmt* s) {
 static void cg_program(CG* g, Program* prog);
 
 static void cg_program(CG* g, Program* prog) {
+    sb_append(&g->sb, "#define _DEFAULT_SOURCE\n#define _POSIX_C_SOURCE 200809L\n\n");
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_RAW) {
@@ -1413,7 +1414,7 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
         else if (!((*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9'))) *p = '_';
     }
 
-    sb_appendf(&g.sb, "#ifndef %s\n#define %s\n\n", guard, guard);
+    sb_appendf(&g.sb, "#ifndef %s\n#define %s\n\n#define _DEFAULT_SOURCE\n#define _POSIX_C_SOURCE 200809L\n\n", guard, guard);
 
     /* Emit raw includes from TOP_RAW (e.g. #include <...>) */
     for (int i = 0; i < prog->nitems; i++) {

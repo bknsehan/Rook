@@ -1,5 +1,5 @@
 // Rook Standard Library - std/mem.rook
-// Fast Arena Allocator and memory management utilities.
+// Fast Arena Allocator and zero-cost memory management utilities.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,4 +54,28 @@ impl Arena {
         if (self->offset >= self->capacity) return 0;
         return self->capacity - self->offset;
     }
+}
+
+void* mem_copy(void* dst, const void* src, size_t n) {
+    return memcpy(dst, src, n);
+}
+
+void* mem_set(void* dst, int val, size_t n) {
+    return memset(dst, val, n);
+}
+
+void* mem_zero(void* dst, size_t n) {
+    return memset(dst, 0, n);
+}
+
+void* mem_alloc(size_t n) {
+    return malloc(n);
+}
+
+void* mem_realloc(void* ptr, size_t n) {
+    return realloc(ptr, n);
+}
+
+void mem_free(void* ptr) {
+    free(ptr);
 }

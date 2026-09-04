@@ -148,7 +148,7 @@ static char* ident(Parser* p) {
 
 static int is_qual_word(Token* t) {
     return is_kw(t, "const") || is_kw(t, "unsigned") || is_kw(t, "signed") ||
-           is_kw(t, "short") || is_kw(t, "long");
+           is_kw(t, "short") || is_kw(t, "long") || is_kw(t, "struct") || is_kw(t, "enum");
 }
 
 static AstType* parse_type(Parser* p) {
@@ -291,7 +291,22 @@ static int is_primary_start(Token* t) {
 }
 
 static Expr* parse_ternary(Parser* p) {
-    return parse_or(p);
+    Expr* cond = parse_or(p);
+    if (tok_is(cur(p), "?")) {
+        adv(p);
+        Expr* then_expr = parse_expr(p);
+        if (!then_expr) return NULL;
+        if (!expect_punct(p, ":")) return NULL;
+        Expr* else_expr = parse_ternary(p);
+        if (!else_expr) return NULL;
+        Expr* e = ast_expr_new(E_TERNARY);
+        e_inherit(e, cond);
+        e->a = cond;
+        e->b = then_expr;
+        e->c = else_expr;
+        return e;
+    }
+    return cond;
 }
 
 static int is_assign_op(Token* t) {
@@ -473,13 +488,6 @@ static Expr* parse_postfix(Parser* p) {
             po->str = op;
             po->a = e;
             e = po;
-        } else if (tok_is(t, "?")) {
-            Token* qt = cur(p);
-            adv(p);
-            Expr* q = e_at(ast_expr_new(E_QUESTION), qt);
-            q->a = e;
-            e_inherit(q, e);
-            e = q;
         } else {
             return e;
         }

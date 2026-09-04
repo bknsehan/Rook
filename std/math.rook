@@ -1,4 +1,9 @@
+// Rook Standard Library - std/math.rook
+// Vector math (Vec2, Vec3), 2D collision geometry (Rect), and fast numeric helpers.
+
+#include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
 object Vec2 {
     x: float
@@ -18,6 +23,67 @@ impl Vec2 {
     float dot(self, Vec2 other) {
         return self.x * other.x + self.y * other.y;
     }
+    float length(self) {
+        return sqrtf(self.x * self.x + self.y * self.y);
+    }
+    Vec2 normalize(self) {
+        float l = self.length();
+        if (l > 0.0f) return Vec2 { x: self.x / l, y: self.y / l };
+        return *self;
+    }
+}
+
+object Vec3 {
+    x: float
+    y: float
+    z: float
+}
+
+impl Vec3 {
+    Vec3 add(self, Vec3 other) {
+        return Vec3 { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z };
+    }
+    Vec3 sub(self, Vec3 other) {
+        return Vec3 { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z };
+    }
+    Vec3 scale(self, float s) {
+        return Vec3 { x: self.x * s, y: self.y * s, z: self.z * s };
+    }
+    float dot(self, Vec3 other) {
+        return self.x * other.x + self.y * other.y + self.z * other.z;
+    }
+    Vec3 cross(self, Vec3 other) {
+        return Vec3 {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x
+        };
+    }
+    float length(self) {
+        return sqrtf(self.x * self.x + self.y * self.y + self.z * self.z);
+    }
+    Vec3 normalize(self) {
+        float l = self.length();
+        if (l > 0.0f) return Vec3 { x: self.x / l, y: self.y / l, z: self.z / l };
+        return *self;
+    }
+}
+
+object Rect {
+    x: float
+    y: float
+    w: float
+    h: float
+}
+
+impl Rect {
+    bool contains(self, Vec2 p) {
+        return p.x >= self.x && p.x <= self.x + self.w && p.y >= self.y && p.y <= self.y + self.h;
+    }
+    bool intersects(self, Rect other) {
+        return self.x < other.x + other.w && self.x + self.w > other.x &&
+               self.y < other.y + other.h && self.y + self.h > other.y;
+    }
 }
 
 float clampf(float val, float min_val, float max_val) {
@@ -26,16 +92,52 @@ float clampf(float val, float min_val, float max_val) {
     return val;
 }
 
+int clampi(int val, int min_val, int max_val) {
+    if (val < min_val) return min_val;
+    if (val > max_val) return max_val;
+    return val;
+}
+
 float minf(float a, float b) {
-    if (a < b) return a;
-    return b;
+    return (a < b) ? a : b;
 }
 
 float maxf(float a, float b) {
-    if (a > b) return a;
-    return b;
+    return (a > b) ? a : b;
+}
+
+int mini(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+int maxi(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+float absf(float a) {
+    return (a < 0.0f) ? -a : a;
+}
+
+int absi(int a) {
+    return (a < 0) ? -a : a;
 }
 
 float lerpf(float a, float b, float t) {
     return a + t * (b - a);
+}
+
+float math_pi() {
+    return 3.14159265f;
+}
+
+float math_tau() {
+    return 6.28318530f;
+}
+
+float deg2rad(float deg) {
+    return deg * (3.14159265f / 180.0f);
+}
+
+float rad2deg(float rad) {
+    return rad * (180.0f / 3.14159265f);
 }

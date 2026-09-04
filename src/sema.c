@@ -1008,12 +1008,20 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         if (strcmp(e->str, "true") == 0 || strcmp(e->str, "false") == 0) return ck_mk_type("bool", 0);
         if (strcmp(e->str, "NULL") == 0 || strcmp(e->str, "null") == 0) return ck_mk_type("void", 1);
         Sym* sym = ck_lookup_local(ck, e->str);
-        if (sym) return sym->type ? ck_clone_type(sym->type) : NULL;
+        if (sym) {
+            AstType* r = sym->type ? ck_clone_type(sym->type) : NULL;
+            if (r && sym->decl && sym->decl->dim) r->ptrs++;
+            return r;
+        }
         Sym* g = sema_lookup(ck->s, e->str);
         if (g && g->kind == SYM_ENUMVARIANT && g->ed) {
             return ck_mk_type(g->ed->name, 0);   /* the owning enum type */
         }
-        if (g && g->kind == SYM_VAR) return g->type ? ck_clone_type(g->type) : NULL;
+        if (g && g->kind == SYM_VAR) {
+            AstType* r = g->type ? ck_clone_type(g->type) : NULL;
+            if (r && g->decl && g->decl->dim) r->ptrs++;
+            return r;
+        }
         return NULL;
     }
     case E_LITERAL:

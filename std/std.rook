@@ -5,3 +5,4 @@
 #comprise <std/str>
 #comprise <std/mem>
 #comprise <std/fs>
+#comprise <std/vec>

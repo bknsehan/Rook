@@ -1,4 +1,12 @@
+// Rook Standard Library - std/os.rook
+// Operating system utilities: process control, environment, high-res timing, and sleep.
+
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
+#include <unistd.h>
 #comprise <std/io>
 
 void panic(const char* msg) {
@@ -8,4 +16,26 @@ void panic(const char* msg) {
 
 void exit_with(int code) {
     exit(code);
+}
+
+const char* os_getenv(const char* name) {
+    return getenv(name);
+}
+
+bool os_setenv(const char* name, const char* value) {
+    return setenv(name, value, 1) == 0;
+}
+
+uint64_t os_time_ms() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)(ts.tv_nsec / 1000000);
+}
+
+void os_sleep_ms(unsigned int ms) {
+    usleep(ms * 1000);
+}
+
+int os_system(const char* cmd) {
+    return system(cmd);
 }

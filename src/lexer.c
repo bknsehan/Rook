@@ -142,6 +142,12 @@ static Token lex_number(Lx* lx) {
             lx->pos = save;
         }
     }
+    /* consume optional literal suffix (e.g. 1.0f, 100u, 1000L, 1ULL) */
+    while (lx->pos < lx->len && (lx->src[lx->pos] == 'f' || lx->src[lx->pos] == 'F' ||
+                                 lx->src[lx->pos] == 'u' || lx->src[lx->pos] == 'U' ||
+                                 lx->src[lx->pos] == 'l' || lx->src[lx->pos] == 'L')) {
+        adv(lx);
+    }
     tok_end(&t, lx);
     return t;
 }
