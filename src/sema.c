@@ -998,6 +998,15 @@ static void scan_c_header_file(Checker* ck, const char* header_name) {
             break;
         }
     }
+    if (!found && ck && ck->s && ck->s->include_dirs) {
+        for (size_t d = 0; d < ck->s->n_include_dirs; d++) {
+            snprintf(full_path, sizeof full_path, "%s/%s", ck->s->include_dirs[d], header_name);
+            if (access(full_path, R_OK) == 0) {
+                found = 1;
+                break;
+            }
+        }
+    }
     if (!found) return;
 
     FILE* f = fopen(full_path, "r");

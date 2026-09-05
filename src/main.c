@@ -1308,7 +1308,13 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                     project_config_add_library(cfg, dep_cfg.libraries[k]);
                 }
                 for (size_t k = 0; k < dep_cfg.n_include_dirs; k++) {
-                    project_config_add_include_dir(cfg, dep_cfg.include_dirs[k]);
+                    char full_inc[4096];
+                    if (dep_cfg.include_dirs[k][0] == '/') {
+                        snprintf(full_inc, sizeof(full_inc), "%s", dep_cfg.include_dirs[k]);
+                    } else {
+                        snprintf(full_inc, sizeof(full_inc), "%s/%s", resolved_dir, dep_cfg.include_dirs[k]);
+                    }
+                    project_config_add_include_dir(cfg, full_inc);
                 }
                 /* Merge cflags: only append tokens not already present to avoid duplication. */
                 if (dep_cfg.cflags[0]) {
