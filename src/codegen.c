@@ -1005,7 +1005,12 @@ static void cg_stmt(CG* g, Stmt* s) {
     case S_BLOCK: {
         if (g->defer_depth >= g->defer_cap) {
             int new_cap = g->defer_cap ? g->defer_cap * 2 : 16;
-            g->defer_stack = realloc(g->defer_stack, (size_t)new_cap * sizeof(DeferFrame));
+            DeferFrame* tmp = realloc(g->defer_stack, (size_t)new_cap * sizeof(DeferFrame));
+            if (!tmp) {
+                fprintf(stderr, "error: out of memory allocating defer stack\n");
+                exit(1);
+            }
+            g->defer_stack = tmp;
             memset(&g->defer_stack[g->defer_cap], 0, (size_t)(new_cap - g->defer_cap) * sizeof(DeferFrame));
             g->defer_cap = new_cap;
         }

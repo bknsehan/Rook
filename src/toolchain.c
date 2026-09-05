@@ -1,5 +1,6 @@
 #include "toolchain.h"
 #include "config.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,42 +59,44 @@ static char* resolve_exe(const char* name) {
     return find_in_path(name);
 }
 
+#ifdef _WIN32
+#define DEV_NULL "NUL"
+#else
+#define DEV_NULL "/dev/null"
+#endif
+
 /* Capture the first line of `<cc> --version`. */
 static void probe_version(Toolchain* tc) {
-    char buf[8192];
-    snprintf(buf, sizeof buf, "%s --version 2>&1", tc->cc_path ? tc->cc_path : "cc");
-    FILE* p = popen(buf, "r");
-    if (!p) return;
-    char line[2048];
-    if (fgets(line, sizeof line, p)) {
-        size_t L = strlen(line);
-        while (L > 0 && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = '\0';
-        tc->cc_version = strdup(line);
-        if (strstr(line, "Apple") && strstr(line, "clang")) tc->cc_vendor = strdup("clang");
-        else if (strstr(line, "clang"))                          tc->cc_vendor = strdup("clang");
-        else if (strstr(line, "gcc") || strstr(line, "GCC") ||
-                 strstr(line, "Free Software Foundation"))       tc->cc_vendor = strdup("gcc");
-        else if (strstr(line, "tcc") || strstr(line, "TinyCC"))  tc->cc_vendor = strdup("tcc");
+    const char* exe = tc->cc_path ? tc->cc_path : "cc";
+    const char* args[] = { exe, "--version", NULL };
+    char out[4096];
+    if (util_exec_capture(args, out, sizeof(out)) != 0 && !out[0]) return;
+    char* nl = strchr(out, '\n');
+    if (nl) *nl = '\0';
+    char* cr = strchr(out, '\r');
+    if (cr) *cr = '\0';
+    if (out[0]) {
+        tc->cc_version = strdup(out);
+        if (strstr(out, "Apple") && strstr(out, "clang")) tc->cc_vendor = strdup("clang");
+        else if (strstr(out, "clang"))                          tc->cc_vendor = strdup("clang");
+        else if (strstr(out, "gcc") || strstr(out, "GCC") ||
+                 strstr(out, "Free Software Foundation"))       tc->cc_vendor = strdup("gcc");
+        else if (strstr(out, "tcc") || strstr(out, "TinyCC"))  tc->cc_vendor = strdup("tcc");
         else                                                   tc->cc_vendor = strdup("unknown");
     }
-    pclose(p);
 }
 
 /* For gcc, capture the numeric version via `-dumpversion` (e.g. "11.4.0"). */
 static char* probe_dumpversion(const char* cc_path) {
-    char buf[8192];
-    snprintf(buf, sizeof buf, "%s -dumpversion 2>/dev/null", cc_path ? cc_path : "cc");
-    FILE* p = popen(buf, "r");
-    if (!p) return NULL;
-    char line[2048];
-    char* r = NULL;
-    if (fgets(line, sizeof line, p)) {
-        size_t L = strlen(line);
-        while (L > 0 && (line[L - 1] == '\n' || line[L - 1] == '\r')) line[--L] = '\0';
-        if (L) r = strdup(line);
-    }
-    pclose(p);
-    return r;
+    const char* exe = cc_path ? cc_path : "cc";
+    const char* args[] = { exe, "-dumpversion", NULL };
+    char out[2048];
+    if (util_exec_capture(args, out, sizeof(out)) != 0 && !out[0]) return NULL;
+    char* nl = strchr(out, '\n');
+    if (nl) *nl = '\0';
+    char* cr = strchr(out, '\r');
+    if (cr) *cr = '\0';
+    return out[0] ? strdup(out) : NULL;
 }
 
 static const char* get_tmp_dir(void) {
@@ -105,18 +108,33 @@ static const char* get_tmp_dir(void) {
 }
 
 /* Try to compile `int main(){return 0;}` with `-std=<std>`; return 1 if the
-   compiler accepts it. */
+   compiler accepts it. Uses secure mkstemps and direct execution without shell. */
 static int probe_std(const char* cc, const char* std) {
     char path[4096];
-    snprintf(path, sizeof path, "%s/rook_probe_%d.c", get_tmp_dir(), (int)getpid());
+    snprintf(path, sizeof path, "%s/rook_probe_XXXXXX.c", get_tmp_dir());
+#ifdef _WIN32
+    if (_mktemp_s(path, sizeof(path)) != 0) return 0;
     FILE* f = fopen(path, "w");
     if (!f) return 0;
     fputs("int main(void){return 0;}\n", f);
     fclose(f);
-    char cmd[8192];
-    snprintf(cmd, sizeof cmd, "%s -std=%s -c -o /dev/null %s 2>/dev/null",
-             cc ? cc : "cc", std, path);
-    int rc = system(cmd);
+#else
+    int fd = mkstemps(path, 2);
+    if (fd < 0) return 0;
+    const char* content = "int main(void){return 0;}\n";
+    if (write(fd, content, strlen(content)) < 0) {
+        close(fd);
+        unlink(path);
+        return 0;
+    }
+    close(fd);
+#endif
+
+    char std_arg[64];
+    snprintf(std_arg, sizeof(std_arg), "-std=%s", std);
+    const char* exe = cc ? cc : "cc";
+    const char* args[] = { exe, std_arg, "-c", "-o", DEV_NULL, path, NULL };
+    int rc = util_exec(args);
     unlink(path);
     return rc == 0;
 }
@@ -414,6 +432,8 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
     if (!tc->cc_path) return 1;
 
     const char* b = strrchr(tc->cc_path, '/');
+    const char* b2 = strrchr(tc->cc_path, '\\');
+    if (b2 && (!b || b2 > b)) b = b2;
     b = b ? b + 1 : tc->cc_path;
     tc->cc_name = strdup(b);
 
@@ -489,27 +509,36 @@ int toolchain_compile_obj_target(const TargetSpec* spec, const Toolchain* tc, co
     const char* cc = tc && tc->cc_path ? tc->cc_path : "gcc";
     const char* std = (spec && spec->standard[0]) ? spec->standard : "c2x";
 
-    char cmd[32768];
-    int n = snprintf(cmd, sizeof cmd, "%s", cc);
+    ArgVec av;
+    argvec_init(&av);
+    argvec_add(&av, cc);
     if (std && std[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -std=%s", std);
+        char std_buf[64];
+        snprintf(std_buf, sizeof(std_buf), "-std=%s", std);
+        argvec_add(&av, std_buf);
     }
     if (spec && (strcmp(spec->target_os, "android") == 0 || strcmp(spec->build_kind, "shared-lib") == 0)) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -fPIC");
+        argvec_add(&av, "-fPIC");
     }
     if (spec && spec->cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", spec->cflags);
+        argvec_split_and_add(&av, spec->cflags);
     }
     if (extra_cflags && extra_cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", extra_cflags);
+        argvec_split_and_add(&av, extra_cflags);
     }
     for (size_t i = 0; i < n_inc; i++) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -I\"%s\"", inc_dirs[i]);
+        char inc_buf[4096];
+        snprintf(inc_buf, sizeof(inc_buf), "-I%s", inc_dirs[i]);
+        argvec_add(&av, inc_buf);
     }
-    n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -c -o \"%s\" \"%s\"",
-                  out_obj ? out_obj : "out.o", c_file ? c_file : "in.c");
+    argvec_add(&av, "-c");
+    argvec_add(&av, "-o");
+    argvec_add(&av, out_obj ? out_obj : "out.o");
+    argvec_add(&av, c_file ? c_file : "in.c");
 
-    return system(cmd);
+    int ret = util_exec((const char* const*)av.args);
+    argvec_free(&av);
+    return ret;
 }
 
 int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags) {
@@ -524,42 +553,59 @@ int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const cha
     const char* kind = (spec && spec->build_kind[0]) ? spec->build_kind : "exe";
     const char* tos = (spec && spec->target_os[0]) ? spec->target_os : "linux";
 
-    char cmd[32768];
+    if (out_bin) unlink(out_bin);
+
+    ArgVec av;
+    argvec_init(&av);
+
     if (strcmp(kind, "static-lib") == 0 || strcmp(kind, "lib") == 0 || strcmp(kind, "library") == 0) {
         const char* ar = tc && tc->ar_path ? tc->ar_path : "ar";
-        int n = snprintf(cmd, sizeof cmd, "%s rcs \"%s\"", ar, out_bin ? out_bin : "lib.a");
+        argvec_add(&av, ar);
+        argvec_add(&av, "rcs");
+        argvec_add(&av, out_bin ? out_bin : "lib.a");
         for (size_t i = 0; i < n_objs; i++) {
-            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
+            argvec_add(&av, obj_files[i]);
         }
-        return system(cmd);
+        int ret = util_exec((const char* const*)av.args);
+        argvec_free(&av);
+        if (ret == 0 && out_bin && access(out_bin, F_OK) != 0) ret = 1;
+        return ret;
     }
 
     const char* cc = tc && tc->cc_path ? tc->cc_path : "gcc";
-    int n = snprintf(cmd, sizeof cmd, "%s", cc);
+    argvec_add(&av, cc);
 
     if (strcmp(kind, "shared-lib") == 0) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -shared");
+        argvec_add(&av, "-shared");
         if (strcmp(tos, "windows") != 0) {
-            n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -fPIC");
+            argvec_add(&av, "-fPIC");
         }
     }
 
-    n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -o \"%s\"", out_bin ? out_bin : "a.out");
+    argvec_add(&av, "-o");
+    argvec_add(&av, out_bin ? out_bin : "a.out");
     for (size_t i = 0; i < n_objs; i++) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " \"%s\"", obj_files[i]);
+        argvec_add(&av, obj_files[i]);
     }
     if (spec && spec->cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", spec->cflags);
+        argvec_split_and_add(&av, spec->cflags);
     }
     if (extra_cflags && extra_cflags[0]) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " %s", extra_cflags);
+        argvec_split_and_add(&av, extra_cflags);
     }
-    n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -lm");
+    if (strcmp(tos, "windows") != 0 && (!tc || !tc->cc_vendor || strcmp(tc->cc_vendor, "cl") != 0)) {
+        argvec_add(&av, "-lm");
+    }
     for (size_t i = 0; i < n_libs; i++) {
-        n += snprintf(cmd + n, sizeof cmd - (size_t)n, " -l%s", libs[i]);
+        char lib_buf[512];
+        snprintf(lib_buf, sizeof(lib_buf), "-l%s", libs[i]);
+        argvec_add(&av, lib_buf);
     }
 
-    return system(cmd);
+    int ret = util_exec((const char* const*)av.args);
+    argvec_free(&av);
+    if (ret == 0 && out_bin && access(out_bin, F_OK) != 0) ret = 1;
+    return ret;
 }
 
 int toolchain_link_exe(const char* out_exe, const char** obj_files, size_t n_objs, const char** libs, size_t n_libs, const char* extra_cflags) {

@@ -9,9 +9,9 @@ int main() {
     }
     int y = 2;
     switch (y) {
-    case 1 -> printf("a\n");
-    case 2 -> printf("b\n");
-    else -> printf("c\n");
+    case 1: printf("a\n"); break;
+    case 2: printf("b\n"); break;
+    default: printf("c\n"); break;
     }
     return 0;
 }

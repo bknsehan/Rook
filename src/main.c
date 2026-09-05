@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <dirent.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,11 +23,14 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.4.0"
+#define ROKADE_VERSION "0.4.1"
 #endif
 
 #ifdef _WIN32
 #include <windows.h>
+#endif
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
 #endif
 
 /* Get the root installation directory of rokade.
@@ -51,6 +55,23 @@ static int rokade_get_install_root(char* buf, size_t cap) {
             if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0)) {
                 *bin_slash = '\0'; /* strip /bin or /build to get install prefix */
                 return 0;
+            }
+        }
+    }
+#elif defined(__APPLE__)
+    /* 2. macOS _NSGetExecutablePath */
+    uint32_t size = (uint32_t)cap;
+    char apple_path[4096];
+    if (_NSGetExecutablePath(apple_path, &size) == 0) {
+        if (realpath(apple_path, buf) != NULL) {
+            char* slash = strrchr(buf, '/');
+            if (slash) {
+                *slash = '\0'; /* strip executable name */
+                char* bin_slash = strrchr(buf, '/');
+                if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0)) {
+                    *bin_slash = '\0'; /* strip /bin or /build to get install prefix */
+                    return 0;
+                }
             }
         }
     }
@@ -120,9 +141,75 @@ static int rokade_get_std_dir(char* out_std, size_t cap) {
 
 /* ---------- include resolution ---------- */
 
+static int try_candidate(char* out, size_t out_cap, const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(out, out_cap, fmt, ap);
+    va_end(ap);
+    if (n < 0 || (size_t)n >= out_cap) return 0;
+    return access(out, R_OK) == 0;
+}
+
+/* Verify that a candidate path resides inside an allowed directory root (project, std, or dependencies). */
+static int is_path_in_jail(const char* candidate, const char* basedir, const char** inc_dirs, size_t n_inc) {
+    char real_cand[4096];
+    if (!realpath(candidate, real_cand)) return 0;
+
+    /* 1. Check against basedir and its project root basedir/.. */
+    if (basedir) {
+        char real_base[4096];
+        if (realpath(basedir, real_base)) {
+            size_t blen = strlen(real_base);
+            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\0')) {
+                return 1;
+            }
+        }
+        char parent_base[4096];
+        snprintf(parent_base, sizeof(parent_base), "%s/..", basedir);
+        if (realpath(parent_base, real_base)) {
+            size_t blen = strlen(real_base);
+            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\0')) {
+                return 1;
+            }
+        }
+    }
+
+    /* 2. Check against standard library directory */
+    char std_dir[4096];
+    if (rokade_get_std_dir(std_dir, sizeof(std_dir)) == 0) {
+        char real_std[4096];
+        if (realpath(std_dir, real_std)) {
+            size_t slen = strlen(real_std);
+            if (strncmp(real_cand, real_std, slen) == 0 && (real_cand[slen] == '/' || real_cand[slen] == '\0')) {
+                return 1;
+            }
+        }
+    }
+
+    /* 3. Check against explicit include directories (includes vendor / dependencies) */
+    for (size_t i = 0; i < n_inc; i++) {
+        if (!inc_dirs[i]) continue;
+        char real_inc[4096];
+        if (realpath(inc_dirs[i], real_inc)) {
+            size_t ilen = strlen(real_inc);
+            if (strncmp(real_cand, real_inc, ilen) == 0 && (real_cand[ilen] == '/' || real_cand[ilen] == '\0')) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+#define CHECK_CANDIDATE(...) do { \
+    if (try_candidate(candidate, sizeof(candidate), __VA_ARGS__) && \
+        is_path_in_jail(candidate, basedir, inc_dirs, n_inc)) \
+        return strdup(candidate); \
+} while (0)
+
 /* Resolve an include path, searching basedir first, then include dirs.
    Also checks common package entrypoints (src/<name>.rook, src/lib.rook, lib.rook, main.rook).
-   Returns a malloc'd path or NULL if not found. */
+   Returns a malloc'd path or NULL if not found or outside jail. */
 static char* resolve_include_path(const char* incpath, const char* basedir,
                                    const char** inc_dirs, size_t n_inc) {
     char candidate[4096];
@@ -137,74 +224,51 @@ static char* resolve_include_path(const char* incpath, const char* basedir,
     }
 
     if (basedir) {
-        snprintf(candidate, sizeof(candidate), "%s/%s", basedir, incpath);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/src/%s", basedir, incpath);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/src/%s.rook", basedir, modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/src/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/src/%s.rook", basedir, modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/src/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/%s.rook", basedir, modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/src/%s.rook", basedir, modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/src/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/lib.rook", basedir, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/%s.rook", basedir, modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        CHECK_CANDIDATE("%s/%s", basedir, incpath);
+        CHECK_CANDIDATE("%s/src/%s", basedir, incpath);
+        CHECK_CANDIDATE("%s/%s/src/%s.rook", basedir, modname, modname);
+        CHECK_CANDIDATE("%s/%s/src/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/%s/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/vendor/%s/src/%s.rook", basedir, modname, modname);
+        CHECK_CANDIDATE("%s/vendor/%s/src/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/vendor/%s/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/vendor/%s/%s.rook", basedir, modname, modname);
+        CHECK_CANDIDATE("%s/../vendor/%s/src/%s.rook", basedir, modname, modname);
+        CHECK_CANDIDATE("%s/../vendor/%s/src/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/../vendor/%s/lib.rook", basedir, modname);
+        CHECK_CANDIDATE("%s/../vendor/%s/%s.rook", basedir, modname, modname);
     }
     for (size_t i = 0; i < n_inc; i++) {
-        snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        CHECK_CANDIDATE("%s/%s", inc_dirs[i], incpath);
 
         /* Special std module alias: std/io.rook -> <std_dir>/io.rook */
         if (strncmp(incpath, "std/", 4) == 0) {
-            snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath + 4);
-            if (access(candidate, R_OK) == 0) return strdup(candidate);
+            CHECK_CANDIDATE("%s/%s", inc_dirs[i], incpath + 4);
         }
 
-        snprintf(candidate, sizeof(candidate), "%s/src/%s", inc_dirs[i], incpath);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        CHECK_CANDIDATE("%s/src/%s", inc_dirs[i], incpath);
 
         /* Check <inc_dir>/<modname>/src/lib.rook, src/<modname>.rook, lib.rook */
-        snprintf(candidate, sizeof(candidate), "%s/%s/src/lib.rook", inc_dirs[i], modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/src/%s.rook", inc_dirs[i], modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/lib.rook", inc_dirs[i], modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/%s/%s.rook", inc_dirs[i], modname, modname);
-        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        CHECK_CANDIDATE("%s/%s/src/lib.rook", inc_dirs[i], modname);
+        CHECK_CANDIDATE("%s/%s/src/%s.rook", inc_dirs[i], modname, modname);
+        CHECK_CANDIDATE("%s/%s/lib.rook", inc_dirs[i], modname);
+        CHECK_CANDIDATE("%s/%s/%s.rook", inc_dirs[i], modname, modname);
 
         /* If inc_dirs[i] basename matches modname, check its entrypoints */
         const char* slash = strrchr(inc_dirs[i], '/');
+        const char* slash2 = strrchr(inc_dirs[i], '\\');
+        if (slash2 && (!slash || slash2 > slash)) slash = slash2;
         const char* dir_base = slash ? slash + 1 : inc_dirs[i];
         if (strcmp(dir_base, modname) == 0) {
-            snprintf(candidate, sizeof(candidate), "%s/src/lib.rook", inc_dirs[i]);
-            if (access(candidate, R_OK) == 0) return strdup(candidate);
-            snprintf(candidate, sizeof(candidate), "%s/src/%s.rook", inc_dirs[i], modname);
-            if (access(candidate, R_OK) == 0) return strdup(candidate);
-            snprintf(candidate, sizeof(candidate), "%s/src/main.rook", inc_dirs[i]);
-            if (access(candidate, R_OK) == 0) return strdup(candidate);
-            snprintf(candidate, sizeof(candidate), "%s/lib.rook", inc_dirs[i]);
-            if (access(candidate, R_OK) == 0) return strdup(candidate);
+            CHECK_CANDIDATE("%s/src/lib.rook", inc_dirs[i]);
+            CHECK_CANDIDATE("%s/src/%s.rook", inc_dirs[i], modname);
+            CHECK_CANDIDATE("%s/src/main.rook", inc_dirs[i]);
+            CHECK_CANDIDATE("%s/lib.rook", inc_dirs[i]);
         }
     }
-    snprintf(candidate, sizeof(candidate), "%s", incpath);
-    if (access(candidate, R_OK) == 0) return strdup(candidate);
     return NULL;
 }
+#undef CHECK_CANDIDATE
 
 /* Recursively resolve #include "file.rook" directives in source text.
    C includes (#include <header.h>) are passed through verbatim.
@@ -1150,6 +1214,20 @@ static void resolve_pkg_config(ProjectConfig* cfg) {
     }
 }
 
+static int cflags_has_token(const char* cflags, const char* tok) {
+    if (!cflags || !tok || !*tok) return 0;
+    size_t toklen = strlen(tok);
+    const char* p = cflags;
+    while ((p = strstr(p, tok)) != NULL) {
+        int left_boundary = (p == cflags || p[-1] == ' ' || p[-1] == '\t');
+        char right_c = p[toklen];
+        int right_boundary = (right_c == '\0' || right_c == ' ' || right_c == '\t');
+        if (left_boundary && right_boundary) return 1;
+        p += toklen;
+    }
+    return 0;
+}
+
 static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cfg, int depth) {
     if (depth > 8) return;
 
@@ -1238,7 +1316,7 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                     snprintf(tmp, sizeof(tmp), "%s", dep_cfg.cflags);
                     char* tok = strtok(tmp, " \t");
                     while (tok) {
-                        if (!strstr(cfg->cflags, tok)) {
+                        if (!cflags_has_token(cfg->cflags, tok)) {
                             size_t curlen = strlen(cfg->cflags);
                             size_t tlen = strlen(tok);
                             if (curlen + tlen + 2 < sizeof(cfg->cflags)) {
@@ -1422,7 +1500,10 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
     /* Collect .rook files from src/ */
     char src_dir[4096];
-    snprintf(src_dir, sizeof(src_dir), "%s/src", proj_path);
+    if (snprintf(src_dir, sizeof(src_dir), "%s/src", proj_path) >= (int)sizeof(src_dir)) {
+        fprintf(stderr, "error: project path too long\n");
+        return 1;
+    }
     DIR* d = opendir(src_dir);
     if (!d) {
         fprintf(stderr, "error: %s/ not found\n", src_dir);
@@ -1431,7 +1512,11 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
     /* Ensure build/generated/ exists for transpiled output. */
     char gen_dir[4096];
-    snprintf(gen_dir, sizeof(gen_dir), "%s/build/generated", proj_path);
+    if (snprintf(gen_dir, sizeof(gen_dir), "%s/build/generated", proj_path) >= (int)sizeof(gen_dir)) {
+        fprintf(stderr, "error: project path too long\n");
+        closedir(d);
+        return 1;
+    }
     mkdir_p(gen_dir);
 
     char** c_file_paths = NULL;
@@ -1499,7 +1584,10 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         }
 
         char rook_path[4096];
-        snprintf(rook_path, sizeof(rook_path), "%s/%s", src_dir, entry->d_name);
+        if (snprintf(rook_path, sizeof(rook_path), "%s/%s", src_dir, entry->d_name) >= (int)sizeof(rook_path)) {
+            fprintf(stderr, "warning: path too long: %s/%s\n", src_dir, entry->d_name);
+            continue;
+        }
 
         int len = 0;
         char* source = util_read_file(rook_path, &len);
@@ -1563,8 +1651,17 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
         char c_path[4096];
         const char* ext = (strcmp(active_backend, "llvm") == 0) ? "ll" : "c";
-        snprintf(c_path, sizeof(c_path), "%s/build/generated/%.*s.%s",
-                 proj_path, (int)(mlen - 5), entry->d_name, ext);
+        if (snprintf(c_path, sizeof(c_path), "%s/build/generated/%.*s.%s",
+                     proj_path, (int)(mlen - 5), entry->d_name, ext) >= (int)sizeof(c_path)) {
+            fprintf(stderr, "warning: generated output path too long for %s\n", entry->d_name);
+            free(expanded);
+            free(toks);
+            free(c_code);
+            sema_free(sema);
+            if (inc_list) free(inc_list);
+            program_free(p);
+            continue;
+        }
 
         FILE* fout = fopen(c_path, "w");
         if (fout) {
@@ -1679,14 +1776,20 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             spec.android_api = (tc_cfg && tc_cfg->android_api > 0) ? tc_cfg->android_api : 24;
 
             char target_out_dir[4096];
+            int tod_len = 0;
             if (is_multi) {
                 if (strcmp(target_name, "android") == 0 && arch[0]) {
-                    snprintf(target_out_dir, sizeof target_out_dir, "%s/build/android/%s", proj_path, arch);
+                    tod_len = snprintf(target_out_dir, sizeof target_out_dir, "%s/build/android/%s", proj_path, arch);
                 } else {
-                    snprintf(target_out_dir, sizeof target_out_dir, "%s/build/%s", proj_path, target_name);
+                    tod_len = snprintf(target_out_dir, sizeof target_out_dir, "%s/build/%s", proj_path, target_name);
                 }
             } else {
-                snprintf(target_out_dir, sizeof target_out_dir, "%s/build", proj_path);
+                tod_len = snprintf(target_out_dir, sizeof target_out_dir, "%s/build", proj_path);
+            }
+            if (tod_len >= (int)sizeof(target_out_dir)) {
+                fprintf(stderr, "error: output directory path too long\n");
+                any_err = 1;
+                continue;
             }
             mkdir_p(target_out_dir);
 
@@ -1714,8 +1817,13 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 size_t blen = strlen(c_base);
                 const char* dot = strrchr(c_base, '.');
                 int stem_len = dot ? (int)(dot - c_base) : (int)blen;
-                snprintf(obj_path, sizeof(obj_path), "%s/%.*s.o",
-                         target_out_dir, stem_len, c_base);
+                if (snprintf(obj_path, sizeof(obj_path), "%s/%.*s.o",
+                             target_out_dir, stem_len, c_base) >= (int)sizeof(obj_path)) {
+                    fprintf(stderr, "error: object file path too long\n");
+                    compile_failed = 1;
+                    for (size_t j = 0; j < i; j++) free(obj_file_paths[j]);
+                    break;
+                }
                 obj_file_paths[i] = strdup(obj_path);
 
                 printf("  [%s%s%s] compiling: %s -> %s\n",
@@ -1746,19 +1854,28 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             }
 
             char target_bin[8192];
+            int tb_len = 0;
             int is_shared = strcmp(spec.build_kind, "shared-lib") == 0;
             int is_static = strcmp(spec.build_kind, "static-lib") == 0 ||
                             strcmp(spec.build_kind, "lib") == 0 ||
                             strcmp(spec.build_kind, "library") == 0;
             if (is_shared) {
-                snprintf(target_bin, sizeof(target_bin), "%s/lib%s.%s",
-                         target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? "dll" : "so");
+                tb_len = snprintf(target_bin, sizeof(target_bin), "%s/lib%s.%s",
+                                  target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? "dll" : "so");
             } else if (is_static) {
-                snprintf(target_bin, sizeof(target_bin), "%s/lib%s.a",
-                         target_out_dir, cfg.name);
+                tb_len = snprintf(target_bin, sizeof(target_bin), "%s/lib%s.a",
+                                  target_out_dir, cfg.name);
             } else {
-                snprintf(target_bin, sizeof(target_bin), "%s/%s%s",
-                         target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? ".exe" : "");
+                tb_len = snprintf(target_bin, sizeof(target_bin), "%s/%s%s",
+                                  target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? ".exe" : "");
+            }
+            if (tb_len >= (int)sizeof(target_bin)) {
+                fprintf(stderr, "error: target binary path too long\n");
+                for (size_t j = 0; j < n_src; j++) free(obj_file_paths[j]);
+                free(obj_file_paths);
+                toolchain_free(&tc);
+                any_err = 1;
+                continue;
             }
 
             printf("  [%s%s%s] linking: %s\n",
@@ -1769,7 +1886,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             free(obj_file_paths);
             toolchain_free(&tc);
 
-            if (link_ret != 0) {
+            if (link_ret != 0 || access(target_bin, F_OK) != 0) {
                 fprintf(stderr, "error: linking failed for %s\n", target_bin);
                 any_err = 1;
             } else {
@@ -1883,10 +2000,9 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
     }
     printf("running: %s\n", exe_path);
 
-    char cmd[8192];
-    snprintf(cmd, sizeof(cmd), "\"%s\"", exe_path);
     project_config_free(&cfg);
-    return system(cmd);
+    const char* run_args[] = { exe_path, NULL };
+    return util_exec(run_args);
 }
 
 /* ---------- config command ---------- */
@@ -2293,9 +2409,8 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 if (rc != 0) {
                     fail++; if (!quiet) printf("  FAIL (emit-obj) %s\n", base); continue;
                 }
-                char link_cmd[32768];
-                snprintf(link_cmd, sizeof(link_cmd), "clang -O0 \"%s\" -o \"%s\" -lm 2>/dev/null", obj_path, exe_path);
-                if (system(link_cmd) != 0) {
+                const char* link_args[] = { "clang", "-O0", obj_path, "-o", exe_path, "-lm", NULL };
+                if (util_exec(link_args) != 0) {
                     fail++; if (!quiet) printf("  FAIL (link) %s\n", base); continue;
                 }
 #else
@@ -2334,9 +2449,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
     closedir(d);
 
     /* best-effort cleanup of the temp dir */
-    char cmd[8192];
-    snprintf(cmd, sizeof cmd, "rm -rf \"%s\"", work);
-    system(cmd);
+    util_rm_rf(work);
 
     *o_pass += pass;
     *o_fail += fail;

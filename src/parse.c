@@ -108,7 +108,6 @@ static Stmt* parse_for(Parser* p);
 static Stmt* parse_switch(Parser* p);
 static Expr* parse_match(Parser* p);
 static FnDef* parse_fn_def(Parser* p);
-static Decl* parse_typed_decl(Parser* p, int expect_semi);
 static Decl* parse_c_decl(Parser* p, int expect_semi);
 
 static int expect_punct(Parser* p, const char* s) {
@@ -606,25 +605,6 @@ static Expr* parse_init(Parser* p) {
     return parse_expr(p);
 }
 
-static Decl* parse_typed_decl(Parser* p, int expect_semi) {
-    Token* t0 = cur(p);
-    char* name = ident(p);
-    if (!name) return NULL;
-    if (!expect_punct(p, ":")) return NULL;
-    AstType* ty = parse_type(p);
-    if (!ty) return NULL;
-    Expr* init = NULL;
-    if (tok_is(cur(p), "=")) {
-        adv(p);
-        init = parse_init(p);
-        if (!init) return NULL;
-    }
-    if (expect_semi && !expect_punct(p, ";")) return NULL;
-    Decl* d = ast_decl_new(DECL_TYPED, name, ty, init);
-    if (t0) { d->start = t0->start; d->len = t0->len; d->line = t0->line; d->col = t0->col; }
-    return d;
-}
-
 static Decl* parse_c_decl(Parser* p, int expect_semi) {
     Token* t0 = cur(p);
     AstType* ty = parse_type(p);
@@ -783,8 +763,8 @@ static Stmt* parse_stmt(Parser* p) {
     if (t->kind == TK_IDENT) {
         Token* n = peek(p, 1);
         if (tok_is(n, ":")) {
-            Decl* d = parse_typed_decl(p, 1);
-            return d ? stmt_decl(d) : NULL;
+            error_at(p, n, "bare 'name: type' variable declarations are not supported; use 'let %.*s = ...' (or 'let %.*s: type = ...') or C syntax 'type %.*s = ...'", t->len, t->text, t->len, t->text, t->len, t->text);
+            return NULL;
         }
         if (is_expr_cont(n)) {
             Expr* e = parse_expr(p);
@@ -887,8 +867,8 @@ static Stmt* parse_for(Parser* p) {
     if (t->kind == TK_IDENT) {
         Token* n = peek(p, 1);
         if (tok_is(n, ":")) {
-            s->init_decl = parse_typed_decl(p, 0);
-            if (!s->init_decl) return NULL;
+            error_at(p, n, "bare 'name: type' variable declarations are not supported; use 'let %.*s = ...' or C syntax", t->len, t->text);
+            return NULL;
         } else if (is_expr_cont(n)) {
             s->init_expr = parse_expr(p);
             if (!s->init_expr) return NULL;
@@ -961,12 +941,10 @@ static Stmt* parse_switch(Parser* p) {
                 arm.body = parse_switch_colon_body(p);
                 if (!arm.body) return NULL;
             } else if (tok_is(cur(p), "->")) {
-                adv(p);
-                arm.arrow = 1;
-                arm.body = parse_stmt(p);
-                if (!arm.body) return NULL;
+                error_at(p, cur(p), "arrow syntax '->' is not supported in switch; use ':' (for pattern matching expressions use 'match')");
+                return NULL;
             } else {
-                error_at(p, cur(p), "expected ':' or '->' after case label");
+                error_at(p, cur(p), "expected ':' after case label");
                 return NULL;
             }
         } else if (is_kw(cur(p), "default")) {
@@ -976,14 +954,10 @@ static Stmt* parse_switch(Parser* p) {
             arm.body = parse_switch_colon_body(p);
             if (!arm.body) return NULL;
         } else if (is_kw(cur(p), "else")) {
-            adv(p);
-            if (!expect_punct(p, "->")) return NULL;
-            arm.is_default = 1;
-            arm.arrow = 1;
-            arm.body = parse_stmt(p);
-            if (!arm.body) return NULL;
+            error_at(p, cur(p), "'else' is not supported in switch; use 'default:' (for pattern matching expressions use 'match')");
+            return NULL;
         } else {
-            error_at(p, cur(p), "expected 'case', 'default' or 'else' in switch");
+            error_at(p, cur(p), "expected 'case' or 'default' in switch");
             return NULL;
         }
         s->arms = realloc(s->arms, (s->narms + 1) * sizeof *s->arms);

@@ -1481,34 +1481,63 @@ static void ck_member_field(Checker* ck, Expr* x) {
     free(t);
 }
 
-static Expr* strip_parens(Expr* e) {
-    while (e && e->kind == E_PAREN) e = e->a;
+static Expr* strip_parens_and_casts(Expr* e) {
+    while (e) {
+        if (e->kind == E_PAREN) e = e->a;
+        else if (e->kind == E_CAST) e = e->a;
+        else break;
+    }
     return e;
 }
 
-static int is_literal_zero(Expr* e) {
-    while (e) {
-        if (e->kind == E_PAREN) {
-            e = e->a;
-        } else if (e->kind == E_UNARY && e->str && (strcmp(e->str, "-") == 0 || strcmp(e->str, "+") == 0)) {
-            e = e->a;
-        } else {
-            break;
+/* Evaluate simple constant expressions at compile-time (constants, casts, parens, unary +/-, binary + - * /) */
+static int sema_eval_const(Expr* e, double* out_val) {
+    if (!e) return 0;
+    while (e && (e->kind == E_PAREN || e->kind == E_CAST)) e = e->a;
+    if (!e) return 0;
+
+    if (e->kind == E_LITERAL && e->str) {
+        const char* s = e->str;
+        while (*s == ' ' || *s == '\t') s++;
+        char* endp = NULL;
+        double d = strtod(s, &endp);
+        if (endp && endp != s) {
+            while (*endp == 'u' || *endp == 'U' || *endp == 'l' || *endp == 'L' || *endp == 'f' || *endp == 'F') endp++;
+            while (*endp == ' ' || *endp == '\t') endp++;
+            if (*endp == '\0') {
+                *out_val = d;
+                return 1;
+            }
         }
+        return 0;
     }
-    if (!e || e->kind != E_LITERAL || !e->str) return 0;
-    const char* s = e->str;
-    while (*s == ' ' || *s == '\t') s++;
-    if (*s == '+' || *s == '-') s++;
-    char* endp = NULL;
-    double d = strtod(s, &endp);
-    if (d == 0.0) {
-        while (endp && *endp) {
-            char c = *endp;
-            if (c != 'u' && c != 'U' && c != 'l' && c != 'L' && c != 'f' && c != 'F') return 0;
-            endp++;
+    if (e->kind == E_UNARY && e->str) {
+        double v;
+        if (!sema_eval_const(e->a, &v)) return 0;
+        if (strcmp(e->str, "-") == 0) { *out_val = -v; return 1; }
+        if (strcmp(e->str, "+") == 0) { *out_val = v; return 1; }
+        return 0;
+    }
+    if (e->kind == E_BINARY && e->str) {
+        double a, b;
+        if (!sema_eval_const(e->a, &a) || !sema_eval_const(e->b, &b)) return 0;
+        if (strcmp(e->str, "+") == 0) { *out_val = a + b; return 1; }
+        if (strcmp(e->str, "-") == 0) { *out_val = a - b; return 1; }
+        if (strcmp(e->str, "*") == 0) { *out_val = a * b; return 1; }
+        if (strcmp(e->str, "/") == 0) {
+            if (b == 0.0) return 0;
+            *out_val = a / b;
+            return 1;
         }
-        return 1;
+        return 0;
+    }
+    return 0;
+}
+
+static int is_literal_zero(Expr* e) {
+    double v = 0.0;
+    if (sema_eval_const(e, &v)) {
+        return (v == 0.0);
     }
     return 0;
 }
@@ -1647,7 +1676,7 @@ static void ck_expr(Checker* ck, Expr* x) {
         break;
     }
     case E_TERNARY: {
-        Expr* c = strip_parens(x->a);
+        Expr* c = strip_parens_and_casts(x->a);
         if (c && c->kind == E_ASSIGN) {
             ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
@@ -1965,7 +1994,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         ck_decl(ck, s->decl);
         break;
     case S_IF: {
-        Expr* c = strip_parens(s->cond);
+        Expr* c = strip_parens_and_casts(s->cond);
         if (c && c->kind == E_ASSIGN) {
             ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
@@ -1975,7 +2004,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         break;
     }
     case S_WHILE: {
-        Expr* c = strip_parens(s->cond);
+        Expr* c = strip_parens_and_casts(s->cond);
         if (c && c->kind == E_ASSIGN) {
             ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
@@ -1988,7 +2017,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
     case S_FOR: {
         if (s->init_decl) ck_decl(ck, s->init_decl);
         if (s->init_expr) ck_expr(ck, s->init_expr);
-        Expr* c = strip_parens(s->cond);
+        Expr* c = strip_parens_and_casts(s->cond);
         if (c && c->kind == E_ASSIGN) {
             ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
@@ -2011,7 +2040,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         ck->loop_depth--;
         break;
     case S_SWITCH: {
-        Expr* c = strip_parens(s->e);
+        Expr* c = strip_parens_and_casts(s->e);
         if (c && c->kind == E_ASSIGN) {
             ck_err_expr(ck, c, "assignment used as switch condition; did you mean '=='?");
         }

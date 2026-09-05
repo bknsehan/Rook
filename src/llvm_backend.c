@@ -1892,29 +1892,31 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
     char ll_tmp[sizeof(c_tmp) + 4];
     snprintf(ll_tmp, sizeof(ll_tmp), "%.*s.ll", (int)(strlen(c_tmp) - 2), c_tmp);
 
-    size_t cmd_len = 512 + strlen(c_tmp) + strlen(ll_tmp);
+    ArgVec av;
+    argvec_init(&av);
+    argvec_add(&av, "clang");
+    argvec_add(&av, "-Dstatic=");
+    argvec_add(&av, "-S");
+    argvec_add(&av, "-emit-llvm");
+    argvec_add(&av, "-O0");
+    argvec_add(&av, "-w");
+    argvec_add(&av, "-x");
+    argvec_add(&av, "c");
+    argvec_add(&av, c_tmp);
+    argvec_add(&av, "-o");
+    argvec_add(&av, ll_tmp);
     if (g->sema && g->sema->include_dirs) {
         for (size_t i = 0; i < g->sema->n_include_dirs; i++) {
             if (g->sema->include_dirs[i]) {
-                cmd_len += strlen(g->sema->include_dirs[i]) + 8;
+                char inc_arg[4096];
+                snprintf(inc_arg, sizeof(inc_arg), "-I%s", g->sema->include_dirs[i]);
+                argvec_add(&av, inc_arg);
             }
         }
     }
-    char* cmd = (char*)malloc(cmd_len);
-    if (!cmd) { remove(c_tmp); return; }
 
-    int n = snprintf(cmd, cmd_len, "clang -Dstatic= -S -emit-llvm -O0 -w -x c \"%s\" -o \"%s\"", c_tmp, ll_tmp);
-    if (g->sema && g->sema->include_dirs) {
-        for (size_t i = 0; i < g->sema->n_include_dirs; i++) {
-            if (g->sema->include_dirs[i]) {
-                n += snprintf(cmd + n, cmd_len - (size_t)n, " -I\"%s\"", g->sema->include_dirs[i]);
-            }
-        }
-    }
-    snprintf(cmd + n, cmd_len - (size_t)n, " 2>/dev/null");
-
-    int ret = system(cmd);
-    free(cmd);
+    int ret = util_exec((const char* const*)av.args);
+    argvec_free(&av);
     remove(c_tmp);
 
     if (ret == 0) {

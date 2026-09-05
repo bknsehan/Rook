@@ -15,7 +15,7 @@ int mix(int a) {
 int main() {
     printf("%d\n", add(2, 3));
     greet("bob");
-    x: int = mix(21);
+    let x = mix(21);
     printf("%d\n", x);
     return 0;
 }

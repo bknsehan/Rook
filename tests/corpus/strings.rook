@@ -6,7 +6,7 @@ void greet(const char* name) {
 }
 
 int main() {
-    s: const char* = "world";
+    let s: const char* = "world";
     greet(s);
     greet("direct");
     char line[64];

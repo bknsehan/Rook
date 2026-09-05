@@ -9,7 +9,7 @@ int double_it(int name) {
 }
 
 int main() {
-    name: int = 5;
+    let name: int = 5;
     printf("%d\n", double_it(name));
     printf("scope OK\n");
     return 0;
