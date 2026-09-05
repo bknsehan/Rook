@@ -1245,6 +1245,13 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             free(base);
             return r;
         }
+        if (e->a && e->a->kind == E_IDENT) {
+            Sym* sym = ck_lookup_local(ck, e->a->str);
+            if (!sym) sym = sema_lookup(ck->s, e->a->str);
+            if (sym && sym->decl && sym->decl->dim) {
+                return base;
+            }
+        }
         free(base);
         return NULL;
     }

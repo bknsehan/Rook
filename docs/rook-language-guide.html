@@ -490,7 +490,7 @@
   <div class="sidebar-header">
     <div class="sidebar-title">
       <span>Rook Guide</span>
-      <span class="sidebar-badge">v0.4.1</span>
+      <span class="sidebar-badge">v0.4.2</span>
     </div>
     <div class="sidebar-sub">Systems Programming Language</div>
   </div>
@@ -524,7 +524,7 @@
 <main id="main">
   <header class="hero" id="top">
     <div class="badges">
-      <span class="badge highlight">Rokade v0.4.1</span>
+      <span class="badge highlight">Rokade v0.4.2</span>
       <span class="badge">Zero Runtime Overhead</span>
       <span class="badge">Header-Less C Dialect</span>
       <span class="badge">Zero-Shell Execution</span>
@@ -606,7 +606,7 @@
   <li><strong>Code Generation:</strong>
     <ul>
       <li><strong>C Backend (Default):</strong> Emits highly readable, formatted C99/C11/C2x code into <code>build/generated/main.c</code>. Every Rook construct maps deterministically to a standard C counterpart.</li>
-      <li><strong>LLVM Backend:</strong> Emits LLVM Intermediate Representation (<code>.ll</code>) and drives LLVM target code generators to emit native machine object files (<code>.o</code>) or execute directly via an in-process JIT engine.</li>
+      <li><strong>LLVM Backend:</strong> Emits production-hardened LLVM Intermediate Representation (<code>.ll</code>), builds native machine object files (<code>.o</code>), and executes scripts directly via in-process JIT (<code>--jit</code>). In v0.4.2, the LLVM backend features full type-accurate unsigned arithmetic (UDiv, URem, LShr, unsigned ICmp), pointer arithmetic via <code>getelementptr</code> with element-count pointer subtraction, arbitrary-depth multi-level inheritance traversal, dynamic ABI-calculated sum type payload sizing, implicit <code>self</code> method parameter resolution, runtime array bounds checking (<code>-b</code>), and cross-compilation target triple / Windows LLP64 compatibility.</li>
     </ul>
   </li>
   <li><strong>Zero-Shell Direct Toolchain Execution:</strong> Rokade invokes the host C compiler (<code>gcc</code> or <code>clang</code>) and linker directly using POSIX <code>fork</code>/<code>execv</code> (or <code>CreateProcess</code> on Windows). It avoids shell wrappers (<code>sh -c</code>), preventing command-injection attacks and ensuring exact argument propagation.</li>
@@ -1728,7 +1728,7 @@ int calculate(int x) {
 <h3>19.1 Complete rokade.toml Schema</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Complete rokade.toml Schema</span></div><pre><code class="language-toml">[package]
 name = "service_engine"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Engineering Team &lt;dev@example.com&gt;"]
 description = "High-throughput telemetry daemon"
 
@@ -1824,7 +1824,7 @@ rokade build --all</code></pre></div>
 
 
   <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem; text-align: center;">
-    <p>Rook Language Guide &bull; Version 0.4.1 &bull; Built for Systems Programmers &bull; Completely Offline</p>
+    <p>Rook Language Guide &bull; Version 0.4.2 &bull; Built for Systems Programmers &bull; Completely Offline</p>
   </footer>
 </main>
 

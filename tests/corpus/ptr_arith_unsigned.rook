@@ -1,0 +1,15 @@
+#include <stdio.h>
+
+int main() {
+    unsigned int a = 4000000000u;
+    printf("%u %d\n", a / 2u, (a > 2u));
+
+    int arr[5] = {10, 20, 30, 40, 50};
+    int* p = arr;
+    printf("%d %d\n", *(p + 1), *p);
+    p++;
+    printf("%d\n", *p);
+    let diff = &arr[4] - &arr[0];
+    printf("%d\n", (int)diff);
+    return 0;
+}

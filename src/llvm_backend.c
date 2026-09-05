@@ -49,6 +49,10 @@ typedef struct LLVMGen {
 
     LLVMBasicBlockRef loop_cond_bbs[32];
     LLVMBasicBlockRef loop_exit_bbs[32];
+
+    int bounds_check;
+    const char* target_triple;
+    LLVMTargetDataRef td;
 } LLVMGen;
 
 static int variant_index(EnumDef* ed, const char* name) {
@@ -70,6 +74,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type);
 static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type);
 static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int nmarms, AstType* result_ast_type, LLVMTypeRef* out_type);
 static void gen_stmt(LLVMGen* g, Stmt* s);
+static long eval_const_expr(Expr* e);
 
 static int is_block_terminated(LLVMGen* g) {
     LLVMBasicBlockRef cur = LLVMGetInsertBlock(g->builder);
@@ -192,7 +197,13 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
     if (strcmp(n, "int") == 0 || strcmp(n, "int32_t") == 0 || strcmp(n, "uint32_t") == 0) {
         return LLVMInt32TypeInContext(g->ctx);
     }
-    if (strcmp(n, "long") == 0 || strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0 ||
+    if (strcmp(n, "long") == 0) {
+        if (g->target_triple && (strstr(g->target_triple, "windows") || strstr(g->target_triple, "mingw") || strstr(g->target_triple, "msvc"))) {
+            return LLVMInt32TypeInContext(g->ctx);
+        }
+        return LLVMInt64TypeInContext(g->ctx);
+    }
+    if (strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0 ||
         strcmp(n, "size_t") == 0 || strcmp(n, "ssize_t") == 0 || strcmp(n, "uintptr_t") == 0 || strcmp(n, "intptr_t") == 0) {
         return LLVMInt64TypeInContext(g->ctx);
     }
@@ -236,9 +247,27 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
             return LLVMInt32TypeInContext(g->ctx);
         }
         LLVMTypeRef st_type = LLVMStructCreateNamed(g->ctx, n);
+        unsigned long long payload_sz = 32;
+        if (ed) {
+            for (int vi = 0; vi < ed->nvariants; vi++) {
+                EnumVariant* v = &ed->variants[vi];
+                if (v->nfields > 0) {
+                    LLVMTypeRef* vft = calloc((size_t)v->nfields, sizeof(LLVMTypeRef));
+                    for (int k = 0; k < v->nfields; k++) {
+                        vft[k] = gen_llvm_type(g, v->fields[k].type);
+                    }
+                    LLVMTypeRef vpayload_t = LLVMStructTypeInContext(g->ctx, vft, (unsigned)v->nfields, 0);
+                    unsigned long long sz = g->td ? LLVMABISizeOfType(g->td, vpayload_t) : 0;
+                    if (sz == 0) sz = (unsigned long long)v->nfields * 8;
+                    if (sz > payload_sz) payload_sz = sz;
+                    free(vft);
+                }
+            }
+            payload_sz = (payload_sz + 7) & ~7ULL;
+        }
         LLVMTypeRef elems[2] = {
             LLVMInt32TypeInContext(g->ctx),
-            LLVMArrayType(LLVMInt8TypeInContext(g->ctx), 32)
+            LLVMArrayType(LLVMInt8TypeInContext(g->ctx), (unsigned)payload_sz)
         };
         LLVMStructSetBody(st_type, elems, 2, 0);
         return st_type;
@@ -253,7 +282,7 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
     return LLVMInt32TypeInContext(g->ctx);
 }
 
-static LLVMValueRef cast_to_type(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from, LLVMTypeRef to) {
+static LLVMValueRef cast_to_type_ext(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from, LLVMTypeRef to, int is_signed) {
     if (!val || !from || !to) return val;
     if (from == to) return val;
     LLVMTypeKind fk = LLVMGetTypeKind(from);
@@ -261,20 +290,21 @@ static LLVMValueRef cast_to_type(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from,
 
     if (fk == LLVMIntegerTypeKind && tk == LLVMIntegerTypeKind) {
         unsigned fw = LLVMGetIntTypeWidth(from);
-        if (fw == 1) {
-            return LLVMBuildZExt(g->builder, val, to, "zext");
+        unsigned tw = LLVMGetIntTypeWidth(to);
+        if (fw == tw) return val;
+        if (fw < tw) {
+            return is_signed ? LLVMBuildSExt(g->builder, val, to, "sext")
+                             : LLVMBuildZExt(g->builder, val, to, "zext");
         }
-        return LLVMBuildIntCast2(g->builder, val, to, 1, "intcast");
+        return LLVMBuildTrunc(g->builder, val, to, "trunc");
     }
     if (fk == LLVMIntegerTypeKind && (tk == LLVMFloatTypeKind || tk == LLVMDoubleTypeKind)) {
-        unsigned fw = LLVMGetIntTypeWidth(from);
-        if (fw == 1) {
-            val = LLVMBuildZExt(g->builder, val, LLVMInt32TypeInContext(g->ctx), "zext");
-        }
-        return LLVMBuildSIToFP(g->builder, val, to, "sitofp");
+        return is_signed ? LLVMBuildSIToFP(g->builder, val, to, "sitofp")
+                         : LLVMBuildUIToFP(g->builder, val, to, "uitofp");
     }
     if ((fk == LLVMFloatTypeKind || fk == LLVMDoubleTypeKind) && tk == LLVMIntegerTypeKind) {
-        return LLVMBuildFPToSI(g->builder, val, to, "fptosi");
+        return is_signed ? LLVMBuildFPToSI(g->builder, val, to, "fptosi")
+                         : LLVMBuildFPToUI(g->builder, val, to, "fptoui");
     }
     if (fk == LLVMFloatTypeKind && tk == LLVMDoubleTypeKind) {
         return LLVMBuildFPExt(g->builder, val, to, "fpext");
@@ -292,6 +322,10 @@ static LLVMValueRef cast_to_type(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from,
         return val;
     }
     return val;
+}
+
+static LLVMValueRef cast_to_type(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from, LLVMTypeRef to) {
+    return cast_to_type_ext(g, val, from, to, 1);
 }
 
 static char* llvm_find_method_owner(LLVMGen* g, const char* struct_name, const char* method, int* steps) {
@@ -319,6 +353,18 @@ static char* llvm_find_method_owner(LLVMGen* g, const char* struct_name, const c
 static AstType* llvm_resolve_expr_type(LLVMGen* g, Expr* e) {
     if (!e) return NULL;
     if (e->type) return e->type;
+    if (e->kind == E_PAREN && e->a) {
+        return llvm_resolve_expr_type(g, e->a);
+    }
+    if (e->kind == E_CAST && e->type) {
+        return e->type;
+    }
+    if (e->kind == E_SIZEOF_E || e->kind == E_SIZEOF_T) {
+        return sema_mk_type("", "size_t", 0);
+    }
+    if (e->kind == E_POST && e->a) {
+        return llvm_resolve_expr_type(g, e->a);
+    }
     if (e->kind == E_IDENT) {
         int li = gen_find_local(g, e->str);
         if (li >= 0 && g->local_ast_types[li]) return g->local_ast_types[li];
@@ -342,21 +388,102 @@ static AstType* llvm_resolve_expr_type(LLVMGen* g, Expr* e) {
             if (sub) {
                 return sema_mk_type(sub->qual ? sub->qual : "", sub->name, sub->ptrs + 1);
             }
+        } else if (strcmp(e->str, "!") == 0) {
+            return sema_mk_type("", "bool", 0);
+        } else {
+            return llvm_resolve_expr_type(g, e->a);
+        }
+    } else if (e->kind == E_INDEX) {
+        AstType* sub = llvm_resolve_expr_type(g, e->a);
+        if (sub) {
+            if (sub->ptrs > 0) {
+                return sema_mk_type(sub->qual ? sub->qual : "", sub->name, sub->ptrs - 1);
+            }
+            return sub;
         }
     } else if ((e->kind == E_MEMBER || e->kind == E_ARROW) && e->str) {
         AstType* sub = llvm_resolve_expr_type(g, e->a);
         if (sub && sub->name) {
             StructDef* st = sema_lookup_struct(g->sema, sub->name);
-            if (st) {
+            while (st) {
                 for (int i = 0; i < st->nfields; i++) {
                     if (strcmp(st->fields[i].name, e->str) == 0) {
                         return st->fields[i].type;
                     }
                 }
+                if (st->parent && st->parent[0]) {
+                    st = sema_lookup_struct(g->sema, st->parent);
+                } else {
+                    break;
+                }
             }
         }
+    } else if (e->kind == E_BINARY && e->str) {
+        const char* op = e->str;
+        if (strcmp(op, "==") == 0 || strcmp(op, "!=") == 0 ||
+            strcmp(op, "<") == 0 || strcmp(op, "<=") == 0 ||
+            strcmp(op, ">") == 0 || strcmp(op, ">=") == 0 ||
+            strcmp(op, "&&") == 0 || strcmp(op, "||") == 0) {
+            return sema_mk_type("", "bool", 0);
+        }
+        AstType* ta = llvm_resolve_expr_type(g, e->a);
+        AstType* tb = llvm_resolve_expr_type(g, e->b);
+        if (strcmp(op, "-") == 0 && ta && tb && ta->ptrs > 0 && tb->ptrs > 0) {
+            return sema_mk_type("", "ptrdiff_t", 0);
+        }
+        if (ta && ta->ptrs > 0) return ta;
+        if (tb && tb->ptrs > 0 && strcmp(op, "+") == 0) return tb;
+        if (ta) return ta;
+        if (tb) return tb;
+    } else if (e->kind == E_LITERAL && e->str) {
+        const char* s = e->str;
+        if (s[0] == '"') return sema_mk_type("const ", "char", 1);
+        if (s[0] == '\'') return sema_mk_type("", "char", 0);
+        if (strchr(s, '.') || strchr(s, 'e') || strchr(s, 'E')) {
+            size_t sl = strlen(s);
+            if (s[sl - 1] == 'f' || s[sl - 1] == 'F') return sema_mk_type("", "float", 0);
+            return sema_mk_type("", "double", 0);
+        }
+        int is_u = (strchr(s, 'u') != NULL || strchr(s, 'U') != NULL);
+        int is_l = (strchr(s, 'l') != NULL || strchr(s, 'L') != NULL);
+        if (is_u && is_l) return sema_mk_type("unsigned ", "long", 0);
+        if (is_u) return sema_mk_type("unsigned ", "int", 0);
+        if (is_l) return sema_mk_type("", "long", 0);
+        return sema_mk_type("", "int", 0);
     }
     return sema_resolve_type(g->sema, e);
+}
+
+static int is_type_unsigned(AstType* at) {
+    if (!at || at->ptrs > 0) return 0;
+    if (at->qual && strstr(at->qual, "unsigned")) return 1;
+    if (at->name) {
+        if (strncmp(at->name, "uint", 4) == 0) return 1;
+        if (strcmp(at->name, "size_t") == 0 || strcmp(at->name, "uintptr_t") == 0) return 1;
+        if (strncmp(at->name, "unsigned", 8) == 0) return 1;
+        if (strcmp(at->name, "u8") == 0 || strcmp(at->name, "u16") == 0 ||
+            strcmp(at->name, "u32") == 0 || strcmp(at->name, "u64") == 0) return 1;
+    }
+    return 0;
+}
+
+static int is_expr_unsigned(LLVMGen* g, Expr* e, LLVMTypeRef ll_ty) {
+    if (!e) return 0;
+    if (e->kind == E_LITERAL && e->str) {
+        if (strchr(e->str, 'u') || strchr(e->str, 'U')) return 1;
+        if (isdigit((unsigned char)e->str[0])) {
+            char* endp = NULL;
+            unsigned long long v = strtoull(e->str, &endp, 0);
+            if (v > 2147483647ULL) return 1;
+        }
+        return 0;
+    }
+    if (e->kind == E_SIZEOF_E || e->kind == E_SIZEOF_T) return 1;
+    if (e->kind == E_CAST && e->type) return is_type_unsigned(e->type);
+    if (e->kind == E_PAREN && e->a) return is_expr_unsigned(g, e->a, ll_ty);
+    AstType* at = llvm_resolve_expr_type(g, e);
+    if (at) return is_type_unsigned(at);
+    return 0;
 }
 
 static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
@@ -428,6 +555,42 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMValueRef base_ptr = gen_expr(g, e->a, &base_type);
         LLVMValueRef idx_val = gen_expr(g, e->b, NULL);
         if (base_ptr && idx_val) {
+            if (g->bounds_check && e->a) {
+                long bound_sz = -1;
+                if (e->a->kind == E_IDENT) {
+                    int li = gen_find_local(g, e->a->str);
+                    if (li >= 0 && LLVMGetTypeKind(g->local_types[li]) == LLVMArrayTypeKind) {
+                        bound_sz = (long)LLVMGetArrayLength(g->local_types[li]);
+                    } else {
+                        Sym* sym = sema_lookup(g->sema, e->a->str);
+                        if (sym && sym->decl && sym->decl->dim) {
+                            bound_sz = eval_const_expr(sym->decl->dim);
+                        }
+                    }
+                }
+                if (bound_sz > 0) {
+                    LLVMTypeRef i64_t = LLVMInt64TypeInContext(g->ctx);
+                    LLVMValueRef idx_i64 = cast_to_type(g, idx_val, LLVMTypeOf(idx_val), i64_t);
+                    LLVMValueRef zero = LLVMConstInt(i64_t, 0, 0);
+                    LLVMValueRef bound_val = LLVMConstInt(i64_t, (unsigned long long)bound_sz, 0);
+                    LLVMValueRef lt_zero = LLVMBuildICmp(g->builder, LLVMIntSLT, idx_i64, zero, "idx_lt_zero");
+                    LLVMValueRef ge_bound = LLVMBuildICmp(g->builder, LLVMIntSGE, idx_i64, bound_val, "idx_ge_bound");
+                    LLVMValueRef is_oob = LLVMBuildOr(g->builder, lt_zero, ge_bound, "is_oob");
+                    LLVMBasicBlockRef fail_bb = LLVMAppendBasicBlockInContext(g->ctx, g->cur_fn, "bounds_fail");
+                    LLVMBasicBlockRef ok_bb = LLVMAppendBasicBlockInContext(g->ctx, g->cur_fn, "bounds_ok");
+                    LLVMBuildCondBr(g->builder, is_oob, fail_bb, ok_bb);
+
+                    LLVMPositionBuilderAtEnd(g->builder, fail_bb);
+                    LLVMTypeRef trap_ty = LLVMFunctionType(LLVMVoidTypeInContext(g->ctx), NULL, 0, 0);
+                    LLVMValueRef trap_fn = LLVMGetNamedFunction(g->module, "llvm.trap");
+                    if (!trap_fn) trap_fn = LLVMAddFunction(g->module, "llvm.trap", trap_ty);
+                    LLVMBuildCall2(g->builder, trap_ty, trap_fn, NULL, 0, "");
+                    LLVMBuildUnreachable(g->builder);
+
+                    LLVMPositionBuilderAtEnd(g->builder, ok_bb);
+                }
+            }
+
             AstType* at = NULL;
             int allocated_at = 0;
             if (e->a && e->a->kind == E_IDENT) {
@@ -524,10 +687,22 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 return d_val;
             }
         }
-        long long iv = strtoll(s, NULL, 0);
-        LLVMValueRef i_val = LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)iv, 1);
-        if (out_type) *out_type = LLVMInt32TypeInContext(g->ctx);
-        return i_val;
+        char* endp = NULL;
+        unsigned long long uv = strtoull(s, &endp, 0);
+        long long iv = (long long)uv;
+        int is_u = (strchr(s, 'u') != NULL || strchr(s, 'U') != NULL);
+        int is_l = (strchr(s, 'l') != NULL || strchr(s, 'L') != NULL);
+        if (is_l || uv > 4294967295ULL || iv < -2147483648LL) {
+            LLVMTypeRef ty = LLVMInt64TypeInContext(g->ctx);
+            LLVMValueRef i_val = LLVMConstInt(ty, uv, !is_u);
+            if (out_type) *out_type = ty;
+            return i_val;
+        } else {
+            LLVMTypeRef ty = LLVMInt32TypeInContext(g->ctx);
+            LLVMValueRef i_val = LLVMConstInt(ty, uv, !is_u);
+            if (out_type) *out_type = ty;
+            return i_val;
+        }
     }
 
     case E_IDENT: {
@@ -642,29 +817,103 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             if (strcmp(op, ">") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildFCmp(g->builder, LLVMRealOGT, va, vb, "fcmp"); }
             if (strcmp(op, ">=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildFCmp(g->builder, LLVMRealOGE, va, vb, "fcmp"); }
         } else {
+            LLVMTypeKind ka = LLVMGetTypeKind(ta);
+            LLVMTypeKind kb = LLVMGetTypeKind(tb);
+
+            if (ka == LLVMPointerTypeKind || kb == LLVMPointerTypeKind) {
+                const char* op = e->str;
+                if (ka == LLVMPointerTypeKind && kb == LLVMPointerTypeKind) {
+                    if (strcmp(op, "-") == 0) {
+                        AstType* at = llvm_resolve_expr_type(g, e->a);
+                        AstType elem_at = {0};
+                        if (at) {
+                            elem_at.qual = at->qual;
+                            elem_at.name = at->name;
+                            elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                        }
+                        LLVMTypeRef elem_t = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+                        if (LLVMGetTypeKind(elem_t) == LLVMVoidTypeKind) elem_t = LLVMInt8TypeInContext(g->ctx);
+                        LLVMValueRef diff = LLVMBuildPtrDiff2(g->builder, elem_t, va, vb, "ptrdiff");
+                        if (out_type) *out_type = LLVMInt64TypeInContext(g->ctx);
+                        return diff;
+                    }
+                    if (strcmp(op, "==") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntEQ, va, vb, "icmp"); }
+                    if (strcmp(op, "!=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntNE, va, vb, "icmp"); }
+                    if (strcmp(op, "<") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntULT, va, vb, "icmp"); }
+                    if (strcmp(op, "<=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntULE, va, vb, "icmp"); }
+                    if (strcmp(op, ">") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntUGT, va, vb, "icmp"); }
+                    if (strcmp(op, ">=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntUGE, va, vb, "icmp"); }
+                }
+                if (ka == LLVMPointerTypeKind && kb == LLVMIntegerTypeKind) {
+                    if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0) {
+                        AstType* at = llvm_resolve_expr_type(g, e->a);
+                        AstType elem_at = {0};
+                        if (at) {
+                            elem_at.qual = at->qual;
+                            elem_at.name = at->name;
+                            elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                        }
+                        LLVMTypeRef elem_t = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+                        if (LLVMGetTypeKind(elem_t) == LLVMVoidTypeKind) elem_t = LLVMInt8TypeInContext(g->ctx);
+                        LLVMValueRef idx = cast_to_type(g, vb, tb, LLVMInt64TypeInContext(g->ctx));
+                        if (strcmp(op, "-") == 0) idx = LLVMBuildNeg(g->builder, idx, "neg_idx");
+                        LLVMValueRef gep = LLVMBuildGEP2(g->builder, elem_t, va, &idx, 1, "ptr_arith");
+                        if (out_type) *out_type = ta;
+                        return gep;
+                    }
+                    vb = cast_to_type(g, vb, tb, ta);
+                    if (strcmp(op, "==") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntEQ, va, vb, "icmp"); }
+                    if (strcmp(op, "!=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntNE, va, vb, "icmp"); }
+                }
+                if (ka == LLVMIntegerTypeKind && kb == LLVMPointerTypeKind) {
+                    if (strcmp(op, "+") == 0) {
+                        AstType* at = llvm_resolve_expr_type(g, e->b);
+                        AstType elem_at = {0};
+                        if (at) {
+                            elem_at.qual = at->qual;
+                            elem_at.name = at->name;
+                            elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                        }
+                        LLVMTypeRef elem_t = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+                        if (LLVMGetTypeKind(elem_t) == LLVMVoidTypeKind) elem_t = LLVMInt8TypeInContext(g->ctx);
+                        LLVMValueRef idx = cast_to_type(g, va, ta, LLVMInt64TypeInContext(g->ctx));
+                        LLVMValueRef gep = LLVMBuildGEP2(g->builder, elem_t, vb, &idx, 1, "ptr_arith");
+                        if (out_type) *out_type = tb;
+                        return gep;
+                    }
+                    va = cast_to_type(g, va, ta, tb);
+                    if (strcmp(op, "==") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntEQ, va, vb, "icmp"); }
+                    if (strcmp(op, "!=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntNE, va, vb, "icmp"); }
+                }
+            }
+
             LLVMTypeRef itype = (ta == LLVMInt64TypeInContext(g->ctx) || tb == LLVMInt64TypeInContext(g->ctx))
                                 ? LLVMInt64TypeInContext(g->ctx) : LLVMInt32TypeInContext(g->ctx);
-            va = cast_to_type(g, va, ta, itype);
-            vb = cast_to_type(g, vb, tb, itype);
+            int a_unsigned = is_expr_unsigned(g, e->a, ta);
+            int b_unsigned = is_expr_unsigned(g, e->b, tb);
+            int is_unsigned = a_unsigned || b_unsigned;
+
+            va = cast_to_type_ext(g, va, ta, itype, !a_unsigned);
+            vb = cast_to_type_ext(g, vb, tb, itype, !b_unsigned);
 
             const char* op = e->str;
             if (strcmp(op, "+") == 0) { if (out_type) *out_type = itype; return LLVMBuildAdd(g->builder, va, vb, "add"); }
             if (strcmp(op, "-") == 0) { if (out_type) *out_type = itype; return LLVMBuildSub(g->builder, va, vb, "sub"); }
             if (strcmp(op, "*") == 0) { if (out_type) *out_type = itype; return LLVMBuildMul(g->builder, va, vb, "mul"); }
-            if (strcmp(op, "/") == 0) { if (out_type) *out_type = itype; return LLVMBuildSDiv(g->builder, va, vb, "sdiv"); }
-            if (strcmp(op, "%") == 0) { if (out_type) *out_type = itype; return LLVMBuildSRem(g->builder, va, vb, "srem"); }
+            if (strcmp(op, "/") == 0) { if (out_type) *out_type = itype; return is_unsigned ? LLVMBuildUDiv(g->builder, va, vb, "udiv") : LLVMBuildSDiv(g->builder, va, vb, "sdiv"); }
+            if (strcmp(op, "%") == 0) { if (out_type) *out_type = itype; return is_unsigned ? LLVMBuildURem(g->builder, va, vb, "urem") : LLVMBuildSRem(g->builder, va, vb, "srem"); }
             if (strcmp(op, "&") == 0) { if (out_type) *out_type = itype; return LLVMBuildAnd(g->builder, va, vb, "and"); }
             if (strcmp(op, "|") == 0) { if (out_type) *out_type = itype; return LLVMBuildOr(g->builder, va, vb, "or"); }
             if (strcmp(op, "^") == 0) { if (out_type) *out_type = itype; return LLVMBuildXor(g->builder, va, vb, "xor"); }
             if (strcmp(op, "<<") == 0) { if (out_type) *out_type = itype; return LLVMBuildShl(g->builder, va, vb, "shl"); }
-            if (strcmp(op, ">>") == 0) { if (out_type) *out_type = itype; return LLVMBuildAShr(g->builder, va, vb, "ashr"); }
+            if (strcmp(op, ">>") == 0) { if (out_type) *out_type = itype; return is_unsigned ? LLVMBuildLShr(g->builder, va, vb, "lshr") : LLVMBuildAShr(g->builder, va, vb, "ashr"); }
 
             if (strcmp(op, "==") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntEQ, va, vb, "icmp"); }
             if (strcmp(op, "!=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntNE, va, vb, "icmp"); }
-            if (strcmp(op, "<") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntSLT, va, vb, "icmp"); }
-            if (strcmp(op, "<=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntSLE, va, vb, "icmp"); }
-            if (strcmp(op, ">") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntSGT, va, vb, "icmp"); }
-            if (strcmp(op, ">=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, LLVMIntSGE, va, vb, "icmp"); }
+            if (strcmp(op, "<") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, is_unsigned ? LLVMIntULT : LLVMIntSLT, va, vb, "icmp"); }
+            if (strcmp(op, "<=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, is_unsigned ? LLVMIntULE : LLVMIntSLE, va, vb, "icmp"); }
+            if (strcmp(op, ">") == 0)  { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, is_unsigned ? LLVMIntUGT : LLVMIntSGT, va, vb, "icmp"); }
+            if (strcmp(op, ">=") == 0) { if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx); return LLVMBuildICmp(g->builder, is_unsigned ? LLVMIntUGE : LLVMIntSGE, va, vb, "icmp"); }
 
             if (strcmp(op, "&&") == 0) {
                 LLVMValueRef a_bool = LLVMBuildICmp(g->builder, LLVMIntNE, va, LLVMConstInt(itype, 0, 0), "abool");
@@ -732,11 +981,30 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             LLVMTypeRef lt = NULL;
             LLVMValueRef lptr = gen_lvalue(g, e->a, &lt);
             if (lptr) {
-                LLVMValueRef one = (k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind)
-                                   ? LLVMConstReal(vt, 1.0) : LLVMConstInt(vt, 1, 0);
-                LLVMValueRef updated = (strcmp(op, "++") == 0)
-                                       ? ((k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) ? LLVMBuildFAdd(g->builder, val, one, "inc") : LLVMBuildAdd(g->builder, val, one, "inc"))
-                                       : ((k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) ? LLVMBuildFSub(g->builder, val, one, "dec") : LLVMBuildSub(g->builder, val, one, "dec"));
+                LLVMValueRef updated;
+                if (k == LLVMPointerTypeKind) {
+                    AstType* at = llvm_resolve_expr_type(g, e->a);
+                    AstType elem_at = {0};
+                    if (at) {
+                        elem_at.qual = at->qual;
+                        elem_at.name = at->name;
+                        elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                    }
+                    LLVMTypeRef elem_t = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+                    if (LLVMGetTypeKind(elem_t) == LLVMVoidTypeKind) elem_t = LLVMInt8TypeInContext(g->ctx);
+                    LLVMValueRef step = LLVMConstInt(LLVMInt64TypeInContext(g->ctx), (strcmp(op, "++") == 0 ? 1 : -1), 1);
+                    updated = LLVMBuildGEP2(g->builder, elem_t, val, &step, 1, "gep_step");
+                } else if (k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) {
+                    LLVMValueRef one = LLVMConstReal(vt, 1.0);
+                    updated = (strcmp(op, "++") == 0)
+                              ? LLVMBuildFAdd(g->builder, val, one, "inc")
+                              : LLVMBuildFSub(g->builder, val, one, "dec");
+                } else {
+                    LLVMValueRef one = LLVMConstInt(vt, 1, 0);
+                    updated = (strcmp(op, "++") == 0)
+                              ? LLVMBuildAdd(g->builder, val, one, "inc")
+                              : LLVMBuildSub(g->builder, val, one, "dec");
+                }
                 LLVMBuildStore(g->builder, updated, lptr);
                 if (out_type) *out_type = vt;
                 return updated;
@@ -752,11 +1020,30 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMValueRef lptr = gen_lvalue(g, e->a, &vt);
         if (lptr && val) {
             LLVMTypeKind k = LLVMGetTypeKind(vt);
-            LLVMValueRef one = (k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind)
-                               ? LLVMConstReal(vt, 1.0) : LLVMConstInt(vt, 1, 0);
-            LLVMValueRef updated = (strcmp(op, "++") == 0)
-                                   ? ((k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) ? LLVMBuildFAdd(g->builder, val, one, "inc") : LLVMBuildAdd(g->builder, val, one, "inc"))
-                                   : ((k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) ? LLVMBuildFSub(g->builder, val, one, "dec") : LLVMBuildSub(g->builder, val, one, "dec"));
+            LLVMValueRef updated;
+            if (k == LLVMPointerTypeKind) {
+                AstType* at = llvm_resolve_expr_type(g, e->a);
+                AstType elem_at = {0};
+                if (at) {
+                    elem_at.qual = at->qual;
+                    elem_at.name = at->name;
+                    elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                }
+                LLVMTypeRef elem_t = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+                if (LLVMGetTypeKind(elem_t) == LLVMVoidTypeKind) elem_t = LLVMInt8TypeInContext(g->ctx);
+                LLVMValueRef step = LLVMConstInt(LLVMInt64TypeInContext(g->ctx), (strcmp(op, "++") == 0 ? 1 : -1), 1);
+                updated = LLVMBuildGEP2(g->builder, elem_t, val, &step, 1, "gep_step");
+            } else if (k == LLVMFloatTypeKind || k == LLVMDoubleTypeKind) {
+                LLVMValueRef one = LLVMConstReal(vt, 1.0);
+                updated = (strcmp(op, "++") == 0)
+                          ? LLVMBuildFAdd(g->builder, val, one, "inc")
+                          : LLVMBuildFSub(g->builder, val, one, "dec");
+            } else {
+                LLVMValueRef one = LLVMConstInt(vt, 1, 0);
+                updated = (strcmp(op, "++") == 0)
+                          ? LLVMBuildAdd(g->builder, val, one, "inc")
+                          : LLVMBuildSub(g->builder, val, one, "dec");
+            }
             LLVMBuildStore(g->builder, updated, lptr);
         }
         if (out_type) *out_type = vt;
@@ -775,6 +1062,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                     AstType parent_at = { .qual = "", .name = (char*)en, .ptrs = 0 };
                     LLVMTypeRef enum_t = gen_llvm_type(g, &parent_at);
                     LLVMValueRef sum_alloca = LLVMBuildAlloca(g->builder, enum_t, "sum_init");
+                    LLVMSetAlignment(sum_alloca, 8);
                     LLVMBuildStore(g->builder, LLVMConstNull(enum_t), sum_alloca);
 
                     LLVMValueRef tag_ptr = LLVMBuildStructGEP2(g->builder, enum_t, sum_alloca, 0, "tag_ptr");
@@ -1061,6 +1349,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 AstType parent_at = { .qual = "", .name = (char*)en, .ptrs = 0 };
                 LLVMTypeRef enum_t = gen_llvm_type(g, &parent_at);
                 LLVMValueRef sum_alloca = LLVMBuildAlloca(g->builder, enum_t, "sum_init");
+                LLVMSetAlignment(sum_alloca, 8);
                 LLVMBuildStore(g->builder, LLVMConstNull(enum_t), sum_alloca);
 
                 LLVMValueRef tag_ptr = LLVMBuildStructGEP2(g->builder, enum_t, sum_alloca, 0, "tag_ptr");
@@ -1096,44 +1385,44 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         /* Construct struct on stack */
         LLVMTypeRef st_type = gen_llvm_type(g, e->type);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, st_type, "named_init");
+        LLVMSetAlignment(alloca_ref, 8);
         StructDef* st = sema_lookup_struct(g->sema, e->type->name);
         if (st) {
-            /* When struct has a parent, element index 0 is "_base". Own fields start at offset 1. */
-            int base_offset = (st->parent && st->parent[0]) ? 1 : 0;
             for (int i = 0; i < e->nnfields; i++) {
                 const char* fname = e->nfields[i].name;
+                StructDef* owning_st = st;
                 int fidx = -1;
-                /* Search own fields first */
-                for (int j = 0; j < st->nfields; j++) {
-                    if (strcmp(st->fields[j].name, fname) == 0) { fidx = j; break; }
+                while (owning_st) {
+                    for (int j = 0; j < owning_st->nfields; j++) {
+                        if (strcmp(owning_st->fields[j].name, fname) == 0) {
+                            fidx = j;
+                            break;
+                        }
+                    }
+                    if (fidx >= 0) break;
+                    if (owning_st->parent && owning_st->parent[0]) {
+                        owning_st = sema_lookup_struct(g->sema, owning_st->parent);
+                    } else {
+                        break;
+                    }
                 }
-                if (fidx >= 0) {
-                    /* Own field: element index is fidx + base_offset */
-                    LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref,
-                                                            (unsigned)(fidx + base_offset), fname);
-                    LLVMTypeRef ft = gen_llvm_type(g, st->fields[fidx].type);
+
+                if (owning_st && fidx >= 0) {
+                    LLVMValueRef cur_ptr = alloca_ref;
+                    LLVMTypeRef cur_type = st_type;
+                    StructDef* cur = st;
+                    while (cur && cur != owning_st) {
+                        cur_ptr = LLVMBuildStructGEP2(g->builder, cur_type, cur_ptr, 0, "_base");
+                        cur_type = LLVMStructGetTypeAtIndex(cur_type, 0);
+                        cur = sema_lookup_struct(g->sema, cur->parent);
+                    }
+                    int base_offset = (owning_st->parent && owning_st->parent[0]) ? 1 : 0;
+                    LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, cur_type, cur_ptr, (unsigned)(fidx + base_offset), fname);
+                    LLVMTypeRef ft = gen_llvm_type(g, owning_st->fields[fidx].type);
                     LLVMTypeRef rt = NULL;
                     LLVMValueRef fval = gen_expr(g, e->nfields[i].e, &rt);
                     fval = cast_to_type(g, fval, rt, ft);
                     LLVMBuildStore(g->builder, fval, fptr);
-                } else if (base_offset > 0) {
-                    /* Try parent fields: GEP through _base (index 0) */
-                    StructDef* par = sema_lookup_struct(g->sema, st->parent);
-                    if (par) {
-                        for (int j = 0; j < par->nfields; j++) {
-                            if (strcmp(par->fields[j].name, fname) == 0) { fidx = j; break; }
-                        }
-                        if (fidx >= 0) {
-                            LLVMTypeRef par_type = LLVMStructGetTypeAtIndex(st_type, 0);
-                            LLVMValueRef base_ptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, 0, "_base");
-                            LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, par_type, base_ptr, (unsigned)fidx, fname);
-                            LLVMTypeRef ft = gen_llvm_type(g, par->fields[fidx].type);
-                            LLVMTypeRef rt = NULL;
-                            LLVMValueRef fval = gen_expr(g, e->nfields[i].e, &rt);
-                            fval = cast_to_type(g, fval, rt, ft);
-                            LLVMBuildStore(g->builder, fval, fptr);
-                        }
-                    }
                 }
             }
         }
@@ -1293,6 +1582,7 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
         if (!sum_slot) {
             LLVMValueRef sum_val = gen_expr(g, scrut_expr, NULL);
             sum_slot = LLVMBuildAlloca(g->builder, sum_t, "match_scrut");
+            LLVMSetAlignment(sum_slot, 8);
             LLVMBuildStore(g->builder, sum_val, sum_slot);
         }
 
@@ -1481,15 +1771,22 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         if (!d) break;
         AstType* at = d->type;
         if (!at && d->init) {
-            at = sema_resolve_type(g->sema, d->init);
+            at = llvm_resolve_expr_type(g, d->init);
+            if (!at) at = sema_resolve_type(g->sema, d->init);
         }
         LLVMTypeRef vt = gen_llvm_type(g, at);
+        if (LLVMGetTypeKind(vt) == LLVMVoidTypeKind) {
+            vt = LLVMInt32TypeInContext(g->ctx);
+        }
         if (d->dim) {
             long dim_sz = eval_const_expr(d->dim);
             if (dim_sz <= 0) dim_sz = 1;
             vt = LLVMArrayType(vt, (unsigned)dim_sz);
         }
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, vt, d->name);
+        if (at && at->name && (sema_lookup_enum(g->sema, at->name) || sema_lookup_struct(g->sema, at->name))) {
+            LLVMSetAlignment(alloca_ref, 8);
+        }
         gen_add_local(g, d->name, alloca_ref, vt, at);
 
         if (d->init) {
@@ -1788,7 +2085,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
     }
 }
 
-static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name) {
+static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name, const char* target_type_name) {
     if (!fn || !fn->body) return;
     const char* name = mangled_name ? mangled_name : fn->name;
     LLVMValueRef fn_val = LLVMGetNamedFunction(g->module, name);
@@ -1810,19 +2107,26 @@ static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name) {
         LLVMValueRef self_param = LLVMGetParam(fn_val, 0);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, LLVMPointerTypeInContext(g->ctx, 0), "self");
         LLVMBuildStore(g->builder, self_param, alloca_ref);
-        gen_add_local(g, "self", alloca_ref, LLVMPointerTypeInContext(g->ctx, 0), NULL);
+        AstType* self_at = target_type_name ? sema_mk_type("", (char*)target_type_name, 1) : NULL;
+        gen_add_local(g, "self", alloca_ref, LLVMPointerTypeInContext(g->ctx, 0), self_at);
         p_offset = 1;
     }
 
     for (int i = 0; i < fn->nparams; i++) {
         Param* p = &fn->params[i];
+        AstType* at = p->type;
+        if (p->name && strcmp(p->name, "self") == 0) {
+            if (!at && target_type_name) {
+                at = sema_mk_type("", (char*)target_type_name, 1);
+            }
+        }
         LLVMTypeRef pt = (p->name && strcmp(p->name, "self") == 0)
             ? LLVMPointerTypeInContext(g->ctx, 0)
-            : gen_llvm_type(g, p->type);
+            : gen_llvm_type(g, at);
         LLVMValueRef param_val = LLVMGetParam(fn_val, i + p_offset);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, pt, p->name);
         LLVMBuildStore(g->builder, param_val, alloca_ref);
-        gen_add_local(g, p->name, alloca_ref, pt, p->type);
+        gen_add_local(g, p->name, alloca_ref, pt, at);
     }
 
     gen_stmt(g, fn->body);
@@ -1897,6 +2201,11 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
     ArgVec av;
     argvec_init(&av);
     argvec_add(&av, "clang");
+    char target_arg[512];
+    if (g->target_triple && g->target_triple[0]) {
+        snprintf(target_arg, sizeof(target_arg), "--target=%s", g->target_triple);
+        argvec_add(&av, target_arg);
+    }
     argvec_add(&av, "-Dstatic=");
     argvec_add(&av, "-S");
     argvec_add(&av, "-emit-llvm");
@@ -1950,9 +2259,42 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
     }
 }
 
-static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, Program* prog) {
+static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, Program* prog, int bounds_check, const char* target_triple) {
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllTargetMCs();
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllAsmParsers();
+
+    char* triple_allocated = NULL;
+    const char* triple = target_triple;
+    if (!triple || !triple[0]) {
+        triple_allocated = LLVMGetDefaultTargetTriple();
+        triple = triple_allocated;
+    }
+
+    LLVMTargetRef target = NULL;
+    char* err = NULL;
+    LLVMTargetMachineRef tm = NULL;
+    LLVMTargetDataRef td = NULL;
+    if (LLVMGetTargetFromTriple(triple, &target, &err) == 0 && target) {
+        tm = LLVMCreateTargetMachine(
+            target, triple, "generic", "",
+            LLVMCodeGenLevelDefault, LLVMRelocPIC, LLVMCodeModelDefault);
+        if (tm) {
+            td = LLVMCreateTargetDataLayout(tm);
+        }
+    }
+    if (err) LLVMDisposeMessage(err);
+
     LLVMModuleRef module = LLVMModuleCreateWithNameInContext("rook_module", ctx);
     LLVMSetSourceFileName(module, "rook_source.rook", 16);
+    if (triple) LLVMSetTarget(module, triple);
+    if (td) {
+        char* td_str = LLVMCopyStringRepOfTargetData(td);
+        LLVMSetDataLayout(module, td_str);
+        LLVMDisposeMessage(td_str);
+    }
 
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
 
@@ -1962,6 +2304,9 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
         .builder = builder,
         .sema = sema,
         .prog = prog,
+        .bounds_check = bounds_check,
+        .target_triple = triple,
+        .td = td,
     };
 
     llvm_backend_compile_and_link_raw_c(&g, prog);
@@ -2024,13 +2369,13 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_FN && it->fn) {
-            gen_function_body(&g, it->fn, NULL);
+            gen_function_body(&g, it->fn, NULL, NULL);
         } else if (it->kind == TOP_IMPL && it->im) {
             ImplDef* im = it->im;
             for (int m = 0; m < im->nmethods; m++) {
                 char mname[256];
                 snprintf(mname, sizeof(mname), "%s_%s", im->target->name, im->methods[m]->name);
-                gen_function_body(&g, im->methods[m], mname);
+                gen_function_body(&g, im->methods[m], mname, im->target->name);
             }
         }
     }
@@ -2041,15 +2386,17 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
         LLVMDisposeMessage(verify_err);
     }
 
+    if (td) LLVMDisposeTargetData(td);
+    if (tm) LLVMDisposeTargetMachine(tm);
+    if (triple_allocated) LLVMDisposeMessage(triple_allocated);
+
     LLVMDisposeBuilder(builder);
     return module;
 }
 
 static char* llvm_backend_emit_program(Sema* sema, Program* prog, int* out_len, int bounds_check) {
-    (void)bounds_check;
-
     LLVMContextRef ctx = LLVMContextCreate();
-    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog);
+    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog, bounds_check, NULL);
 
     char* ir_str = LLVMPrintModuleToString(module);
     size_t len = strlen(ir_str);
@@ -2066,20 +2413,25 @@ static char* llvm_backend_emit_program(Sema* sema, Program* prog, int* out_len, 
     return result;
 }
 
-static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int opt_level) {
+static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int opt_level, const char* target_triple) {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
     LLVMInitializeAllTargetMCs();
     LLVMInitializeAllAsmPrinters();
     LLVMInitializeAllAsmParsers();
 
-    char* triple = LLVMGetDefaultTargetTriple();
+    char* triple_allocated = NULL;
+    const char* triple = target_triple;
+    if (!triple || !triple[0]) {
+        triple_allocated = LLVMGetDefaultTargetTriple();
+        triple = triple_allocated;
+    }
     LLVMTargetRef target = NULL;
     char* err = NULL;
     if (LLVMGetTargetFromTriple(triple, &target, &err) != 0) {
         fprintf(stderr, "rokade [llvm error]: cannot get target for triple '%s': %s\n", triple, err ? err : "unknown");
         if (err) LLVMDisposeMessage(err);
-        LLVMDisposeMessage(triple);
+        if (triple_allocated) LLVMDisposeMessage(triple_allocated);
         return 1;
     }
 
@@ -2094,7 +2446,7 @@ static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int op
         opt, LLVMRelocPIC, LLVMCodeModelDefault);
     if (!tm) {
         fprintf(stderr, "rokade [llvm error]: failed to create TargetMachine\n");
-        LLVMDisposeMessage(triple);
+        if (triple_allocated) LLVMDisposeMessage(triple_allocated);
         return 1;
     }
 
@@ -2110,29 +2462,33 @@ static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int op
         fprintf(stderr, "rokade [llvm error]: failed to emit object file '%s': %s\n", obj_path, emit_err ? emit_err : "unknown");
         if (emit_err) LLVMDisposeMessage(emit_err);
         LLVMDisposeTargetMachine(tm);
-        LLVMDisposeMessage(triple);
+        if (triple_allocated) LLVMDisposeMessage(triple_allocated);
         return 1;
     }
 
     LLVMDisposeTargetMachine(tm);
-    LLVMDisposeMessage(triple);
+    if (triple_allocated) LLVMDisposeMessage(triple_allocated);
     return 0;
 }
 
-int llvm_backend_emit_obj(Sema* sema, Program* prog, const char* obj_path, int opt_level) {
+int llvm_backend_emit_obj_target(Sema* sema, Program* prog, const char* obj_path, int opt_level, const char* target_triple) {
     LLVMContextRef ctx = LLVMContextCreate();
-    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog);
+    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog, 0, target_triple);
     if (!module) {
         LLVMContextDispose(ctx);
         return 1;
     }
-    int rc = emit_module_to_obj(module, obj_path, opt_level);
+    int rc = emit_module_to_obj(module, obj_path, opt_level, target_triple);
     LLVMDisposeModule(module);
     LLVMContextDispose(ctx);
     return rc;
 }
 
-int llvm_backend_compile_ll_to_obj(const char* ll_path, const char* obj_path, int opt_level) {
+int llvm_backend_emit_obj(Sema* sema, Program* prog, const char* obj_path, int opt_level) {
+    return llvm_backend_emit_obj_target(sema, prog, obj_path, opt_level, NULL);
+}
+
+int llvm_backend_compile_ll_to_obj_target(const char* ll_path, const char* obj_path, int opt_level, const char* target_triple) {
     LLVMContextRef ctx = LLVMContextCreate();
     LLVMMemoryBufferRef mem_buf = NULL;
     char* msg = NULL;
@@ -2154,10 +2510,14 @@ int llvm_backend_compile_ll_to_obj(const char* ll_path, const char* obj_path, in
     }
     LLVMDisposeMemoryBuffer(mem_buf);
 
-    int rc = emit_module_to_obj(module, obj_path, opt_level);
+    int rc = emit_module_to_obj(module, obj_path, opt_level, target_triple);
     LLVMDisposeModule(module);
     LLVMContextDispose(ctx);
     return rc;
+}
+
+int llvm_backend_compile_ll_to_obj(const char* ll_path, const char* obj_path, int opt_level) {
+    return llvm_backend_compile_ll_to_obj_target(ll_path, obj_path, opt_level, NULL);
 }
 
 int llvm_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv) {
@@ -2171,7 +2531,7 @@ int llvm_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv) {
     LLVMLoadLibraryPermanently(NULL);
 
     LLVMContextRef ctx = LLVMContextCreate();
-    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog);
+    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog, 0, NULL);
     if (!module) {
         LLVMContextDispose(ctx);
         return -1;
@@ -2227,6 +2587,12 @@ int llvm_backend_emit_obj(Sema* sema, Program* prog, const char* obj_path, int o
     return 1;
 }
 
+int llvm_backend_emit_obj_target(Sema* sema, Program* prog, const char* obj_path, int opt_level, const char* target_triple) {
+    (void)sema; (void)prog; (void)obj_path; (void)opt_level; (void)target_triple;
+    fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
+    return 1;
+}
+
 int llvm_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv) {
     (void)sema; (void)prog; (void)argc; (void)argv;
     fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
@@ -2235,6 +2601,12 @@ int llvm_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv) {
 
 int llvm_backend_compile_ll_to_obj(const char* ll_path, const char* obj_path, int opt_level) {
     (void)ll_path; (void)obj_path; (void)opt_level;
+    fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
+    return 1;
+}
+
+int llvm_backend_compile_ll_to_obj_target(const char* ll_path, const char* obj_path, int opt_level, const char* target_triple) {
+    (void)ll_path; (void)obj_path; (void)opt_level; (void)target_triple;
     fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
     return 1;
 }

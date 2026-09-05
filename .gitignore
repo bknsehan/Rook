@@ -8,6 +8,7 @@ bin/
 *.dll
 *.exe
 *.out
+!tests/corpus/*.out
 
 # CMake artifacts
 CMakeFiles/

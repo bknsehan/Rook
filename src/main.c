@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.4.1"
+#define ROKADE_VERSION "0.4.2"
 #endif
 
 #ifdef _WIN32
@@ -1838,7 +1838,14 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 size_t c_base_len = strlen(c_base);
                 if (c_base_len >= 3 && strcmp(c_base + c_base_len - 3, ".ll") == 0) {
 #ifdef ROKADE_HAS_LLVM
-                    ret = llvm_backend_compile_ll_to_obj(c_file_paths[i], obj_path, 2);
+                    int opt_level = 2;
+                    if (spec.cflags[0]) {
+                        if (strstr(spec.cflags, "-O0")) opt_level = 0;
+                        else if (strstr(spec.cflags, "-O1")) opt_level = 1;
+                        else if (strstr(spec.cflags, "-O3")) opt_level = 3;
+                        else if (strstr(spec.cflags, "-O2")) opt_level = 2;
+                    }
+                    ret = llvm_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple);
 #else
                     ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
 #endif
