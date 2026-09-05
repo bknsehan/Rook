@@ -451,7 +451,7 @@ static char* resolve_includes(const char* src, int src_len, const char* basedir,
 }
 
 /* Forward declaration: defined later in the test command section. */
-static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet);
+static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet, const char* backend);
 
 static void usage(void) {
     printf("rokade - the Rook compiler\n");
@@ -1256,6 +1256,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(src_dir, NULL);
         c_import_scan_and_load(sema, expanded, len, src_dir, inc_list, cfg.n_include_dirs);
+        c_import_program_raw(sema, p, inc_list, cfg.n_include_dirs);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
@@ -1507,6 +1508,7 @@ static int run_single_file_jit(const char* path) {
     sema_set_source(sema, expanded, len);
     sema_load_commandlist(basedir, NULL);
     c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+    c_import_program_raw(sema, p, NULL, 0);
     sema_collect(sema, p);
     sema_check(sema, p);
     if (sema->err) {
@@ -1756,7 +1758,7 @@ static int cmd_doctor(void) {
         if (access(corpus, R_OK) != 0) {
             printf("[WARN] corpus: %s not found (skipped)\n", corpus);
         } else {
-            int r = test_run_dir(corpus, &pass, &fail, &skip, 1);
+            int r = test_run_dir(corpus, &pass, &fail, &skip, 1, "c");
             if (r == 0) printf("[PASS] corpus: %d pass, %d skip\n", pass, skip);
             else { printf("[FAIL] corpus: %d failed\n", fail); any_fail = 1; }
         }
@@ -1840,6 +1842,7 @@ static char* transpile_to_c(const char* path, int* out_len, int silent) {
     sema_set_source(sema, expanded, len);
     sema_load_commandlist(basedir, NULL);
     c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+    c_import_program_raw(sema, p, NULL, 0);
     sema_collect(sema, p);
     sema_check(sema, p);
     if (sema->err) {
@@ -1871,8 +1874,7 @@ static int write_all(const char* path, const char* data, int len) {
     return w != len;
 }
 
-/* Run the output-driven corpus test protocol on every *.rook in `dir`. */
-static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet) {
+static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet, const char* backend) {
     int pass = 0, fail = 0, skip = 0;
     char work[] = "/tmp/rook_test_XXXXXX";
     if (!mkdtemp(work)) {
@@ -1925,15 +1927,66 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
 
         /* ---- expected-output test ---- */
         if (access(outref, F_OK) == 0) {
-            int clen = 0;
-            char* c = transpile_to_c(src, &clen, 0);
-            if (!c) { fail++; if (!quiet) printf("  FAIL (emit) %s\n", base); continue; }
-            if (write_all(c_path, c, clen)) { free(c); fail++; if (!quiet) printf("  FAIL (write) %s\n", base); continue; }
-            free(c);
-
             char cmd[32768];
-            if (toolchain_compile_exe(exe_path, c_path) != 0) {
-                fail++; if (!quiet) printf("  FAIL (compile) %s\n", base); continue;
+            if (backend && strcmp(backend, "llvm") == 0) {
+#ifdef ROKADE_HAS_LLVM
+                int slen = 0;
+                char* raw_src = util_read_file(src, &slen);
+                if (!raw_src) { fail++; if (!quiet) printf("  FAIL (read) %s\n", base); continue; }
+                char basedir[4096];
+                char* slash = strrchr(src, '/');
+                if (slash) {
+                    snprintf(basedir, sizeof(basedir), "%.*s", (int)(slash - src), src);
+                } else {
+                    snprintf(basedir, sizeof(basedir), ".");
+                }
+                char* expanded = resolve_includes(raw_src, slen, basedir, NULL, 0, 0, src);
+                free(raw_src);
+                if (!expanded) { fail++; if (!quiet) printf("  FAIL (expand) %s\n", base); continue; }
+
+                int ntoks = 0;
+                Token* toks = lex_all(expanded, (int)strlen(expanded), &ntoks);
+                Program* p = parse_program(expanded, (int)strlen(expanded), toks, ntoks);
+                if (!p) {
+                    free(expanded); free(toks);
+                    fail++; if (!quiet) printf("  FAIL (parse) %s\n", base); continue;
+                }
+                Sema* sema = sema_new();
+                sema_set_source(sema, expanded, (int)strlen(expanded));
+                sema_load_commandlist(basedir, NULL);
+                c_import_scan_and_load(sema, expanded, (int)strlen(expanded), basedir, NULL, 0);
+                c_import_program_raw(sema, p, NULL, 0);
+                sema_collect(sema, p);
+                sema_check(sema, p);
+                if (sema->err) {
+                    sema_free(sema); program_free(p); free(expanded); free(toks);
+                    fail++; if (!quiet) printf("  FAIL (sema) %s\n", base); continue;
+                }
+                char obj_path[4096];
+                snprintf(obj_path, sizeof(obj_path), "%s/%s.o", work, base);
+                int rc = llvm_backend_emit_obj(sema, p, obj_path, 2);
+                sema_free(sema); program_free(p); free(expanded); free(toks);
+                if (rc != 0) {
+                    fail++; if (!quiet) printf("  FAIL (emit-obj) %s\n", base); continue;
+                }
+                char link_cmd[32768];
+                snprintf(link_cmd, sizeof(link_cmd), "clang -O0 %s -o %s -lm 2>/dev/null", obj_path, exe_path);
+                if (system(link_cmd) != 0) {
+                    fail++; if (!quiet) printf("  FAIL (link) %s\n", base); continue;
+                }
+#else
+                skip++; continue;
+#endif
+            } else {
+                int clen = 0;
+                char* c = transpile_to_c(src, &clen, 0);
+                if (!c) { fail++; if (!quiet) printf("  FAIL (emit) %s\n", base); continue; }
+                if (write_all(c_path, c, clen)) { free(c); fail++; if (!quiet) printf("  FAIL (write) %s\n", base); continue; }
+                free(c);
+
+                if (toolchain_compile_exe(exe_path, c_path) != 0) {
+                    fail++; if (!quiet) printf("  FAIL (compile) %s\n", base); continue;
+                }
             }
 
             if (access(inref, F_OK) == 0)
@@ -1967,9 +2020,9 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
     return fail;
 }
 
-static int cmd_test(const char* dir) {
+static int cmd_test(const char* dir, const char* backend) {
     int pass = 0, fail = 0, skip = 0;
-    int r = test_run_dir(dir, &pass, &fail, &skip, 0);
+    int r = test_run_dir(dir, &pass, &fail, &skip, 0, backend);
     printf("\n---------------------------\n");
     printf("PASS         : %d\n", pass);
     printf("FAIL         : %d\n", fail);
@@ -2538,8 +2591,16 @@ int main(int argc, char** argv) {
         return cmd_doctor();
     }
     if (strcmp(argv[1], "test") == 0) {
-        const char* dir = (argc > 2) ? argv[2] : "tests/corpus";
-        return cmd_test(dir);
+        const char* dir = "tests/corpus";
+        const char* backend = "c";
+        for (int a = 2; a < argc; a++) {
+            if (strncmp(argv[a], "--backend=", 10) == 0) {
+                backend = argv[a] + 10;
+            } else if (argv[a][0] != '-') {
+                dir = argv[a];
+            }
+        }
+        return cmd_test(dir, backend);
     }
     if (strcmp(argv[1], "--def-at") == 0 || strcmp(argv[1], "def-at") == 0) {
         return do_def_at(argc, argv);
@@ -2648,6 +2709,7 @@ int main(int argc, char** argv) {
             sema_set_source(sema, expanded, len);
             sema_load_commandlist(basedir, NULL);
             c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+            c_import_program_raw(sema, p, NULL, 0);
             sema_collect(sema, p);
             sema_check(sema, p);
             if (sema->err) emit_diag_json(&jbuf, path, sema->err);
@@ -2687,6 +2749,7 @@ int main(int argc, char** argv) {
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(basedir, NULL);
         c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+        c_import_program_raw(sema, p, NULL, 0);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {
@@ -2722,6 +2785,7 @@ int main(int argc, char** argv) {
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(basedir, NULL);
         c_import_scan_and_load(sema, expanded, len, basedir, NULL, 0);
+        c_import_program_raw(sema, p, NULL, 0);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {

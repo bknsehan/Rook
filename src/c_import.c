@@ -215,17 +215,8 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
     return CXChildVisit_Continue;
 }
 
-int c_import_header(Sema* sema, const char* header, int is_system, const char** inc_dirs, size_t n_inc) {
-    if (!sema || !header || !header[0]) return 0;
-    if (is_header_imported(header)) return 1;
-    mark_header_imported(header);
-
-    char code[1024];
-    if (is_system) {
-        snprintf(code, sizeof(code), "#include <%s>\n", header);
-    } else {
-        snprintf(code, sizeof(code), "#include \"%s\"\n", header);
-    }
+int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_inc) {
+    if (!sema || !code || !code[0]) return 0;
 
     CXIndex index = clang_createIndex(0, 0);
     struct CXUnsavedFile unsaved = {
@@ -267,11 +258,58 @@ int c_import_header(Sema* sema, const char* header, int is_system, const char** 
     return 1;
 }
 
+int c_import_header(Sema* sema, const char* header, int is_system, const char** inc_dirs, size_t n_inc) {
+    if (!sema || !header || !header[0]) return 0;
+    if (is_header_imported(header)) return 1;
+    mark_header_imported(header);
+
+    char code[1024];
+    if (is_system) {
+        snprintf(code, sizeof(code), "#include <%s>\n", header);
+    } else {
+        snprintf(code, sizeof(code), "#include \"%s\"\n", header);
+    }
+    return c_import_code(sema, code, inc_dirs, n_inc);
+}
+
+int c_import_program_raw(Sema* sema, Program* prog, const char** inc_dirs, size_t n_inc) {
+    if (!sema || !prog) return 0;
+    size_t total_len = 0;
+    for (int i = 0; i < prog->nitems; i++) {
+        if (prog->items[i]->kind == TOP_RAW && prog->items[i]->raw_len > 0) {
+            total_len += (size_t)prog->items[i]->raw_len + 2;
+        }
+    }
+    if (total_len == 0) return 1;
+    char* buf = malloc(total_len + 1);
+    if (!buf) return 0;
+    char* cur = buf;
+    for (int i = 0; i < prog->nitems; i++) {
+        if (prog->items[i]->kind == TOP_RAW && prog->items[i]->raw_len > 0) {
+            memcpy(cur, prog->items[i]->raw, (size_t)prog->items[i]->raw_len);
+            cur += prog->items[i]->raw_len;
+            *cur++ = '\n';
+        }
+    }
+    *cur = '\0';
+    int ret = c_import_code(sema, buf, inc_dirs, n_inc);
+    free(buf);
+    return ret;
+}
+
 #else
 
 void c_import_init(void) {}
+int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_inc) {
+    (void)sema; (void)code; (void)inc_dirs; (void)n_inc;
+    return 0;
+}
 int c_import_header(Sema* sema, const char* header, int is_system, const char** inc_dirs, size_t n_inc) {
     (void)sema; (void)header; (void)is_system; (void)inc_dirs; (void)n_inc;
+    return 0;
+}
+int c_import_program_raw(Sema* sema, Program* prog, const char** inc_dirs, size_t n_inc) {
+    (void)sema; (void)prog; (void)inc_dirs; (void)n_inc;
     return 0;
 }
 

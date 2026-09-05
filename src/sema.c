@@ -492,6 +492,21 @@ StructDef* sema_lookup_struct(Sema* sema, const char* name) {
     return NULL;
 }
 
+/* Look up an enum definition by name (walks symbol table, falls back to items). */
+EnumDef* sema_lookup_enum(Sema* sema, const char* name) {
+    if (!sema || !name) return NULL;
+    Sym* sym = scope_lookup(sema->scope, name);
+    if (sym && sym->kind == SYM_ENUM && sym->ed) return sym->ed;
+    if (sema->prog) {
+        for (int i = 0; i < sema->prog->nitems; i++) {
+            Item* it = sema->prog->items[i];
+            if (it->kind == TOP_ENUM && it->ed && strcmp(it->ed->name, name) == 0)
+                return it->ed;
+        }
+    }
+    return NULL;
+}
+
 /* Find the impl for `struct_name` that defines `method`, walking the
    inheritance chain. Returns the ImplDef (or NULL) and sets *owner to the
    struct whose impl owns the method (malloc'd; caller frees). */

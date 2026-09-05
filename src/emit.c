@@ -368,28 +368,6 @@ static void e_stmt_plain(Emit* e, Stmt* s, int ind) {
     }
 }
 
-/* Print a method/function signature only (no body), used for `trait` items
-   whose methods are declared without implementation. C-style: ret name(params); */
-__attribute__((unused)) static void e_fn_sig(Emit* e, FnDef* f, int ind) {
-    e_indent(e, ind);
-    if (f->ret) {
-        e_type(e, f->ret);
-        sb_append(&e->sb, " ");
-    }
-    sb_append(&e->sb, f->name);
-    sb_append(&e->sb, "(");
-    for (int i = 0; i < f->nparams; i++) {
-        if (i) sb_append(&e->sb, ", ");
-        /* C-style: type name */
-        if (f->params[i].type) {
-            e_type(e, f->params[i].type);
-            sb_append(&e->sb, " ");
-        }
-        sb_append(&e->sb, f->params[i].name);
-    }
-    sb_append(&e->sb, ");");
-    return;
-}
 
 static void e_fn(Emit* e, FnDef* f, int ind) {
     e_indent(e, ind);

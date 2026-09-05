@@ -151,7 +151,7 @@ static AstType* parse_type(Parser* p) {
     AstType* t = ast_type_new();
     Token* tok = cur(p);
     if (is_kw(tok, "dyn")) {
-        error_at(p, tok, "'dyn' trait objects are not supported");
+        error_at(p, tok, "'dyn' dynamic dispatch is not supported; Rook uses static typing and C objects");
         free(t);
         return NULL;
     }

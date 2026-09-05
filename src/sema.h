@@ -10,7 +10,6 @@ typedef enum {
     SYM_VAR,
     SYM_TYPE,
     SYM_ENUM,
-    SYM_TRAIT,
     SYM_ENUMVARIANT,
 } SymKind;
 
@@ -55,6 +54,7 @@ Sym* sema_lookup_method(Sema* s, const char* type_name, const char* method_name)
    or NULL if `name` is not a registered enum variant. */
 const char* sema_lookup_variant(Sema* s, const char* name);
 StructDef* sema_lookup_struct(Sema* s, const char* name);
+EnumDef* sema_lookup_enum(Sema* s, const char* name);
 
 /* Run the full type-checking pass. On the first error, sets `s->err` to a
    malloc'd source-accurate diagnostic and returns 1; otherwise returns 0. */
