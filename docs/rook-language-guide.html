@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rook Language Guide — Systems Programming with C Compatibility</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-secondary: #f1f5f9;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --text-dim: #64748b;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --code-bg: #181d28;
+    --code-text: #f8fafc;
+    --sidebar-bg: #ffffff;
+    --sidebar-width: 300px;
+    --nav-active-bg: #eff6ff;
+    --nav-active-text: #1d4ed8;
+    
+    /* Callout Colors */
+    --note-bg: #eff6ff;
+    --note-border: #3b82f6;
+    --note-title: #1e40af;
+    --tip-bg: #ecfdf5;
+    --tip-border: #10b981;
+    --tip-title: #065f46;
+    --warn-bg: #fffbeb;
+    --warn-border: #f59e0b;
+    --warn-title: #92400e;
+    --ban-bg: #fff1f2;
+    --ban-border: #f43f5e;
+    --ban-title: #9f1239;
+    --spec-bg: #f8fafc;
+    --spec-border: #64748b;
+    --spec-title: #334155;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  #sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--primary);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+
+  .sidebar-sub {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .sidebar-search {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-search input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-secondary);
+    font-size: 0.85rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .sidebar-search input:focus {
+    border-color: var(--primary);
+    background: var(--surface);
+  }
+
+  .nav-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 10px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    transition: all 0.15s ease;
+  }
+
+  .nav-item:hover {
+    background: var(--surface-secondary);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: var(--nav-active-bg);
+    color: var(--nav-active-text);
+    font-weight: 600;
+  }
+
+  #main {
+    flex: 1;
+    min-width: 0;
+    padding: 40px 48px 120px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  /* Hero / Cover Section */
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    margin-bottom: 48px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+  }
+
+  .hero-tagline {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    max-width: 70ch;
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+  }
+
+  .badge.highlight {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+  }
+
+  .hero-meta {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  /* Chapter Styling */
+  .chapter {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 40px;
+    margin-bottom: 40px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+
+  .chapter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chapter-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.015em;
+  }
+
+  .back-to-top {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-to-top:hover {
+    color: var(--primary);
+  }
+
+  .chapter-body h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 32px 0 12px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--surface-secondary);
+  }
+
+  .chapter-body h4 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 20px 0 8px;
+  }
+
+  .chapter-body p {
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .chapter-body ul, .chapter-body ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+  }
+
+  .chapter-body li {
+    margin-bottom: 6px;
+  }
+
+  /* Typography & Inline Code */
+  code {
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--surface-secondary);
+    color: #0f172a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  /* Code Blocks */
+  .code-block {
+    margin: 18px 0 24px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--code-bg);
+    border: 1px solid #2d3748;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .code-header {
+    background: #11151f;
+    padding: 8px 16px;
+    border-bottom: 1px solid #262f40;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .code-lang {
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+  }
+
+  .code-block pre {
+    padding: 16px 20px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--code-text);
+  }
+
+  .code-block pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  /* Callout Boxes */
+  .callout {
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 24px 0;
+    border-left: 4px solid;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  }
+
+  .callout-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+  }
+
+  .callout-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .callout-body p:last-child { margin-bottom: 0; }
+
+  .callout-note { background: var(--note-bg); border-color: var(--note-border); }
+  .callout-note .callout-title { color: var(--note-title); }
+
+  .callout-tip { background: var(--tip-bg); border-color: var(--tip-border); }
+  .callout-tip .callout-title { color: var(--tip-title); }
+
+  .callout-warn { background: var(--warn-bg); border-color: var(--warn-border); }
+  .callout-warn .callout-title { color: var(--warn-title); }
+
+  .callout-ban { background: var(--ban-bg); border-color: var(--ban-border); }
+  .callout-ban .callout-title { color: var(--ban-title); }
+
+  .callout-spec { background: var(--spec-bg); border-color: var(--spec-border); }
+  .callout-spec .callout-title { color: var(--spec-title); }
+
+  /* Tables */
+  .table-container {
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    text-align: left;
+    background: var(--surface);
+  }
+
+  th {
+    background: var(--surface-secondary);
+    color: var(--text);
+    font-weight: 600;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr:hover td {
+    background: #fafafa;
+  }
+
+  /* Diagram styles */
+  .arch-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .arch-split {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .arch-box.branch {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 8px 12px;
+  }
+
+  .arch-arrow {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 1024px) {
+    body {
+      flex-direction: column;
+    }
+    #sidebar {
+      width: 100%;
+      height: auto;
+      position: relative;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-list {
+      max-height: 240px;
+    }
+    #main {
+      padding: 24px 20px 80px;
+    }
+    .chapter {
+      padding: 24px 20px;
+    }
+    .hero {
+      padding: 28px 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">
+      <span>Rook Guide</span>
+      <span class="sidebar-badge">v0.4.1</span>
+    </div>
+    <div class="sidebar-sub">Systems Programming Language</div>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="filter-input" placeholder="Filter chapters..." onkeyup="filterChapters()">
+  </div>
+  <nav class="nav-list" id="nav-list">
+    <a class="nav-item" href="#philosophy"><span class="nav-title">1. The Rook Philosophy</span></a>
+<a class="nav-item" href="#architecture"><span class="nav-title">2. Architecture & Compilation Model</span></a>
+<a class="nav-item" href="#mental-model"><span class="nav-title">3. Mental Model & Memory Semantics</span></a>
+<a class="nav-item" href="#installation"><span class="nav-title">4. Installation, Setup & Diagnostics</span></a>
+<a class="nav-item" href="#quickstart"><span class="nav-title">5. Project Lifecycle & Quickstart</span></a>
+<a class="nav-item" href="#variables"><span class="nav-title">6. Variables, Types & Invariants</span></a>
+<a class="nav-item" href="#pointers"><span class="nav-title">7. Pointers & Pointer Safety</span></a>
+<a class="nav-item" href="#control-flow"><span class="nav-title">8. Control Flow & Branching</span></a>
+<a class="nav-item" href="#functions"><span class="nav-title">9. Functions & Call Semantics</span></a>
+<a class="nav-item" href="#structs"><span class="nav-title">10. Structs & Memory Layout</span></a>
+<a class="nav-item" href="#objects"><span class="nav-title">11. Objects, Methods & Single Inheritance</span></a>
+<a class="nav-item" href="#sum-match"><span class="nav-title">12. Algebraic Data Types: sum, enum & match</span></a>
+<a class="nav-item" href="#cleanup-defer"><span class="nav-title">13. Deterministic Cleanup: defer</span></a>
+<a class="nav-item" href="#modules"><span class="nav-title">14. Modules, Namespaces & Directives</span></a>
+<a class="nav-item" href="#dependencies"><span class="nav-title">15. Vendored Dependencies & Packages</span></a>
+<a class="nav-item" href="#c-interop"><span class="nav-title">16. C Interoperability & Integration</span></a>
+<a class="nav-item" href="#stdlib"><span class="nav-title">17. Standard Library Reference (std/)</span></a>
+<a class="nav-item" href="#safety"><span class="nav-title">18. Safety Invariants & Compile-Time Checks</span></a>
+<a class="nav-item" href="#config"><span class="nav-title">19. Configuration & Multi-Target Builds (rokade.toml)</span></a>
+<a class="nav-item" href="#cli"><span class="nav-title">20. Compiler CLI & Architecture Reference</span></a>
+  </nav>
+</aside>
+
+<main id="main">
+  <header class="hero" id="top">
+    <div class="badges">
+      <span class="badge highlight">Rokade v0.4.1</span>
+      <span class="badge">Zero Runtime Overhead</span>
+      <span class="badge">Header-Less C Dialect</span>
+      <span class="badge">Zero-Shell Execution</span>
+      <span class="badge">Single Offline Document</span>
+    </div>
+    <h1>The Rook Language Guide</h1>
+    <p class="hero-tagline">
+      A technical specification and comprehensive programming manual for <strong>Rook</strong>: a modern systems language with 1:1 C ABI compatibility, memory-safe defaults, zero-overhead single inheritance, and dual C/LLVM compilation backends.
+    </p>
+    <div class="hero-meta">
+      Compiler: <code>rokade</code> &nbsp;|&nbsp; Target Audience: Developers with prior programming knowledge &nbsp;|&nbsp; Fully self-contained.
+    </div>
+  </header>
+
+  
+<section class="chapter" id="philosophy">
+  <div class="chapter-header">
+    <h2 class="chapter-title">1. The Rook Philosophy</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>The systems programming landscape has long faced a fundamental tension between <strong>adaptability, control, and developer ergonomics</strong>. C remains the foundational substrate of computing: operating systems, kernel drivers, graphics APIs, game engines, embedded microcontrollers, and language runtimes are universally exposed through the C Application Binary Interface (ABI). If software must interface with hardware or existing ecosystems, C is the inescapable lingua franca.</p>
+
+<p>Yet programming in C exacts a continuous toll on engineering velocity and system reliability:</p>
+<ul>
+  <li><strong>Header Synchronization Hell:</strong> Developers must manually synchronize function signatures, struct layouts, and typedefs between <code>.h</code> header files and <code>.c</code> implementation files. A signature change requires editing two files; missing an include or guard introduces subtle linker or compile-time hazards.</li>
+  <li><strong>Pervasive Undefined Behavior (UB):</strong> Uninitialized local variables inherit unpredictable stack garbage, assignment inside conditional statements (<code>if (x = 5)</code>) silently corrupts state, and unchecked pointer arithmetic introduces exploitable vulnerabilities.</li>
+  <li><strong>Boilerplate for Basic Encapsulation:</strong> C lacks native mechanisms for method dispatch and single inheritance. Emulating object-oriented patterns requires tedious struct nesting, manual pointer casts, and fragile naming conventions.</li>
+</ul>
+
+<h3>Why Not C++, Rust, Zig, or Odin?</h3>
+<p>Modern alternatives attempt to solve these issues, but introduce significant trade-offs:</p>
+<ul>
+  <li><strong>C++:</strong> Provides powerful abstractions at the expense of overwhelming cognitive surface area, template metaprogramming bloat, sluggish compilation speeds, and fragile ABI compatibility—all while preserving C's header file model.</li>
+  <li><strong>Rust:</strong> Delivers exceptional compile-time memory safety, but demands substantial upfront friction via borrow checker semantics and complex lifetime annotations. Furthermore, interfacing Rust with native C libraries requires extensive FFI wrappers and unsafe bridging layers.</li>
+  <li><strong>Zig &amp; Odin:</strong> Excellent languages with clean semantics, yet they introduce entirely distinct syntax paradigms, standard libraries, and tooling models that decouple developers from the idiomatic C ecosystem.</li>
+</ul>
+
+<div class="callout callout-spec"><div class="callout-title">The Rook Thesis</div><div class="callout-body">
+<strong>Rook takes a pragmatic path: stay direct, transparent, and completely compatible with C.</strong> Rook is a clean, safe, header-less C dialect that transpiles directly to clean, standard C99/C11/C23 code or compiles natively via LLVM. Rook does not hide C; it purifies it.
+</div></div>
+
+<h3>Target Use Cases</h3>
+<ul>
+  <li><strong>Systems &amp; Embedded Tools:</strong> Compilers, command-line utilities, daemons, and embedded firmware where runtime overhead, garbage collection pauses, and hidden allocations are unacceptable.</li>
+  <li><strong>Game Engines &amp; Graphics:</strong> Native integration with C libraries like Raylib, SDL2, OpenGL, or Vulkan without FFI overhead.</li>
+  <li><strong>Modernizing Legacy C Codebases:</strong> Replace brittle C files with modular <code>.rook</code> units that seamlessly link with existing C object files and Makefiles.</li>
+</ul>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="architecture">
+  <div class="chapter-header">
+    <h2 class="chapter-title">2. Architecture & Compilation Model</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook is designed around a dual-backend, transparent compilation architecture. The primary driver is the <code>rokade</code> compiler, written entirely in portable C11.</p>
+
+<div class="arch-diagram">
+  <div class="arch-box">Source Files<br><code>.rook</code></div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box">AST &amp; Sema Checks<br><code>rokade</code> frontend</div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-split">
+    <div class="arch-box branch">C Backend (Default)<br>Transpiles to <code>build/generated/main.c</code><br>Spawns <code>gcc</code> / <code>clang</code></div>
+    <div class="arch-box branch">LLVM Backend (Native)<br>Emits LLVM IR / Native <code>.o</code><br>In-Memory JIT (<code>--jit</code>)</div>
+  </div>
+</div>
+
+<h3>2.1 The Lowering Pipeline</h3>
+<ol>
+  <li><strong>Lexing &amp; Parsing:</strong> Tokenizes source files and constructs an Abstract Syntax Tree (AST). Recursive module inclusion (<code>#comprise</code>) resolves and deduplicates file imports into a unified compilation unit.</li>
+  <li><strong>Semantic Analysis (<code>sema.c</code>):</strong> Validates type safety, verifies function arity, checks branch exhaustiveness, enforces pointer arithmetic rules, and rejects banned constructs (e.g. assignments in conditions, <code>goto</code>, division by zero).</li>
+  <li><strong>Code Generation:</strong>
+    <ul>
+      <li><strong>C Backend (Default):</strong> Emits highly readable, formatted C99/C11/C2x code into <code>build/generated/main.c</code>. Every Rook construct maps deterministically to a standard C counterpart.</li>
+      <li><strong>LLVM Backend:</strong> Emits LLVM Intermediate Representation (<code>.ll</code>) and drives LLVM target code generators to emit native machine object files (<code>.o</code>) or execute directly via an in-process JIT engine.</li>
+    </ul>
+  </li>
+  <li><strong>Zero-Shell Direct Toolchain Execution:</strong> Rokade invokes the host C compiler (<code>gcc</code> or <code>clang</code>) and linker directly using POSIX <code>fork</code>/<code>execv</code> (or <code>CreateProcess</code> on Windows). It avoids shell wrappers (<code>sh -c</code>), preventing command-injection attacks and ensuring exact argument propagation.</li>
+</ol>
+
+<div class="callout callout-note"><div class="callout-title">Transparent Output Inspection</div><div class="callout-body">
+Because Rokade's primary backend generates clean C in <code>build/generated/main.c</code>, you can inspect the generated code at any time with <code>rokade --emit-c src/main.rook</code>. There are no proprietary bytecode formats or obfuscated runtime libraries.
+</div></div>
+
+<h3>2.2 ABI Parity with C</h3>
+<p>Rook guarantees 1:1 ABI parity with the host C compiler:</p>
+<ul>
+  <li>Primitive types (<code>int</code>, <code>size_t</code>, <code>float</code>, <code>double</code>, <code>char*</code>) have identical size, alignment, and calling conventions.</li>
+  <li>Rook <code>struct</code> and <code>object</code> types match standard C struct memory layout with identical field offsets and padding.</li>
+  <li>Functions defined in Rook can be called directly from C, and C functions can be called directly from Rook without wrappers or marshaling.</li>
+</ul>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="mental-model">
+  <div class="chapter-header">
+    <h2 class="chapter-title">3. Mental Model & Memory Semantics</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Unlike languages that impose managed runtimes, tracing garbage collection, or complex reference counting, Rook adopts the <strong>flat, transparent memory model of C</strong>, augmented by deterministic safety guarantees.</p>
+
+<h3>3.1 The Stack &amp; Automatic Zero-Initialization</h3>
+<p>In standard C, uninitialized local stack variables contain arbitrary leftover memory contents, leading to undefined behavior and security exploits:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Dangerous)</span></div><pre><code class="language-c">// Standard C: Undefined Behavior
+void compute(void) {
+    int counter;      // Stack garbage! Could be 0, could be -19827312
+    if (ready) counter++; // Undefined behavior
+}</code></pre></div>
+
+<p>In Rook, <strong>every local variable declaration without an initializer is guaranteed to be zero-initialized</strong> at compile time:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Rook (Safe by Default)</span></div><pre><code class="language-rook">int compute() {
+    int counter; // Rokade lowers this to: int counter = {0};
+    printf("%d\n", counter); // Guaranteed to print 0
+    return 0;
+}</code></pre></div>
+
+<h3>3.2 The Heap &amp; Deterministic Lifecycle</h3>
+<p>Heap memory in Rook is explicit. You allocate memory using standard functions (such as <code>malloc</code> / <code>calloc</code>) or specialized memory structures like <code>std/mem</code> bump arenas. Rook provides no background garbage collector; heap allocations live until explicitly reclaimed.</p>
+
+<p>To eliminate memory leaks and ensure resources are properly released along all code paths (including early returns and error conditions), Rook introduces the <code>defer</code> statement:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Deterministic Scope Cleanup</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int process_file(const char* path) {
+    FILE* fp = fopen(path, "rb");
+    if (!fp) return -1;
+    defer fclose(fp); // Guaranteed to execute on any function return
+
+    char* buffer = (char*)malloc(4096);
+    if (!buffer) return -2;
+    defer free(buffer); // Executes before fclose(fp)
+
+    // Read and process data...
+    return 0; // Both buffer and fp are automatically cleaned up here
+}</code></pre></div>
+
+<h3>3.3 Object Memory Layout</h3>
+<p>Rook's object system provides single inheritance with <strong>zero runtime overhead</strong>. An object inheriting from a base type embeds the base struct as its first member (<code>struct Base _base;</code>). There are no virtual method tables (vtables), no runtime type indicators, and no pointer indirections. A pointer to a derived object can be safely cast and passed to any function expecting a pointer to its base type.</p>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="installation">
+  <div class="chapter-header">
+    <h2 class="chapter-title">4. Installation, Setup & Diagnostics</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook is distributed as source and installs cleanly into user space without requiring root privileges (<code>sudo</code>).</p>
+
+<h3>4.1 System Prerequisites</h3>
+<ul>
+  <li><strong>Host C Compiler:</strong> <code>gcc</code> (version 9+) or <code>clang</code> (version 10+)</li>
+  <li><strong>Build System:</strong> <code>cmake</code> (version 3.16+)</li>
+  <li><strong>Optional Language Server:</strong> Rust <code>cargo</code> (required only if building <code>rook-lsp</code>)</li>
+</ul>
+
+<h3>4.2 Quick Installation</h3>
+<p><strong>Linux &amp; macOS:</strong></p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Linux / macOS Install</span></div><pre><code class="language-bash">git clone https://github.com/bknsehan/Rook.git
+cd Rook
+./install.sh --prefix=$HOME/.local/rook --with-zed</code></pre></div>
+
+<p>Add the installation directory to your <code>PATH</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Shell Configuration</span></div><pre><code class="language-bash">export PATH="$HOME/.local/rook/bin:$PATH"</code></pre></div>
+
+<p><strong>Windows (PowerShell):</strong></p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Windows Install</span></div><pre><code class="language-powershell">git clone https://github.com/bknsehan/Rook.git
+cd Rook
+.\install.ps1 -WithZed</code></pre></div>
+
+<h3>4.3 Toolchain Verification: <code>rokade doctor</code></h3>
+<p>Rokade includes a built-in diagnostics command that verifies your compiler setup, include search paths, standard library availability, and toolchain dependencies:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Run Diagnostics</span></div><pre><code class="language-bash">rokade doctor</code></pre></div>
+
+<p>Sample output:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade doctor Output</span></div><pre><code class="language-text">=== Rokade System Diagnostics ===
+[PASS] Host OS: linux (x86_64)
+[PASS] C Compiler: /usr/bin/gcc (GNU 13.2.0)
+[PASS] Standard Library: /home/bknsehan/.local/rook/std/std.rook
+[PASS] Include Jail: secure sandboxing active
+[PASS] pkg-config: /usr/bin/pkg-config (found)
+[PASS] LLVM Backend: enabled (LLVM 18.1.3)
+[PASS] LSP Server: /home/bknsehan/.local/rook/bin/rook-lsp
+11 checks passed, 0 warnings, 0 failures. System ready.</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="quickstart">
+  <div class="chapter-header">
+    <h2 class="chapter-title">5. Project Lifecycle & Quickstart</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rokade provides a unified project management interface for scaffolding, configuring, building, and running Rook projects.</p>
+
+<h3>5.1 Project Scaffolding</h3>
+<p>To scaffold a new executable project:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Scaffold Application</span></div><pre><code class="language-bash">rokade new my_service
+cd my_service</code></pre></div>
+
+<p>To scaffold a library project suitable for sharing or vendoring:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Scaffold Library</span></div><pre><code class="language-bash">rokade new --lib math_utils</code></pre></div>
+
+<h3>5.2 Directory Layout</h3>
+<p>A standard Rook project follows a clean, predictable structure:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Project Structure</span></div><pre><code class="language-text">my_service/
+├── rokade.toml          # Project manifest &amp; build configuration
+├── src/
+│   └── main.rook        # Application entry point
+├── vendor/              # Third-party Rook and C dependencies
+│   └── math_utils/      # Vendored subproject
+└── build/               # Build artifacts (generated on compile)
+    ├── generated/
+    │   └── main.c       # Transpiled C code
+    └── linux/
+        └── my_service   # Final compiled native executable</code></pre></div>
+
+<h3>5.3 The Standard Workflow</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Core CLI Workflow</span></div><pre><code class="language-bash"># Build the project using configuration in rokade.toml
+rokade build
+
+# Build and immediately execute
+rokade run
+
+# Transpile directly to stdout to inspect the emitted C
+rokade --emit-c src/main.rook
+
+# Run instantly in memory using the LLVM JIT backend
+rokade run --jit</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="variables">
+  <div class="chapter-header">
+    <h2 class="chapter-title">6. Variables, Types & Invariants</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook provides concise, expressive variable declarations while maintaining strict static typing.</p>
+
+<h3>6.1 Declaration Forms in v0.4.1</h3>
+<p>Rook supports three primary declaration forms:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Variable Declarations</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    // 1. Type inference with 'let'
+    let count = 42;             // Infers int
+    let greeting = "Hello";     // Infers const char*
+
+    // 2. Explicitly typed 'let'
+    let threshold: int = 100;
+    let ratio: float = 3.14159f;
+
+    // 3. Classic C declaration syntax
+    int limit = 500;
+    const char* user = "admin";
+
+    printf("%s: count=%d, limit=%d\n", greeting, count, limit);
+    return 0;
+}</code></pre></div>
+
+<div class="callout callout-ban"><div class="callout-title">Syntax Deprecation in v0.4.1</div><div class="callout-body">
+Previous experimental versions of Rook allowed bare colon declarations of the form <code>x: int = 10;</code>. 
+In Rook v0.4.1, bare colon declarations have been <strong>completely removed</strong> from the grammar. 
+This eliminates syntactic ambiguities with labels, ternary operators, and struct initializer key-value pairs. 
+Use either <code>let x = 10;</code>, <code>let x: int = 10;</code>, or C-style <code>int x = 10;</code>.
+</div></div>
+
+<h3>6.2 Primitive Types &amp; Sizes</h3>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Type</th><th>Description</th><th>Typical Size (x86_64)</th><th>C Equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>int</code></td><td>Standard signed integer</td><td>4 bytes</td><td><code>int32_t</code> / <code>int</code></td></tr>
+    <tr><td><code>unsigned int</code></td><td>Standard unsigned integer</td><td>4 bytes</td><td><code>uint32_t</code> / <code>unsigned int</code></td></tr>
+    <tr><td><code>short</code> / <code>long</code></td><td>Short / Long integers</td><td>2 / 8 bytes</td><td><code>short</code> / <code>long</code></td></tr>
+    <tr><td><code>size_t</code></td><td>Unsigned size / index type</td><td>8 bytes</td><td><code>size_t</code></td></tr>
+    <tr><td><code>float</code></td><td>Single-precision IEEE 754 float</td><td>4 bytes</td><td><code>float</code></td></tr>
+    <tr><td><code>double</code></td><td>Double-precision IEEE 754 float</td><td>8 bytes</td><td><code>double</code></td></tr>
+    <tr><td><code>char</code></td><td>Byte / character value</td><td>1 byte</td><td><code>char</code> / <code>int8_t</code></td></tr>
+    <tr><td><code>const char*</code></td><td>Pointer to null-terminated C string</td><td>8 bytes</td><td><code>const char*</code></td></tr>
+    <tr><td><code>bool</code></td><td>Boolean flag (<code>true</code> / <code>false</code>)</td><td>1 byte</td><td><code>bool</code> (stdbool.h)</td></tr>
+    <tr><td><code>void</code></td><td>Incomplete type / absence of value</td><td>-</td><td><code>void</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>6.3 Fixed-Size Arrays</h3>
+<p>Array declarations follow C memory layout. Uninitialized arrays are automatically zero-filled:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Arrays & Iteration</span></div><pre><code class="language-rook">int values[4]; // Lowered to: int values[4] = {0};
+values[0] = 10;
+values[1] = 20;
+
+// Array iteration using for-in loop
+for item in [100, 200, 300] {
+    printf("item: %d\n", item);
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="pointers">
+  <div class="chapter-header">
+    <h2 class="chapter-title">7. Pointers & Pointer Safety</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Pointers are fundamental to systems programming. Rook preserves direct pointer access and low-level memory manipulation, but eliminates syntactical confusion and enforces strict compile-time safety checks.</p>
+
+<h3>7.1 Standardized Postfix Notation</h3>
+<p>In standard C, whitespace variability creates confusing pointer declarations (e.g. <code>int *p</code> vs <code>int* p</code>). Rook standardizes strictly on postfix notation:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Valid Pointer Syntax</span></div><pre><code class="language-rook">int* ptr = &amp;x;     // Correct in Rook
+const char* name;  // Correct in Rook</code></pre></div>
+
+<div class="callout callout-ban"><div class="callout-title">Prefix Pointer Syntax Banned</div><div class="callout-body">
+Prefix notation like <code>*int ptr;</code> is strictly rejected by the Rook parser:
+<pre><code>error: invalid pointer syntax '*Type'; Rook standardizes on postfix 'Type*'</code></pre>
+</div></div>
+
+<h3>7.2 Pointer Operations</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Address-of & Dereference</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+void swap(int* a, int* b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int main() {
+    int x = 10;
+    int y = 20;
+    swap(&amp;x, &amp;y);
+    printf("x=%d, y=%d\n", x, y); // x=20, y=10
+    return 0;
+}</code></pre></div>
+
+<h3>7.3 Enforced Pointer Arithmetic Rules</h3>
+<p>Rook's semantic analyzer enforces rigorous safety rules around pointer calculations:</p>
+<ul>
+  <li><strong>Typed Pointer Offsets:</strong> Adding or subtracting integers from typed pointers (<code>p + 1</code>, <code>p++</code>) is permitted and steps memory by <code>sizeof(*p)</code>.</li>
+  <li><strong>Prohibition on <code>void*</code> Arithmetic:</strong> In C, GCC permits arithmetic on <code>void*</code> as an extension, treating <code>sizeof(void)</code> as 1. Rook considers this dangerous and rejects it at compile time:
+<div class="code-block"><div class="code-header"><span class="code-lang">void* Arithmetic Enforcement</span></div><pre><code class="language-rook">void* buf = get_buffer();
+// COMPILE ERROR: pointer arithmetic on 'void*' is invalid
+void* next = buf + 8; 
+
+// CORRECT: cast explicitly to a byte-oriented pointer
+uint8_t* byte_ptr = (uint8_t*)buf;
+uint8_t* next_byte = byte_ptr + 8; // Valid</code></pre></div>
+  </li>
+  <li><strong>Prohibition of Non-Additive Operations:</strong> Multiplying, dividing, modulo-ing, or performing bitwise shifts on pointers is illegal and rejected at compile time:
+<div class="code-block"><div class="code-header"><span class="code-lang">Illegal Pointer Math Banned</span></div><pre><code class="language-rook">int* p = &amp;x;
+p = p * 2; // COMPILE ERROR: invalid operand to binary operator
+p = p &amp; 0xFF; // COMPILE ERROR: invalid operand to binary operator</code></pre></div>
+  </li>
+</ul>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="control-flow">
+  <div class="chapter-header">
+    <h2 class="chapter-title">8. Control Flow & Branching</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook provides structured control flow primitives familiar to C developers, with compile-time enforcements that prevent classic logical errors.</p>
+
+<h3>8.1 Conditionals: if / else</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard Conditional</span></div><pre><code class="language-rook">if (status == 200) {
+    printf("OK\n");
+} else if (status &gt;= 400 &amp;&amp; status &lt; 500) {
+    printf("Client Error\n");
+} else {
+    printf("Other\n");
+}</code></pre></div>
+
+<div class="callout callout-ban"><div class="callout-title">Assignment in Condition Strictly Banned</div><div class="callout-body">
+One of the most frequent bugs in C is accidentally typing <code>if (x = 5)</code> instead of <code>if (x == 5)</code>. 
+Rook's semantic analyzer recursively inspects condition expressions (stripping parentheses) and rejects assignment expressions in:
+<ul>
+  <li><code>if (cond)</code></li>
+  <li><code>while (cond)</code></li>
+  <li><code>for (...; cond; ...)</code></li>
+  <li><code>switch (cond)</code></li>
+  <li>Ternary operators: <code>(cond) ? a : b</code></li>
+</ul>
+<pre><code>error: assignment used as condition; did you mean '=='?</code></pre>
+</div></div>
+
+<h3>8.2 Iteration: while, do-while, for, and for-in</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Looping Constructs</span></div><pre><code class="language-rook">// 1. Classic while loop
+int i = 0;
+while (i &lt; 5) {
+    i++;
+}
+
+// 2. Standard C-style for loop
+for (int idx = 0; idx &lt; 10; idx++) {
+    if (idx == 3) continue;
+    if (idx == 8) break;
+}
+
+// 3. Range-based for-in loop
+for score in [95, 88, 72, 100] {
+    printf("score: %d\n", score);
+}</code></pre></div>
+
+<h3>8.3 Scalar Branching: C switch</h3>
+<p>For scalar dispatch (integers and enums) using jump tables, Rook supports standard C <code>switch</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Classic C switch</span></div><pre><code class="language-rook">switch (opcode) {
+    case 1:
+        execute_add();
+        break;
+    case 2:
+        execute_sub();
+        break;
+    default:
+        handle_unknown();
+        break;
+}</code></pre></div>
+
+<div class="callout callout-note"><div class="callout-title">Consolidation of switch and match in v0.4.1</div><div class="callout-body">
+Earlier builds contained an experimental arrow syntax inside switch (<code>case 1 -> action();</code>). 
+In Rook v0.4.1, arrow switch was removed to keep <code>switch</code> dedicated exclusively to traditional C semantics. 
+All modern pattern matching, destructuring, and expression branching are consolidated into the <code>match</code> construct (see Chapter 12).
+</div></div>
+
+<h3>8.4 Prohibition of goto</h3>
+<p>Rook explicitly bans the <code>goto</code> keyword. All control flow must be expressed via structured constructs (<code>if</code>, <code>while</code>, <code>for</code>, <code>switch</code>, <code>match</code>, <code>break</code>, <code>continue</code>, and <code>return</code>).</p>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="functions">
+  <div class="chapter-header">
+    <h2 class="chapter-title">9. Functions & Call Semantics</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Functions in Rook follow standard C declaration syntax, avoiding redundant keywords like <code>fn</code>, <code>def</code>, or <code>function</code>.</p>
+
+<h3>9.1 Signature &amp; Implementation</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Function Definitions</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+// Return type, identifier, typed parameter list
+int multiply(int a, int b) {
+    return a * b;
+}
+
+void log_message(const char* tag, const char* msg) {
+    printf("[%s] %s\n", tag, msg);
+}
+
+int main() {
+    let result = multiply(6, 7);
+    log_message("INFO", "Computation complete");
+    return 0;
+}</code></pre></div>
+
+<h3>9.2 Compile-Time Enforcements</h3>
+<ul>
+  <li><strong>Strict Return Validation:</strong> Any non-void function must return an appropriate value across all execution paths. A function falling through without a <code>return</code> triggers a compile-time error.</li>
+  <li><strong>Arity &amp; Type Verification:</strong> Function calls are statically verified against declarations. Calling a function with missing or extraneous arguments fails immediately.</li>
+  <li><strong>Top-Level Scope Enforcement:</strong> Nested function declarations (defining a function inside another function body) are illegal and rejected.</li>
+</ul>
+
+<h3>9.3 Foreign Function Declarations (extern)</h3>
+<p>When calling external C functions that are not provided via header includes, declare their prototype with <code>extern</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">extern Function Declarations</span></div><pre><code class="language-rook">extern int puts(const char* s);
+extern void* memcpy(void* dest, const void* src, size_t n);
+
+int main() {
+    puts("Direct C linkage");
+    return 0;
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="structs">
+  <div class="chapter-header">
+    <h2 class="chapter-title">10. Structs & Memory Layout</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Structs in Rook represent Plain Old Data (POD). They have direct, transparent mapping to C struct layout, ensuring exact memory alignment, size, and field offsets.</p>
+
+<h3>10.1 Definition &amp; Initialization</h3>
+<p>Rook supports both C-style field definitions and colon-separated field syntax:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Struct Definitions & Designated Initializers</span></div><pre><code class="language-rook">// Definition
+struct Vector2 {
+    float x;
+    float y;
+};
+
+int main() {
+    // 1. Positional initialization
+    Vector2 v1 = {10.0f, 20.0f};
+
+    // 2. Designated / Named initialization (Order independent!)
+    let v2 = Vector2{ y: 50.0f, x: 25.0f };
+
+    printf("v1: (%.1f, %.1f)\n", v1.x, v1.y);
+    printf("v2: (%.1f, %.1f)\n", v2.x, v2.y);
+    return 0;
+}</code></pre></div>
+
+<h3>10.2 Field Access &amp; Pointers</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Member Access Operators</span></div><pre><code class="language-rook">Vector2 v = Vector2{ x: 1.0f, y: 2.0f };
+Vector2* ptr = &amp;v;
+
+// Value access uses '.'
+v.x = 5.0f;
+
+// Pointer dereference uses '-&gt;'
+ptr-&gt;y = 10.0f;</code></pre></div>
+
+<div class="callout callout-spec"><div class="callout-title">Transpilation Mechanics</div><div class="callout-body">
+Designated initializers like <code>Vector2{ y: 50.0f, x: 25.0f }</code> are transpiled directly to standard C99 designated compound literals:
+<pre><code>((Vector2){.y = 50.0f, .x = 25.0f})</code></pre>
+This ensures zero runtime copying or initialization overhead.
+</div></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="objects">
+  <div class="chapter-header">
+    <h2 class="chapter-title">11. Objects, Methods & Single Inheritance</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook provides an elegant object model featuring <strong>single inheritance and method dispatch with zero runtime cost</strong>. Unlike C++, Rook introduces no virtual method tables (vtables), no runtime type information (RTTI), and no hidden pointer indirection.</p>
+
+<h3>11.1 The object Keyword</h3>
+<p>An <code>object</code> defines a record type that can participate in single inheritance:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Object Inheritance</span></div><pre><code class="language-rook">object Entity {
+    int id;
+    float x;
+    float y;
+}
+
+// Player inherits all fields from Entity
+object Player : Entity {
+    int health;
+    const char* username;
+}</code></pre></div>
+
+<h3>11.2 Memory Lowering &amp; ABI Parity</h3>
+<p>When Rook transpiles <code>object Player : Entity</code>, it lowers the inheritance hierarchy by embedding the base type as the first struct member named <code>_base</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Lowered C Struct Representation</span></div><pre><code class="language-c">// Generated C representation
+typedef struct Entity {
+    int id;
+    float x;
+    float y;
+} Entity;
+
+typedef struct Player {
+    struct Entity _base; // Embedded at offset 0
+    int health;
+    const char* username;
+} Player;</code></pre></div>
+
+<p>Because <code>_base</code> is located at offset 0 of <code>Player</code>, a pointer to <code>Player</code> is binary-compatible with a pointer to <code>Entity</code> under standard C ABI rules. Any function accepting <code>Entity*</code> can receive <code>(Entity*)player_ptr</code> without overhead.</p>
+
+<h3>11.3 Method Dispatch with impl</h3>
+<p>Methods are defined outside the struct definition using <code>impl</code> blocks:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Methods & Inheritance in Action</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+object Shape {
+    float x;
+    float y;
+}
+
+impl Shape {
+    void translate(Shape* self, float dx, float dy) {
+        self-&gt;x += dx;
+        self-&gt;y += dy;
+    }
+}
+
+object Circle : Shape {
+    float radius;
+}
+
+impl Circle {
+    void describe(self) { // 'self' shorthand automatically types to Circle*
+        printf("Circle at (%.1f, %.1f) with radius %.1f\n", self.x, self.y, self.radius);
+    }
+}
+
+int main() {
+    // Flat initialization across parent and child fields
+    let c = Circle{ x: 10.0f, y: 15.0f, radius: 5.0f };
+    
+    // Call method on derived type
+    c.describe();
+
+    // Call inherited method from base type
+    c.translate(5.0f, -5.0f);
+    c.describe();
+    return 0;
+}</code></pre></div>
+
+<div class="callout callout-tip"><div class="callout-title">Zero-Cost Method Lowering</div><div class="callout-body">
+Method invocations such as <code>c.describe()</code> lower to direct C function calls: <code>Circle_describe(&c)</code>. 
+Inherited calls like <code>c.translate(...)</code> automatically lower to <code>Shape_translate(&c._base, ...)</code>. 
+Dispatch is 100% static, inlined by the C compiler, and incurs zero vtable indirection.
+</div></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="sum-match">
+  <div class="chapter-header">
+    <h2 class="chapter-title">12. Algebraic Data Types: sum, enum & match</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Modern systems software requires robust representation of polymorphic data without complex class hierarchies. Rook provides first-class <strong>sum types (tagged unions)</strong> and pattern matching via <code>match</code>.</p>
+
+<h3>12.1 Enumerations: enum</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard Enum</span></div><pre><code class="language-rook">enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete
+}</code></pre></div>
+
+<h3>12.2 Sum Types (Tagged Unions)</h3>
+<p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variants may be unit variants (bearing no payload) or data variants:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span></div><pre><code class="language-rook">sum Node {
+    Leaf { value: int; };
+    Branch { left: Node*; right: Node*; };
+    Empty;
+}</code></pre></div>
+
+<p>In memory, Rokade lowers a <code>sum</code> type into a C struct containing an integer discriminator tag and an anonymous union storing the variant payloads:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Lowered Tagged Union</span></div><pre><code class="language-c">typedef struct Node {
+    int tag; // Identifies which variant is currently active
+    union {
+        struct { int value; } Leaf;
+        struct { struct Node* left; struct Node* right; } Branch;
+    };
+} Node;</code></pre></div>
+
+<h3>12.3 Pattern Matching: match</h3>
+<p>The <code>match</code> construct provides comprehensive destructuring for sum types, enums, and scalar values. It is supported in both statement and expression forms.</p>
+
+<h4>Statement Form:</h4>
+<div class="code-block"><div class="code-header"><span class="code-lang">Statement Pattern Match</span></div><pre><code class="language-rook">void print_node(Node* n) {
+    match (*n) {
+        Leaf { value } =&gt; printf("Leaf: %d\n", value),
+        Branch { left, right } =&gt; printf("Branch\n"),
+        Empty =&gt; printf("Empty\n"),
+        _ =&gt; printf("Unknown\n")
+    }
+}</code></pre></div>
+
+<h4>Expression Form:</h4>
+<div class="code-block"><div class="code-header"><span class="code-lang">Expression Pattern Match</span></div><pre><code class="language-rook">sum Shape {
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
+}
+
+float calculate_area(Shape s) {
+    return match (s) {
+        Circle { radius } =&gt; 3.14159f * radius * radius,
+        Rectangle { width, height } =&gt; width * height,
+        Point =&gt; 0.0f,
+        _ =&gt; 0.0f
+    };
+}</code></pre></div>
+
+<h3>12.4 Instantiating Sum Types &amp; Methods with impl</h3>
+<p>To instantiate a sum type, specify the sum type name as the variable type (or use explicit type annotation with <code>let</code>) and provide the variant constructor:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Instantiation & Methods</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+sum Shape {
+    Circle { r: float; };
+    Rect { w: float; h: float; };
+    Point;
+}
+
+// Methods can be attached to sum types via impl
+impl Shape {
+    float area(Shape* self) {
+        return match (*self) {
+            Circle { r }  =&gt; 3.14159f * r * r,
+            Rect { w, h } =&gt; w * h,
+            Point         =&gt; 0.0f,
+            _             =&gt; 0.0f,
+        };
+    }
+}
+
+int main() {
+    Shape a = Circle{ r: 2.0f };
+    Shape b = Rect{ w: 3.0f, h: 4.0f };
+    Shape c = Point;
+
+    printf("Circle area: %f\n", a.area()); // 12.566360
+    printf("Rect area:   %f\n", b.area()); // 12.000000
+    printf("Point area:  %f\n", c.area()); // 0.000000
+    return 0;
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="cleanup-defer">
+  <div class="chapter-header">
+    <h2 class="chapter-title">13. Deterministic Cleanup: defer</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Manual resource cleanup is the primary source of memory leaks and descriptor exhaustion in C. Rook solves this with the <code>defer</code> statement, providing deterministic scope-based resource reclamation.</p>
+
+<h3>13.1 defer Mechanics</h3>
+<p>When <code>defer &lt;stmt&gt;;</code> is encountered, the deferred statement is scheduled to run when the surrounding lexical scope terminates. Multiple deferred statements execute in <strong>Last-In, First-Out (LIFO)</strong> order (stack unwinding):</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">LIFO Execution Order</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+void trace_lifo() {
+    defer printf("First deferred (runs last)\n");
+    defer printf("Second deferred (runs middle)\n");
+    printf("Function body execution\n");
+    defer printf("Third deferred (runs first)\n");
+}
+
+int main() {
+    trace_lifo();
+    return 0;
+}</code></pre></div>
+
+<p>Output:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Execution Output</span></div><pre><code class="language-text">Function body execution
+Third deferred (runs first)
+Second deferred (runs middle)
+First deferred (runs last)</code></pre></div>
+
+<h3>13.2 Resource Pairing Idioms</h3>
+<p>Place <code>defer</code> immediately after acquiring any resource to guarantee deallocation, regardless of whether the function returns early or encounters an error:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Safe Resource Management</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int process_data(const char* filename) {
+    FILE* f = fopen(filename, "r");
+    if (!f) return -1;
+    defer fclose(f); // Guaranteed closure
+
+    int* data = (int*)malloc(1000 * sizeof(int));
+    if (!data) return -2; // f is closed automatically!
+    defer free(data);     // Guaranteed deallocation
+
+    // Process file...
+    if (read_error()) {
+        return -3; // Both data is freed and f is closed!
+    }
+
+    return 0; // Both data is freed and f is closed!
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="modules">
+  <div class="chapter-header">
+    <h2 class="chapter-title">14. Modules, Namespaces & Directives</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook modernizes code organization by eliminating C header files (<code>.h</code>) entirely for Rook code, while providing a clear distinction between native Rook modules and external C headers.</p>
+
+<h3>14.1 Directives Overview</h3>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Directive</th><th>Usage</th><th>Semantics</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>#comprise module</code></td><td>Import local Rook source file</td><td>Parsed and merged into the AST; diamond dependencies automatically deduplicated.</td></tr>
+    <tr><td><code>#comprise &lt;std/io&gt;</code></td><td>Import Rook standard library module</td><td>Resolves against Rook's stdlib directory; deduplicated.</td></tr>
+    <tr><td><code>#include &lt;header.h&gt;</code></td><td>Import standard C system header</td><td>Passed directly through to the generated C code.</td></tr>
+    <tr><td><code>#include "header.h"</code></td><td>Import local C library header</td><td>Subject to path validation under the Include Jail.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>14.2 Modular Multi-File Organization</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/math.rook</span></div><pre><code class="language-rook">// src/math.rook
+int add(int a, int b) {
+    return a + b;
+}
+
+int sub(int a, int b) {
+    return a - b;
+}</code></pre></div>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook</span></div><pre><code class="language-rook">// src/main.rook
+#include &lt;stdio.h&gt;
+#comprise math // Resolves to src/math.rook
+
+int main() {
+    printf("add: %d\n", add(10, 5));
+    return 0;
+}</code></pre></div>
+
+<div class="callout callout-tip"><div class="callout-title">Automatic Deduplication (No Include Guards)</div><div class="callout-body">
+Unlike C where header files require <code>#ifndef HEADER_H</code> include guards to prevent duplicate definitions, Rook's <code>#comprise</code> directive automatically deduplicates modules. If Module A and Module B both comprise Module C, Module C is parsed and compiled exactly once.
+</div></div>
+
+<h3>14.3 Security Sandboxing: The Include Jail</h3>
+<p>To defend against directory traversal attacks and unauthorized filesystem reading during compilation, Rokade implements an <strong>Include Jail</strong>. All file inclusion directives are resolved and validated against a sandboxed boundary:</p>
+<ul>
+  <li>Paths must reside within the project root, the Rook standard library installation, vendored package directories, or verified system include directories.</li>
+  <li>Path traversal attempts (such as <code>#include "../../../etc/shadow"</code>) are rejected immediately at compile time.</li>
+</ul>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="dependencies">
+  <div class="chapter-header">
+    <h2 class="chapter-title">15. Vendored Dependencies & Packages</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Modern software relies on shared libraries. Rokade provides a built-in dependency and vendoring system that resolves packages without external package managers or centralized registries.</p>
+
+<h3>15.1 Defining Dependencies in rokade.toml</h3>
+<p>Dependencies are declared in the <code>[dependencies]</code> table of your project's <code>rokade.toml</code> using relative paths:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml Dependencies</span></div><pre><code class="language-toml">[package]
+name = "my_game"
+version = "0.1.0"
+
+[build]
+kind = "exe"
+targets = ["linux"]
+
+[dependencies]
+engine = { path = "vendor/engine" }
+physics = { path = "vendor/physics" }</code></pre></div>
+
+<h3>15.2 The vendor/ Directory Hierarchy</h3>
+<p>Vendored dependencies are self-contained Rook projects located within the <code>vendor/</code> directory:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Vendored Project Layout</span></div><pre><code class="language-text">my_game/
+├── rokade.toml
+├── src/
+│   └── main.rook
+└── vendor/
+    └── engine/
+        ├── rokade.toml
+        └── src/
+            └── engine.rook</code></pre></div>
+
+<h3>15.3 Transitive Dependency Resolution</h3>
+<p>When building your project, Rokade automatically performs dependency graph resolution:</p>
+<ol>
+  <li>Inspects each dependency declared in <code>[dependencies]</code>.</li>
+  <li>Safely verifies paths and parses the dependency's <code>rokade.toml</code>.</li>
+  <li>Recursively discovers transitive dependencies (e.g. if <code>engine</code> depends on <code>mathlib</code>).</li>
+  <li>Automatically adds the include directories and source files of all dependencies into the host compiler command arguments.</li>
+</ol>
+
+<p>In your source code, simply comprise the library by name:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Using Vendored Dependencies</span></div><pre><code class="language-rook">#comprise engine
+
+int main() {
+    engine_init();
+    return 0;
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="c-interop">
+  <div class="chapter-header">
+    <h2 class="chapter-title">16. C Interoperability & Integration</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook's ultimate strength is its <strong>seamless, zero-overhead interoperability with C</strong>. Because Rook transpiles to standard C and shares identical calling conventions, any C library can be used immediately without foreign function interfaces (FFI), code generators, or runtime bridges.</p>
+
+<h3>16.1 Integrating System Libraries via pkg-config</h3>
+<p>To integrate popular C libraries (such as Raylib, SDL2, SQLite3, or GTK), declare them in the <code>pkg-config</code> array in <code>rokade.toml</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml with pkg-config</span></div><pre><code class="language-toml">[package]
+name = "raylib_demo"
+version = "0.1.0"
+
+[build]
+kind = "exe"
+pkg-config = ["raylib"]</code></pre></div>
+
+<p>Rokade automatically executes <code>pkg-config --cflags --libs raylib</code> using safe argument vectors and configures the compilation and linking pipelines.</p>
+
+<h3>16.2 Concrete Example: Complete Raylib Window</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook (Raylib GUI)</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;raylib.h&gt;
+
+int main() {
+    const int screenWidth = 800;
+    const int screenHeight = 450;
+
+    InitWindow(screenWidth, screenHeight, "Rook + Raylib Modern Demo");
+    defer CloseWindow(); // Guaranteed cleanup
+
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
+        DrawText("Welcome to Rook systems programming!", 160, 200, 20, DARKGRAY);
+        DrawFPS(10, 10);
+
+        EndDrawing();
+    }
+
+    return 0;
+}</code></pre></div>
+
+<h3>16.3 Mixing Raw C Code Directly in .rook Files</h3>
+<p>You can embed C declarations, typedefs, and inline C helpers directly in a <code>.rook</code> file. Rokade recognizes standard C syntax and passes it through directly to the generated C source:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Embedding Raw C</span></div><pre><code class="language-rook">typedef struct {
+    int code;
+    char detail[64];
+} ErrorContext;
+
+int calculate_hash(const char* str) {
+    int hash = 5381;
+    int c;
+    while ((c = *str++)) {
+        hash = ((hash &lt;&lt; 5) + hash) + c;
+    }
+    return hash;
+}</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="stdlib">
+  <div class="chapter-header">
+    <h2 class="chapter-title">17. Standard Library Reference (std/)</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook includes a lightweight, modular standard library located in the <code>std/</code> directory. Standard library modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or all at once via <code>#comprise &lt;std&gt;</code>.</p>
+
+<h3>17.1 std/io — Fast Console I/O</h3>
+<p>Import with <code>#comprise &lt;std/io&gt;</code></p>
+<div class="code-block"><div class="code-header"><span class="code-lang">std/io Example</span></div><pre><code class="language-rook">println("Standard output with newline");
+print("Standard output without newline");
+eprintln("Standard error log");</code></pre></div>
+
+<h3>17.2 std/str — Non-Owning String Slice (Str)</h3>
+<p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a lightweight struct containing a pointer and a length (<code>const char* data; size_t len;</code>). It provides zero-allocation string slicing and inspections:</p>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Method / Function</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>str_from_cstr(s)</code></td><td>Creates a <code>Str</code> slice from a null-terminated C string.</td></tr>
+    <tr><td><code>s.is_empty()</code></td><td>Returns true if <code>s.len == 0</code>.</td></tr>
+    <tr><td><code>s.slice(start, len)</code></td><td>Returns a subslice without memory allocation.</td></tr>
+    <tr><td><code>s.equals(other)</code></td><td>Returns true if both string slices match in content.</td></tr>
+    <tr><td><code>s.starts_with(prefix)</code></td><td>Checks for matching prefix.</td></tr>
+    <tr><td><code>s.ends_with(suffix)</code></td><td>Checks for matching suffix.</td></tr>
+    <tr><td><code>s.trim()</code></td><td>Returns subslice with leading and trailing whitespace stripped.</td></tr>
+    <tr><td><code>s.find(sub)</code></td><td>Returns byte offset of substring, or -1 if not found.</td></tr>
+    <tr><td><code>s.contains(sub)</code></td><td>Returns true if substring is present.</td></tr>
+    <tr><td><code>s.to_int()</code></td><td>Parses ASCII digits into an integer.</td></tr>
+    <tr><td><code>s.to_cstr(buf, cap)</code></td><td>Copies string slice into buffer and null-terminates.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>17.3 std/vec — Dynamic Vector &amp; StringBuilder</h3>
+<p>Import with <code>#comprise &lt;std/vec&gt;</code></p>
+<div class="code-block"><div class="code-header"><span class="code-lang">std/vec Example</span></div><pre><code class="language-rook">// Dynamic Vector of pointers
+Vec v = vec_new(8);
+defer v.destroy();
+
+v.push(&amp;item1);
+v.push(&amp;item2);
+void* val = v.pop();
+
+// Efficient String Construction
+StringBuilder sb = sb_new(64);
+defer sb.destroy();
+
+sb.append_cstr("Latency: ");
+sb.append_int(42);
+sb.append_cstr(" ms\n");
+printf("%s", sb.to_cstr());</code></pre></div>
+
+<h3>17.4 std/mem — Bump Arena Allocator</h3>
+<p>Import with <code>#comprise &lt;std/mem&gt;</code>. The <code>Arena</code> allocator allocates memory sequentially from a fixed contiguous block, allowing hundreds of small allocations to be freed instantly with a single call:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">std/mem Arena Allocator</span></div><pre><code class="language-rook">Arena arena = arena_new(65536); // 64 KB memory pool
+defer arena.destroy();
+
+// Allocate within arena (no individual free calls needed)
+void* block1 = arena.alloc(128);
+void* block2 = arena.alloc(512);
+
+arena.reset(); // Instantly clears all allocations</code></pre></div>
+
+<h3>17.5 std/result — Result and Option Types</h3>
+<p>Import with <code>#comprise &lt;std/result&gt;</code>. Provides algebraic return types for explicit error handling:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">std/result Example</span></div><pre><code class="language-rook">Result r = result_ok(payload);
+if (r.is_ok()) {
+    void* data = r.unwrap();
+} else {
+    const char* err = r.unwrap_err();
+}
+
+Option opt = option_some(item);
+if (opt.is_some()) {
+    void* val = opt.unwrap();
+}</code></pre></div>
+
+<h3>17.6 Other Standard Modules</h3>
+<ul>
+  <li><strong>std/fs:</strong> File operations (<code>fs_read_to_string</code>, <code>fs_write_file</code>, <code>fs_exists</code>) and path utilities (<code>path_basename</code>, <code>path_dirname</code>, <code>path_extension</code>).</li>
+  <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
+  <li><strong>std/math:</strong> Vector math (<code>Vec2</code>, <code>Vec3</code>), geometric bounding boxes (<code>Rect</code>), clamping, interpolation (<code>lerpf</code>), and trigonometry.</li>
+</ul>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="safety">
+  <div class="chapter-header">
+    <h2 class="chapter-title">18. Safety Invariants & Compile-Time Checks</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook enforces strict compile-time checks on <code>.rook</code> source code to eliminate the most common classes of undefined behavior and bugs inherent in C.</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Bug Class</th><th>Behavior in Standard C</th><th>Behavior in Rook</th><th>Rationale</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Assignment in Condition</strong></td>
+      <td>Silently assigns variable and tests truthiness (<code>if (x = 5)</code>).</td>
+      <td><strong>Compile Error</strong> (even with parens: <code>if ((x = 5))</code>)</td>
+      <td>Almost invariably a typographical error for <code>==</code> that corrupts program logic.</td>
+    </tr>
+    <tr>
+      <td><strong>Uninitialized Locals</strong></td>
+      <td>Contains arbitrary stack garbage (Undefined Behavior).</td>
+      <td><strong>Guaranteed Zero-Init</strong> (<code>= 0</code>)</td>
+      <td>Eliminates non-deterministic crashes, security information leaks, and uninitialized reads.</td>
+    </tr>
+    <tr>
+      <td><strong>void* Pointer Arithmetic</strong></td>
+      <td>GCC extension or undefined behavior.</td>
+      <td><strong>Compile Error</strong></td>
+      <td>The byte stride of <code>void</code> is formally undefined. Developers must explicitly cast to <code>uint8_t*</code> or <code>char*</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Invalid Pointer Operations</strong></td>
+      <td>Allows ambiguous or meaningless operations (e.g. <code>ptr * 2</code>).</td>
+      <td><strong>Compile Error</strong></td>
+      <td>Multiplication, division, modulo, and bitwise logic have no valid mathematical meaning on memory addresses.</td>
+    </tr>
+    <tr>
+      <td><strong>Pointer Syntax Ambiguity</strong></td>
+      <td>Permits varying styles (<code>int *p</code>, <code>int* p</code>).</td>
+      <td><strong>Enforces Postfix</strong> (<code>int* p</code>; bans <code>*int p</code>)</td>
+      <td>Ensures consistent, unambiguous parsing across codebases.</td>
+    </tr>
+    <tr>
+      <td><strong>Division by Zero</strong></td>
+      <td>Immediate hardware trap (SIGFPE) or undefined behavior.</td>
+      <td><strong>Compile Error</strong> for literal / const-folded zeroes (e.g. <code>x / 0</code>, <code>x / (2 - 2)</code>)</td>
+      <td>Traps obvious arithmetic faults at compile time.</td>
+    </tr>
+    <tr>
+      <td><strong>Arbitrary Jumps (goto)</strong></td>
+      <td>Permitted anywhere within function scope.</td>
+      <td><strong>Banned</strong></td>
+      <td>Prevents spaghetti code and ensures deterministic scope entry and exit for <code>defer</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Comma Operator in Expressions</strong></td>
+      <td>Permits sequential evaluation (<code>a, b</code>).</td>
+      <td><strong>Banned</strong> in expression contexts</td>
+      <td>Obscures control flow and hides side effects; commas are strictly reserved for argument separators.</td>
+    </tr>
+    <tr>
+      <td><strong>Include Jail Violation</strong></td>
+      <td>Allows arbitrary path traversal (e.g. <code>#include "../../../etc/passwd"</code>).</td>
+      <td><strong>Compile Error</strong></td>
+      <td>Enforces strict sandbox boundaries around the project tree, stdlib, and dependencies.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>18.1 Catalog of Concrete Compiler Diagnostics</h3>
+<p>Below are representative examples of illegal constructs and the precise compiler errors emitted by Rokade's semantic analyzer (<code>sema.c</code>):</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Compile-Time Diagnostic Catalog</span></div><pre><code class="language-rook">// 1. Assignment in Condition (Recursively Strips Parentheses)
+if ((x = 5)) { }
+// Error: assignment used as condition; did you mean '=='?
+
+// 2. Prefix Pointer Notation
+*int ptr;
+// Error: invalid pointer syntax '*Type'; Rook standardizes on postfix 'Type*'
+
+// 3. void* Pointer Arithmetic
+void* buffer = get_raw();
+void* next = buffer + 4;
+// Error: pointer arithmetic on 'void*' is invalid
+
+// 4. Invalid Pointer Operations
+int* p = &amp;value;
+p = p * 2;
+// Error: invalid operand to binary operator
+
+// 5. Literal and Const-Folded Division by Zero
+int a = 10 / 0;
+int b = 10 / (5 - 5);
+// Error: division or modulo by zero
+
+// 6. Arbitrary Jump Keyword
+goto exit_label;
+// Error: 'goto' is not supported in Rook
+
+// 7. Non-Void Function Missing Return
+int calculate(int x) {
+    if (x &gt; 0) return x * 2;
+    // Missing return on else path!
+}
+// Error: control reaches end of non-void function</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="config">
+  <div class="chapter-header">
+    <h2 class="chapter-title">19. Configuration & Multi-Target Builds (rokade.toml)</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Every Rook project is configured via a declarative <code>rokade.toml</code> manifest. Rokade handles multi-target cross-compilation without requiring manual Makefiles or complex CMake scripts.</p>
+
+<h3>19.1 Complete rokade.toml Schema</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Complete rokade.toml Schema</span></div><pre><code class="language-toml">[package]
+name = "service_engine"
+version = "0.4.1"
+authors = ["Engineering Team &lt;dev@example.com&gt;"]
+description = "High-throughput telemetry daemon"
+
+[build]
+kind = "exe"                   # Options: "exe", "shared-lib", "static-lib"
+standard = "c2x"               # Options: "c11", "c17", "c2x", "gnu23"
+backend = "c"                  # Options: "c" (default), "llvm"
+targets = ["linux", "windows"] # Active target builds
+pkg-config = ["sqlite3"]       # System library dependencies
+
+[dependencies]
+network_core = { path = "vendor/network_core" }
+
+[target.linux]
+kind = "exe"
+cflags = "-O3 -march=native"
+
+[target.windows]
+kind = "exe"
+cflags = "-O2"
+
+[target.android]
+kind = "shared-lib"
+api = 24
+arch = ["arm64-v8a", "x86_64"]
+cflags = "-fPIC -O3"</code></pre></div>
+
+<h3>19.2 Cross-Compilation Support</h3>
+<p>Rokade includes built-in cross-compilation target drivers:</p>
+<ul>
+  <li><strong>Linux:</strong> Compiles natively via host <code>gcc</code> or <code>clang</code>.</li>
+  <li><strong>Windows:</strong> Cross-compiles from Linux using MinGW (<code>x86_64-w64-mingw32-gcc</code>), emitting a Windows <code>.exe</code>.</li>
+  <li><strong>Android:</strong> Auto-detects installed Android NDK toolchains and compiles shared libraries (<code>.so</code>) for specified ABIs (e.g. <code>arm64-v8a</code>, <code>x86_64</code>).</li>
+</ul>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Target Build Commands</span></div><pre><code class="language-bash"># Build specifically for Windows target
+rokade build --target=windows
+
+# Build specifically for Android target
+rokade build --target=android
+
+# Build all configured targets in parallel
+rokade build --all</code></pre></div>
+
+  </div>
+</section>
+
+
+<section class="chapter" id="cli">
+  <div class="chapter-header">
+    <h2 class="chapter-title">20. Compiler CLI & Architecture Reference</h2>
+    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>The <code>rokade</code> executable is a self-contained command-line driver providing build orchestration, static analysis, code generation, and diagnostics.</p>
+
+<h3>20.1 Command-Line Reference</h3>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Command / Option</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>rokade new [--lib] &lt;name&gt;</code></td><td>Scaffolds a new application or library project.</td></tr>
+    <tr><td><code>rokade build [--all] [--target=T]</code></td><td>Builds the project according to <code>rokade.toml</code>.</td></tr>
+    <tr><td><code>rokade run [--jit] [file.rook]</code></td><td>Compiles and executes the project or a single file. <code>--jit</code> runs in-memory.</td></tr>
+    <tr><td><code>rokade doctor</code></td><td>Executes full diagnostic suite inspecting toolchain and paths.</td></tr>
+    <tr><td><code>rokade toolchain</code></td><td>Displays detected host C compiler, version, and default flags.</td></tr>
+    <tr><td><code>rokade --emit-c &lt;file.rook&gt;</code></td><td>Transpiles file and prints generated C code to stdout.</td></tr>
+    <tr><td><code>rokade --emit-llvm &lt;file.rook&gt;</code></td><td>Emits LLVM Intermediate Representation (LLVM IR).</td></tr>
+    <tr><td><code>rokade --emit-obj &lt;file.rook&gt;</code></td><td>Compiles directly to native host object file (<code>.o</code>) via LLVM.</td></tr>
+    <tr><td><code>rokade --ast &lt;file.rook&gt;</code></td><td>Prints pretty-printed AST representation for compiler debugging.</td></tr>
+    <tr><td><code>rokade --check &lt;file.rook&gt;</code></td><td>Performs round-trip parser verification.</td></tr>
+    <tr><td><code>rokade --check-dir &lt;dir&gt;</code></td><td>Recursively validates all <code>.rook</code> files within directory.</td></tr>
+    <tr><td><code>rokade --diagnostics &lt;file.rook&gt;</code></td><td>Emits machine-readable JSON diagnostics for IDE/LSP integration.</td></tr>
+    <tr><td><code>rokade --def-at &lt;file&gt; &lt;line&gt; &lt;col&gt;</code></td><td>Returns symbol definition location for editor navigation.</td></tr>
+    <tr><td><code>rokade --symbols &lt;file.rook&gt;</code></td><td>Emits JSON list of top-level functions, structs, and objects.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>20.2 Zero-Shell Process Execution Architecture</h3>
+<p>To ensure security in automated CI/CD and multi-user environments, Rokade completely eschews shell execution (e.g. <code>system()</code> or <code>popen("sh -c ...")</code>) when invoking compiler tools:</p>
+<ul>
+  <li>All compiler commands, flags, and library parameters are passed as structured argument vectors (<code>char* argv[]</code>) directly to POSIX <code>fork()</code> and <code>execv()</code>.</li>
+  <li>Shell metacharacters (such as semicolons, pipes, or command substitutions in <code>cflags</code>) are treated as literal strings and cannot execute arbitrary shell code.</li>
+  <li>Compilation and linker return codes are strictly verified; any non-zero exit code immediately aborts the build process with informative error output.</li>
+</ul>
+
+  </div>
+</section>
+
+
+  <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem; text-align: center;">
+    <p>Rook Language Guide &bull; Version 0.4.1 &bull; Built for Systems Programmers &bull; Completely Offline</p>
+  </footer>
+</main>
+
+<script>
+  // Filter sidebar navigation items
+  function filterChapters() {
+    var input = document.getElementById('filter-input');
+    var filter = input.value.toLowerCase();
+    var navList = document.getElementById('nav-list');
+    var items = navList.getElementsByClassName('nav-item');
+    for (var i = 0; i < items.length; i++) {
+      var text = items[i].textContent || items[i].innerText;
+      if (text.toLowerCase().indexOf(filter) > -1) {
+        items[i].style.display = "";
+      } else {
+        items[i].style.display = "none";
+      }
+    }
+  }
+
+  // ScrollSpy to highlight active chapter
+  window.addEventListener('DOMContentLoaded', function() {
+    var sections = document.querySelectorAll('.chapter');
+    var navLinks = document.querySelectorAll('.nav-item');
+
+    function onScroll() {
+      var scrollPos = window.scrollY + 100;
+      sections.forEach(function(sec) {
+        var top = sec.offsetTop;
+        var height = sec.offsetHeight;
+        var id = sec.getAttribute('id');
+        if (scrollPos >= top && scrollPos < top + height) {
+          navLinks.forEach(function(link) {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + id) {
+              link.classList.add('active');
+            }
+          });
+        }
+      });
+    }
+
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+  });
+</script>
+
+</body>
+</html>
