@@ -577,6 +577,8 @@ static void usage(void) {
     printf("  rokade --ast <file>       dump the AST\n");
     printf("  rokade --check <file>     round-trip check (parse->emit->reparse, compare ASTs)\n");
     printf("  rokade --check-dir <dir>  round-trip check every *.rook under dir (recursive)\n");
+    printf("  rokade fmt [--check|--write] <file|dir>...\n");
+    printf("                              format Rook sources (no include expansion)\n");
     printf("  rokade --diagnostics <file>  emit diagnostics as JSON (for LSP/editor tooling)\n");
     printf("  rokade --def-at <file> <line> <col>\n");
     printf("                              locate the symbol at 0-based (line,col) and print its\n");
@@ -622,6 +624,8 @@ static const char* help_detail(const char* cmd) {
         return "rokade --check <file>\n  Round-trip check: parse, emit C, re-parse, compare ASTs.";
     if (strcmp(cmd, "--check-dir") == 0 || strcmp(cmd, "check-dir") == 0)
         return "rokade --check-dir <dir>\n  Round-trip check every *.rook under <dir> (recursive).";
+    if (strcmp(cmd, "fmt") == 0)
+        return "rokade fmt [--check|--write] <file|dir>...\n  Format Rook sources via the pretty-printer (no include expansion).\n  Default --write rewrites files in place (AST-verified, one trailing newline).\n  --check exits 1 if any file would change (for CI).";
     if (strcmp(cmd, "--diagnostics") == 0 || strcmp(cmd, "diagnostics") == 0)
         return "rokade --diagnostics <file>\n  Parse and type-check <file>, emitting a JSON array of\n  diagnostics: [{file, line, character, severity, message}]. line/char are\n  1-based (subtract 1 for LSP ranges). Designed for editor/LSP tooling";
     if (strcmp(cmd, "--version") == 0 || strcmp(cmd, "version") == 0)
@@ -2606,6 +2610,165 @@ static int check_dir(const char* dir) {
     return check_dir_internal(dir, NULL, NULL);
 }
 
+/* ── `rokade fmt` ─────────────────────────────────────────────────────
+ * Format Rook sources via the existing pretty-printer (emit_program).
+ * Unlike `rokade <file>` / --check, fmt parses the file's own content
+ * directly WITHOUT #comprise/#include expansion, so dependencies are
+ * never inlined into the formatted output (TOP_RAW slices are preserved
+ * verbatim). Zero runtime impact: pure parse → emit → reparse check.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Format one file. check_mode=1: don't write, report would-change.
+ * Returns 0 ok, 1 parse/reparse/AST-mismatch, 2 would-change (check only). */
+static int fmt_file(const char* path, int check_mode, int verbose) {
+    int len = 0;
+    char* src = util_read_file(path, &len);
+    if (!src) {
+        printf("FAIL %s (cannot read)\n", path);
+        return 1;
+    }
+    /* Normalize: parse with exactly one trailing newline so the emitted
+     * output (also newline-terminated) reparses to an equal AST.
+     * Files missing it are reported as would-format, not as failures. */
+    if (len > 0 && src[len - 1] != '\n') {
+        char* tmp = realloc(src, (size_t)len + 2);
+        if (!tmp) { free(src); return 1; }
+        src = tmp;
+        src[len++] = '\n';
+        src[len] = '\0';
+    }
+    int ntoks = 0;
+    Token* toks = lex_all(src, len, &ntoks);
+    Program* p1 = parse_program(src, len, toks, ntoks);
+    if (!p1) {
+        printf("FAIL %s (parse)\n%s", path, parse_error());
+        free(src);
+        free(toks);
+        return 1;
+    }
+    int elen = 0;
+    char* emitted = emit_program(p1, &elen);
+    /* Normalize: exactly one trailing newline. */
+    if (elen > 0 && emitted[elen - 1] != '\n') {
+        char* tmp = realloc(emitted, (size_t)elen + 2);
+        if (!tmp) { free(emitted); program_free(p1); free(src); free(toks); return 1; }
+        emitted = tmp;
+        emitted[elen++] = '\n';
+        emitted[elen] = '\0';
+    }
+    /* Reparse + AST-compare: never write broken output. */
+    int ntoks2 = 0;
+    Token* toks2 = lex_all(emitted, elen, &ntoks2);
+    Program* p2 = parse_program(emitted, elen, toks2, ntoks2);
+    if (!p2) {
+        printf("FAIL %s (reparse)\n%s", path, parse_error());
+        free(emitted); free(toks); free(toks2);
+        program_free(p1); free(src);
+        return 1;
+    }
+    if (!program_eq(p1, p2)) {
+        printf("FAIL %s (AST mismatch after format)\n", path);
+        free(emitted); free(toks); free(toks2);
+        program_free(p1); program_free(p2); free(src);
+        return 1;
+    }
+    int same = (elen == len && memcmp(emitted, src, (size_t)len) == 0);
+    int rc = 0;
+    if (same) {
+        if (verbose) printf("  ok %s\n", path);
+    } else if (check_mode) {
+        printf("  would format %s\n", path);
+        rc = 2;
+    } else {
+        if (write_all(path, emitted, elen)) {
+            printf("FAIL %s (write)\n", path);
+            rc = 1;
+        } else {
+            printf("  formatted %s\n", path);
+            rc = 2;
+        }
+    }
+    free(emitted); free(toks); free(toks2);
+    program_free(p1); program_free(p2); free(src);
+    return rc;
+}
+
+static int fmt_path(const char* path, int check_mode, int* o_total, int* o_changed, int* o_failed) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        printf("FAIL %s (not found)\n", path);
+        (*o_failed)++;
+        return 1;
+    }
+    if (S_ISDIR(st.st_mode)) {
+        DIR* d = opendir(path);
+        if (!d) {
+            printf("FAIL %s (cannot open dir)\n", path);
+            (*o_failed)++;
+            return 1;
+        }
+        struct dirent* ent;
+        while ((ent = readdir(d)) != NULL) {
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
+            char sub[4096];
+            snprintf(sub, sizeof sub, "%s/%s", path, ent->d_name);
+            struct stat s2;
+            if (stat(sub, &s2) != 0) continue;
+            if (S_ISDIR(s2.st_mode)) {
+                fmt_path(sub, check_mode, o_total, o_changed, o_failed);
+                continue;
+            }
+            if (!util_endswith(ent->d_name, ".rook")) continue;
+            (*o_total)++;
+            int r = fmt_file(sub, check_mode, 0);
+            if (r == 2) (*o_changed)++;
+            else if (r != 0) (*o_failed)++;
+        }
+        closedir(d);
+        return 0;
+    }
+    (*o_total)++;
+    int r = fmt_file(path, check_mode, 0);
+    if (r == 2) (*o_changed)++;
+    else if (r != 0) (*o_failed)++;
+    return 0;
+}
+
+static int cmd_fmt(int argc, char** argv) {
+    int check_mode = 0;
+    const char* paths[1024];
+    int npaths = 0;
+    for (int a = 0; a < argc; a++) {
+        if (strcmp(argv[a], "--check") == 0) check_mode = 1;
+        else if (strcmp(argv[a], "--write") == 0) check_mode = 0;
+        else if (strcmp(argv[a], "--help") == 0 || strcmp(argv[a], "-h") == 0) {
+            printf("%s\n", help_detail("fmt"));
+            return 0;
+        }
+        else if (argv[a][0] == '-') {
+            fprintf(stderr, "rokade: unknown fmt flag '%s'\n", argv[a]);
+            fprintf(stderr, "usage: rokade fmt [--check|--write] <file|dir>...\n");
+            return 1;
+        } else {
+            if (npaths < (int)(sizeof(paths) / sizeof(paths[0]))) paths[npaths++] = argv[a];
+        }
+    }
+    if (npaths == 0) {
+        fprintf(stderr, "rokade: fmt needs a file or directory\n");
+        fprintf(stderr, "usage: rokade fmt [--check|--write] <file|dir>...\n");
+        return 1;
+    }
+    int total = 0, changed = 0, failed = 0;
+    for (int i = 0; i < npaths; i++) fmt_path(paths[i], check_mode, &total, &changed, &failed);
+    if (check_mode) {
+        printf("fmt --check: %d files, %d would format, %d failed\n", total, changed, failed);
+        if (failed) return 1;
+        return changed ? 1 : 0;
+    }
+    printf("fmt: %d files, %d formatted, %d failed\n", total, changed, failed);
+    return failed ? 1 : 0;
+}
+
 /* ── --diagnostics JSON helpers ─────────────────────────── */
 
 /* Append `s` as a JSON string literal to `out` (escaping special chars). */
@@ -3094,6 +3257,9 @@ int main(int argc, char** argv) {
             }
         }
         return cmd_test(dir, backend);
+    }
+    if (strcmp(argv[1], "fmt") == 0) {
+        return cmd_fmt(argc - 2, argv + 2);
     }
     if (strcmp(argv[1], "--def-at") == 0 || strcmp(argv[1], "def-at") == 0) {
         return do_def_at(argc, argv);
