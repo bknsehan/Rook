@@ -29,6 +29,8 @@ editors/zed/target/
 .vscode/
 .idea/
 .DS_Store
+__pycache__/
+*.pyc
 
 # Test project generated build artifacts
 tests/testproject/build/

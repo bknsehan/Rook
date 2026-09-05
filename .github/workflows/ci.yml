@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            gcc \
+            clang \
+            llvm-dev \
+            libclang-dev
+
+      - name: Set up Rust (for rook-lsp)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROKADE_ENABLE_LLVM=ON \
+            -DROOK_BUILD_LSP=ON
+
+      - name: Build Rokade and LSP
+        run: |
+          cmake --build build
+
+      - name: Run Rokade Doctor
+        run: |
+          ./build/rokade doctor
+
+      - name: Test C Backend Corpus
+        run: |
+          ROKADE=./build/rokade bash tests/run.sh
+
+      - name: Test LLVM Backend Corpus
+        run: |
+          ROKADE=./build/rokade BACKEND=llvm bash tests/run.sh
+
+      - name: Verify CLI & Scaffolding
+        run: |
+          ./build/rokade --version
+          ./build/rokade --help
+          ./build/rokade new ci_sample_project
+          cd ci_sample_project
+          ../build/rokade build
+          ../build/rokade run
+          cd ..
+          rm -rf ci_sample_project
+
+      - name: Verify Documentation Generation
+        run: |
+          python3 scripts/generate_docs.py
+          git diff --exit-code docs/rook-language-guide.html

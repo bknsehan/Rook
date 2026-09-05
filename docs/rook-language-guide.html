@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rook Language Guide — Systems Programming with C Compatibility</title>
+<title>Rook Language Guide &amp; Programming Foundations (v0.4.2)</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -16,10 +16,12 @@
     --text-dim: #64748b;
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
-    --code-bg: #181d28;
+    --primary-dim: rgba(37, 99, 235, 0.08);
+    --code-bg: #141824;
+    --code-header: #0d101a;
     --code-text: #f8fafc;
     --sidebar-bg: #ffffff;
-    --sidebar-width: 300px;
+    --sidebar-width: 320px;
     --nav-active-bg: #eff6ff;
     --nav-active-text: #1d4ed8;
     
@@ -39,6 +41,20 @@
     --spec-bg: #f8fafc;
     --spec-border: #64748b;
     --spec-title: #334155;
+
+    /* Syntax Highlighting Tokens */
+    --tok-cmt: #8592a6;
+    --tok-str: #4ade80;
+    --tok-kw: #c084fc;
+    --tok-type: #38bdf8;
+    --tok-prep: #fb923c;
+    --tok-num: #facc15;
+    --tok-fn: #818cf8;
+    --tok-bool: #f472b6;
+    --tok-hdr: #38bdf8;
+    --tok-key: #e2e8f0;
+    --tok-cmd: #38bdf8;
+    --tok-opt: #94a3b8;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,7 +88,7 @@
   }
 
   .sidebar-header {
-    padding: 24px 20px 16px;
+    padding: 20px 20px 14px;
     border-bottom: 1px solid var(--border);
   }
 
@@ -100,8 +116,51 @@
     margin-top: 4px;
   }
 
+  /* View Switcher */
+  .view-switcher-wrap {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #fafafa;
+  }
+
+  .view-switcher {
+    display: flex;
+    background: var(--surface-secondary);
+    padding: 4px;
+    border-radius: 8px;
+    gap: 4px;
+    border: 1px solid var(--border-strong);
+  }
+
+  .mode-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mode-btn:hover {
+    color: var(--text);
+  }
+
+  .mode-btn.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
   .sidebar-search {
-    padding: 12px 20px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border);
   }
 
@@ -157,11 +216,11 @@
     flex: 1;
     min-width: 0;
     padding: 40px 48px 120px;
-    max-width: 980px;
+    max-width: 1020px;
     margin: 0 auto;
   }
 
-  /* Hero / Cover Section */
+  /* Hero Banner */
   .hero {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -172,7 +231,7 @@
   }
 
   .hero h1 {
-    font-size: 2.4rem;
+    font-size: 2.3rem;
     font-weight: 800;
     color: var(--text);
     letter-spacing: -0.025em;
@@ -180,10 +239,10 @@
   }
 
   .hero-tagline {
-    font-size: 1.15rem;
+    font-size: 1.12rem;
     color: var(--text-muted);
     margin-bottom: 24px;
-    max-width: 70ch;
+    max-width: 75ch;
   }
 
   .badges {
@@ -209,6 +268,12 @@
     color: #1e40af;
   }
 
+  .badge.pedagogy {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #065f46;
+  }
+
   .hero-meta {
     font-size: 0.9rem;
     color: var(--text-dim);
@@ -216,7 +281,7 @@
     padding-top: 16px;
   }
 
-  /* Chapter Styling */
+  /* Chapter Card Styling */
   .chapter {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -256,17 +321,15 @@
   .chapter-body h3 {
     font-size: 1.25rem;
     font-weight: 600;
+    margin: 32px 0 14px;
     color: var(--text);
-    margin: 32px 0 12px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--surface-secondary);
   }
 
   .chapter-body h4 {
     font-size: 1.05rem;
     font-weight: 600;
-    color: var(--text-muted);
-    margin: 20px 0 8px;
+    margin: 24px 0 10px;
+    color: var(--text);
   }
 
   .chapter-body p {
@@ -275,23 +338,12 @@
   }
 
   .chapter-body ul, .chapter-body ol {
-    margin-bottom: 16px;
-    padding-left: 24px;
+    margin: 0 0 20px 24px;
+    color: var(--text);
   }
 
   .chapter-body li {
-    margin-bottom: 6px;
-  }
-
-  /* Typography & Inline Code */
-  code {
-    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
-    font-size: 0.88em;
-    background: var(--surface-secondary);
-    color: #0f172a;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+    margin-bottom: 8px;
   }
 
   /* Code Blocks */
@@ -300,14 +352,14 @@
     border-radius: 8px;
     overflow: hidden;
     background: var(--code-bg);
-    border: 1px solid #2d3748;
+    border: 1px solid #232938;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .code-header {
-    background: #11151f;
+    background: var(--code-header);
     padding: 8px 16px;
-    border-bottom: 1px solid #262f40;
+    border-bottom: 1px solid #1f2533;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -339,13 +391,37 @@
     font-size: inherit;
   }
 
+  /* Syntax Highlighting Token Styles */
+  .tok-cmt  { color: var(--tok-cmt); font-style: italic; }
+  .tok-str  { color: var(--tok-str); }
+  .tok-kw   { color: var(--tok-kw); font-weight: 600; }
+  .tok-type { color: var(--tok-type); font-weight: 500; }
+  .tok-prep { color: var(--tok-prep); }
+  .tok-num  { color: var(--tok-num); }
+  .tok-fn   { color: var(--tok-fn); }
+  .tok-bool { color: var(--tok-bool); font-weight: 600; }
+  .tok-hdr  { color: var(--tok-hdr); font-weight: 600; }
+  .tok-key  { color: var(--tok-key); font-weight: 500; }
+  .tok-cmd  { color: var(--tok-cmd); font-weight: 600; }
+  .tok-opt  { color: var(--tok-opt); }
+
+  /* Inline Code */
+  code:not(pre code) {
+    background: var(--surface-secondary);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+    font-size: 0.88em;
+    color: #b91c1c;
+  }
+
   /* Callout Boxes */
   .callout {
     border-radius: 8px;
     padding: 18px 20px;
-    margin: 24px 0;
-    border-left: 4px solid;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    margin: 20px 0 24px;
+    border-left: 4px solid transparent;
   }
 
   .callout-title {
@@ -447,7 +523,7 @@
   }
 
   .arch-box.branch {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 500;
     padding: 8px 12px;
   }
@@ -470,7 +546,7 @@
       border-bottom: 1px solid var(--border);
     }
     .nav-list {
-      max-height: 240px;
+      max-height: 260px;
     }
     #main {
       padding: 24px 20px 80px;
@@ -492,82 +568,119 @@
       <span>Rook Guide</span>
       <span class="sidebar-badge">v0.4.2</span>
     </div>
-    <div class="sidebar-sub">Systems Programming Language</div>
+    <div class="sidebar-sub">Systems Programming &amp; Foundations</div>
   </div>
+
+  <div class="view-switcher-wrap">
+    <div class="view-switcher">
+      <button id="btn-mode-guide" class="mode-btn active" onclick="switchMode('guide')">
+        <span class="mode-icon">📘</span>
+        <span class="mode-text">Language Guide</span>
+      </button>
+      <button id="btn-mode-beginner" class="mode-btn" onclick="switchMode('beginner')">
+        <span class="mode-icon">🎓</span>
+        <span class="mode-text">Beginner Course</span>
+      </button>
+    </div>
+  </div>
+
   <div class="sidebar-search">
-    <input type="text" id="filter-input" placeholder="Filter chapters..." onkeyup="filterChapters()">
+    <input type="text" id="filter-input" placeholder="Filter guide chapters..." onkeyup="filterChapters()">
   </div>
-  <nav class="nav-list" id="nav-list">
-    <a class="nav-item" href="#philosophy"><span class="nav-title">1. The Rook Philosophy</span></a>
-<a class="nav-item" href="#architecture"><span class="nav-title">2. Architecture & Compilation Model</span></a>
-<a class="nav-item" href="#mental-model"><span class="nav-title">3. Mental Model & Memory Semantics</span></a>
-<a class="nav-item" href="#installation"><span class="nav-title">4. Installation, Setup & Diagnostics</span></a>
-<a class="nav-item" href="#quickstart"><span class="nav-title">5. Project Lifecycle & Quickstart</span></a>
-<a class="nav-item" href="#variables"><span class="nav-title">6. Variables, Types & Invariants</span></a>
-<a class="nav-item" href="#pointers"><span class="nav-title">7. Pointers & Pointer Safety</span></a>
-<a class="nav-item" href="#control-flow"><span class="nav-title">8. Control Flow & Branching</span></a>
-<a class="nav-item" href="#functions"><span class="nav-title">9. Functions & Call Semantics</span></a>
-<a class="nav-item" href="#structs"><span class="nav-title">10. Structs & Memory Layout</span></a>
-<a class="nav-item" href="#objects"><span class="nav-title">11. Objects, Methods & Single Inheritance</span></a>
-<a class="nav-item" href="#sum-match"><span class="nav-title">12. Algebraic Data Types: sum, enum & match</span></a>
-<a class="nav-item" href="#cleanup-defer"><span class="nav-title">13. Deterministic Cleanup: defer</span></a>
-<a class="nav-item" href="#modules"><span class="nav-title">14. Modules, Namespaces & Directives</span></a>
-<a class="nav-item" href="#dependencies"><span class="nav-title">15. Vendored Dependencies & Packages</span></a>
-<a class="nav-item" href="#c-interop"><span class="nav-title">16. C Interoperability & Integration</span></a>
-<a class="nav-item" href="#stdlib"><span class="nav-title">17. Standard Library Reference (std/)</span></a>
-<a class="nav-item" href="#safety"><span class="nav-title">18. Safety Invariants & Compile-Time Checks</span></a>
-<a class="nav-item" href="#config"><span class="nav-title">19. Configuration & Multi-Target Builds (rokade.toml)</span></a>
-<a class="nav-item" href="#cli"><span class="nav-title">20. Compiler CLI & Architecture Reference</span></a>
+
+  <nav class="nav-list" id="nav-guide">
+    <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Credits</a>
+    <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & Compilation Model</a>
+    <a href="#c-comparison" class="nav-item nav-guide-item" data-id="c-comparison">3. Direct Comparison: Standard C vs. Rook</a>
+    <a href="#mental-model" class="nav-item nav-guide-item" data-id="mental-model">4. Mental Model & Memory Semantics</a>
+    <a href="#installation" class="nav-item nav-guide-item" data-id="installation">5. Installation, Setup & Diagnostics</a>
+    <a href="#quickstart" class="nav-item nav-guide-item" data-id="quickstart">6. Project Lifecycle & Quickstart</a>
+    <a href="#variables" class="nav-item nav-guide-item" data-id="variables">7. Variables, Types & Invariants</a>
+    <a href="#pointers" class="nav-item nav-guide-item" data-id="pointers">8. Pointers & Pointer Safety</a>
+    <a href="#control-flow" class="nav-item nav-guide-item" data-id="control-flow">9. Control Flow & Branching</a>
+    <a href="#functions" class="nav-item nav-guide-item" data-id="functions">10. Functions & Call Semantics</a>
+    <a href="#structs" class="nav-item nav-guide-item" data-id="structs">11. Structs & Memory Layout</a>
+    <a href="#objects" class="nav-item nav-guide-item" data-id="objects">12. Objects, Methods & Single Inheritance</a>
+    <a href="#sum-match" class="nav-item nav-guide-item" data-id="sum-match">13. Algebraic Data Types: sum, enum & match</a>
+    <a href="#cleanup-defer" class="nav-item nav-guide-item" data-id="cleanup-defer">14. Deterministic Cleanup: defer</a>
+    <a href="#modules" class="nav-item nav-guide-item" data-id="modules">15. Modules, Namespaces & Directives</a>
+    <a href="#dependencies" class="nav-item nav-guide-item" data-id="dependencies">16. Vendored Dependencies & Packages</a>
+    <a href="#c-interop" class="nav-item nav-guide-item" data-id="c-interop">17. C Interoperability & Integration</a>
+    <a href="#stdlib" class="nav-item nav-guide-item" data-id="stdlib">18. Standard Library Reference (std/)</a>
+    <a href="#safety" class="nav-item nav-guide-item" data-id="safety">19. Safety Invariants & Compile-Time Checks</a>
+    <a href="#config" class="nav-item nav-guide-item" data-id="config">20. Configuration & Multi-Target Builds (rokade.toml)</a>
+    <a href="#cli" class="nav-item nav-guide-item" data-id="cli">21. Compiler CLI & Architecture Reference</a>
+  </nav>
+
+  <nav class="nav-list" id="nav-beginner" style="display:none;">
+    <a href="#b1-how-computers-work" class="nav-item nav-beginner-item" data-id="b1-how-computers-work">Module 1: How Computers Actually Work</a>
+    <a href="#b2-first-program" class="nav-item nav-beginner-item" data-id="b2-first-program">Module 2: Your Very First Program</a>
+    <a href="#b3-variables-types" class="nav-item nav-beginner-item" data-id="b3-variables-types">Module 3: Storing Information: Variables and Types</a>
+    <a href="#b4-math-operators" class="nav-item nav-beginner-item" data-id="b4-math-operators">Module 4: Doing Math & Making Comparisons</a>
+    <a href="#b5-control-flow" class="nav-item nav-beginner-item" data-id="b5-control-flow">Module 5: Making Choices: Control Flow</a>
+    <a href="#b6-loops-repetition" class="nav-item nav-beginner-item" data-id="b6-loops-repetition">Module 6: Repetition: Automating with Loops</a>
+    <a href="#b7-functions" class="nav-item nav-beginner-item" data-id="b7-functions">Module 7: Functions: Reusable Building Blocks</a>
+    <a href="#b8-structs" class="nav-item nav-beginner-item" data-id="b8-structs">Module 8: Grouping Data: Structures</a>
+    <a href="#b9-memory-pointers" class="nav-item nav-beginner-item" data-id="b9-memory-pointers">Module 9: Demystifying Memory: Pointers</a>
+    <a href="#b10-arrays" class="nav-item nav-beginner-item" data-id="b10-arrays">Module 10: Working with Lists: Arrays</a>
+    <a href="#b11-multi-file" class="nav-item nav-beginner-item" data-id="b11-multi-file">Module 11: Building Real Projects</a>
+    <a href="#b12-debugging-thinking" class="nav-item nav-beginner-item" data-id="b12-debugging-thinking">Module 12: How to Think Like a Programmer</a>
   </nav>
 </aside>
 
 <main id="main">
-  <header class="hero" id="top">
-    <div class="badges">
-      <span class="badge highlight">Rokade v0.4.2</span>
-      <span class="badge">Zero Runtime Overhead</span>
-      <span class="badge">Header-Less C Dialect</span>
-      <span class="badge">Zero-Shell Execution</span>
-      <span class="badge">Single Offline Document</span>
-    </div>
-    <h1>The Rook Language Guide</h1>
-    <p class="hero-tagline">
-      A technical specification and comprehensive programming manual for <strong>Rook</strong>: a modern systems language with 1:1 C ABI compatibility, memory-safe defaults, zero-overhead single inheritance, and dual C/LLVM compilation backends.
-    </p>
-    <div class="hero-meta">
-      Compiler: <code>rokade</code> &nbsp;|&nbsp; Target Audience: Developers with prior programming knowledge &nbsp;|&nbsp; Fully self-contained.
-    </div>
-  </header>
+  <!-- VIEW 1: LANGUAGE GUIDE -->
+  <div id="view-guide" class="view-container">
+    <header class="hero" id="top-guide">
+      <div class="badges">
+        <span class="badge highlight">Rokade v0.4.2</span>
+        <span class="badge">Zero Runtime Overhead</span>
+        <span class="badge">Header-Less C Dialect</span>
+        <span class="badge">Zero-Shell Execution</span>
+        <span class="badge">Experimental LLVM Backend</span>
+        <span class="badge">Completely Offline</span>
+      </div>
+      <h1>The Rook Language Guide</h1>
+      <p class="hero-tagline">
+        A technical specification and comprehensive reference manual for <strong>Rook</strong>: a modern systems language with 1:1 C ABI compatibility, memory-safe defaults, zero-overhead single inheritance, and dual C/LLVM compilation backends.
+      </p>
+      <div class="hero-meta">
+        Compiler: <code>rokade</code> &nbsp;|&nbsp; Target Audience: Developers with prior programming knowledge &nbsp;|&nbsp; Fully self-contained.
+      </div>
+    </header>
 
-  
+    
 <section class="chapter" id="philosophy">
   <div class="chapter-header">
-    <h2 class="chapter-title">1. The Rook Philosophy</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">1. The Rook Philosophy & Credits</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
-<p>The systems programming landscape has long faced a fundamental tension between <strong>adaptability, control, and developer ergonomics</strong>. C remains the foundational substrate of computing: operating systems, kernel drivers, graphics APIs, game engines, embedded microcontrollers, and language runtimes are universally exposed through the C Application Binary Interface (ABI). If software must interface with hardware or existing ecosystems, C is the inescapable lingua franca.</p>
+<p>The systems programming landscape is one of the most foundational and demanding areas of software engineering. For over fifty years, <strong>C</strong> has been the bedrock of computing: operating systems, kernel drivers, real-time engines, audio processors, language runtimes, and embedded microcontrollers are almost universally exposed through the C Application Binary Interface (ABI). If software must interface directly with hardware, kernels, or existing shared libraries, C is the inescapable lingua franca.</p>
 
-<p>Yet programming in C exacts a continuous toll on engineering velocity and system reliability:</p>
+<p>Yet programming directly in standard C carries well-known ergonomic and reliability challenges that demand intense vigilance from developers:</p>
 <ul>
-  <li><strong>Header Synchronization Hell:</strong> Developers must manually synchronize function signatures, struct layouts, and typedefs between <code>.h</code> header files and <code>.c</code> implementation files. A signature change requires editing two files; missing an include or guard introduces subtle linker or compile-time hazards.</li>
-  <li><strong>Pervasive Undefined Behavior (UB):</strong> Uninitialized local variables inherit unpredictable stack garbage, assignment inside conditional statements (<code>if (x = 5)</code>) silently corrupts state, and unchecked pointer arithmetic introduces exploitable vulnerabilities.</li>
-  <li><strong>Boilerplate for Basic Encapsulation:</strong> C lacks native mechanisms for method dispatch and single inheritance. Emulating object-oriented patterns requires tedious struct nesting, manual pointer casts, and fragile naming conventions.</li>
+  <li><strong>Header Synchronization Overhead:</strong> Manually synchronizing declarations in <code>.h</code> header files with definitions in <code>.c</code> files slows development and creates fragile dependencies across large codebases.</li>
+  <li><strong>Uninitialized Memory &amp; Undefined Behavior:</strong> In standard C, uninitialized local variables contain unpredictable stack garbage, accidental assignment inside conditional statements (<code>if (x = 5)</code>) silently corrupts state, and unchecked pointer arithmetic introduces exploitable security vulnerabilities.</li>
+  <li><strong>Boilerplate for Basic Encapsulation:</strong> C lacks native mechanisms for method dispatch, single inheritance, and tagged unions. Emulating these patterns requires nested structs, manual pointer casts, and fragile naming conventions.</li>
 </ul>
 
-<h3>Why Not C++, Rust, Zig, or Odin?</h3>
-<p>Modern alternatives attempt to solve these issues, but introduce significant trade-offs:</p>
+<h3>Standing on the Shoulders of Giants: Prior Art &amp; Credits</h3>
+<p>Modern software engineering has been profoundly enriched by exceptional programming languages, each advancing the art of systems development in monumental ways:</p>
 <ul>
-  <li><strong>C++:</strong> Provides powerful abstractions at the expense of overwhelming cognitive surface area, template metaprogramming bloat, sluggish compilation speeds, and fragile ABI compatibility—all while preserving C's header file model.</li>
-  <li><strong>Rust:</strong> Delivers exceptional compile-time memory safety, but demands substantial upfront friction via borrow checker semantics and complex lifetime annotations. Furthermore, interfacing Rust with native C libraries requires extensive FFI wrappers and unsafe bridging layers.</li>
-  <li><strong>Zig &amp; Odin:</strong> Excellent languages with clean semantics, yet they introduce entirely distinct syntax paradigms, standard libraries, and tooling models that decouple developers from the idiomatic C ecosystem.</li>
+  <li><strong>C (Dennis Ritchie &amp; Bell Labs):</strong> The foundation upon which modern computing was built. C's elegance, hardware transparency, and universal ABI remain unparalleled. Rook owes its entire existence and memory model to the foundational genius of C.</li>
+  <li><strong>C++ (Bjarne Stroustrup):</strong> Pioneered modern systems abstractions, introducing Resource Acquisition Is Initialization (RAII), zero-overhead object modeling, and powerful generic programming that continue to power high-performance game engines, web browsers, and scientific computing worldwide.</li>
+  <li><strong>Rust (Graydon Hoare &amp; The Rust Foundation):</strong> Achieved a historic breakthrough in software reliability by proving that compile-time borrow checking, affine types, and fearless concurrency can eliminate entire categories of memory safety bugs without needing a garbage collector.</li>
+  <li><strong>Zig (Andrew Kelley) &amp; Odin (Ginger Bill):</strong> Invaluable inspirations in pragmatic systems programming, proving that systems development can be clean, joyful, and devoid of hidden control flow, championing explicit memory allocation, modern compilation toolchains, and refreshing syntactic clarity.</li>
+  <li><strong>Go (Robert Griesemer, Rob Pike, Ken Thompson):</strong> Demonstrated the profound engineering value of simplicity, fast compilation speeds, clean standard tooling, and pragmatic language design that prioritizes human readability.</li>
 </ul>
 
+<h3>The Modest Scope of Rook</h3>
+<p>Rook does <strong>not</strong> seek to replace or compete with these monumental languages. Rook has a very narrow, humble mission:</p>
 <div class="callout callout-spec"><div class="callout-title">The Rook Thesis</div><div class="callout-body">
-<strong>Rook takes a pragmatic path: stay direct, transparent, and completely compatible with C.</strong> Rook is a clean, safe, header-less C dialect that transpiles directly to clean, standard C99/C11/C23 code or compiles natively via LLVM. Rook does not hide C; it purifies it.
+<strong>For developers who specifically want or need to work within the C ecosystem</strong>, Rook provides a lightweight, header-less C dialect that transpiles directly to clean, standard C99/C11/C23 code. It adds a small set of practical guardrails—guaranteed zero-initialization, single-file module imports, zero-overhead single inheritance, first-class algebraic sum types, and deterministic <code>defer</code> cleanup—without introducing a heavy runtime, garbage collection, or breaking 1:1 C ABI interoperability.
 </div></div>
-
 <h3>Target Use Cases</h3>
 <ul>
   <li><strong>Systems &amp; Embedded Tools:</strong> Compilers, command-line utilities, daemons, and embedded firmware where runtime overhead, garbage collection pauses, and hidden allocations are unacceptable.</li>
@@ -582,11 +695,11 @@
 <section class="chapter" id="architecture">
   <div class="chapter-header">
     <h2 class="chapter-title">2. Architecture & Compilation Model</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook is designed around a dual-backend, transparent compilation architecture. The primary driver is the <code>rokade</code> compiler, written entirely in portable C11.</p>
+<p>Rook is designed around a transparent, pragmatic compilation pipeline managed by the <code>rokade</code> compiler, written entirely in portable C11.</p>
 
 <div class="arch-diagram">
   <div class="arch-box">Source Files<br><code>.rook</code></div>
@@ -594,29 +707,50 @@
   <div class="arch-box">AST &amp; Sema Checks<br><code>rokade</code> frontend</div>
   <div class="arch-arrow">➔</div>
   <div class="arch-split">
-    <div class="arch-box branch">C Backend (Default)<br>Transpiles to <code>build/generated/main.c</code><br>Spawns <code>gcc</code> / <code>clang</code></div>
-    <div class="arch-box branch">LLVM Backend (Native)<br>Emits LLVM IR / Native <code>.o</code><br>In-Memory JIT (<code>--jit</code>)</div>
+    <div class="arch-box branch"><strong>C Backend (Default &amp; Primary)</strong><br>Stable &amp; Battle-Tested<br>Emits clean C to <code>build/generated/main.c</code></div>
+    <div class="arch-box branch"><strong>LLVM Backend (Experimental)</strong><br>Active Development<br>Direct <code>.o</code> emission &amp; JIT (<code>--jit</code>)</div>
   </div>
 </div>
 
-<h3>2.1 The Lowering Pipeline</h3>
+<h3>2.1 Compiler Backends: Pragmatic Realism</h3>
+<p>Rokade provides two distinct code generation backends, designed with clear real-world trade-offs in mind:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Backend</th><th>Status</th><th>Strengths &amp; Recommended Use</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>C Backend (Default)</strong></td>
+      <td><span class="badge highlight">Primary &amp; Production-Ready</span></td>
+      <td>Transpiles <code>.rook</code> code into clean, formatted C99/C11/C23 and invokes host GCC or Clang directly via <code>fork()</code>/<code>execv()</code>. 100% C ABI parity, seamless debugging with standard tools (GDB, LLDB, Valgrind), and zero friction with external C libraries. <strong>Recommended for all real-world development.</strong></td>
+    </tr>
+    <tr>
+      <td><strong>LLVM Backend</strong></td>
+      <td><span class="badge" style="background:#fef3c7; border-color:#f59e0b; color:#b45309;">Experimental (WIP)</span></td>
+      <td>Leverages LLVM libraries to emit object files (<code>.o</code>) directly and provide in-memory JIT execution (<code>rokade --jit</code>). Supports unsigned math, pointer arithmetic, sum types, and bounds checking. <strong>Currently experimental and actively evolving; not yet as mature, robust, or battle-tested as the C backend.</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>2.2 The Lowering Pipeline</h3>
 <ol>
   <li><strong>Lexing &amp; Parsing:</strong> Tokenizes source files and constructs an Abstract Syntax Tree (AST). Recursive module inclusion (<code>#comprise</code>) resolves and deduplicates file imports into a unified compilation unit.</li>
   <li><strong>Semantic Analysis (<code>sema.c</code>):</strong> Validates type safety, verifies function arity, checks branch exhaustiveness, enforces pointer arithmetic rules, and rejects banned constructs (e.g. assignments in conditions, <code>goto</code>, division by zero).</li>
   <li><strong>Code Generation:</strong>
     <ul>
       <li><strong>C Backend (Default):</strong> Emits highly readable, formatted C99/C11/C2x code into <code>build/generated/main.c</code>. Every Rook construct maps deterministically to a standard C counterpart.</li>
-      <li><strong>LLVM Backend:</strong> Emits production-hardened LLVM Intermediate Representation (<code>.ll</code>), builds native machine object files (<code>.o</code>), and executes scripts directly via in-process JIT (<code>--jit</code>). In v0.4.2, the LLVM backend features full type-accurate unsigned arithmetic (UDiv, URem, LShr, unsigned ICmp), pointer arithmetic via <code>getelementptr</code> with element-count pointer subtraction, arbitrary-depth multi-level inheritance traversal, dynamic ABI-calculated sum type payload sizing, implicit <code>self</code> method parameter resolution, runtime array bounds checking (<code>-b</code>), and cross-compilation target triple / Windows LLP64 compatibility.</li>
+      <li><strong>LLVM Backend:</strong> Emits LLVM Intermediate Representation (<code>.ll</code>) and drives LLVM target code generators to emit native machine object files (<code>.o</code>) or execute directly via an in-process JIT engine.</li>
     </ul>
   </li>
-  <li><strong>Zero-Shell Direct Toolchain Execution:</strong> Rokade invokes the host C compiler (<code>gcc</code> or <code>clang</code>) and linker directly using POSIX <code>fork</code>/<code>execv</code> (or <code>CreateProcess</code> on Windows). It avoids shell wrappers (<code>sh -c</code>), preventing command-injection attacks and ensuring exact argument propagation.</li>
+  <li><strong>Zero-Shell Direct Toolchain Execution:</strong> Rokade invokes the host C compiler (<code>gcc</code> or <code>clang</code>) and linker directly using POSIX <code>fork()</code>/<code>execv()</code> (or <code>CreateProcess</code> on Windows). It avoids shell wrappers (<code>sh -c</code>), preventing command-injection attacks and ensuring exact argument propagation.</li>
 </ol>
-
 <div class="callout callout-note"><div class="callout-title">Transparent Output Inspection</div><div class="callout-body">
 Because Rokade's primary backend generates clean C in <code>build/generated/main.c</code>, you can inspect the generated code at any time with <code>rokade --emit-c src/main.rook</code>. There are no proprietary bytecode formats or obfuscated runtime libraries.
 </div></div>
-
-<h3>2.2 ABI Parity with C</h3>
+<h3>2.3 ABI Parity with C</h3>
 <p>Rook guarantees 1:1 ABI parity with the host C compiler:</p>
 <ul>
   <li>Primitive types (<code>int</code>, <code>size_t</code>, <code>float</code>, <code>double</code>, <code>char*</code>) have identical size, alignment, and calling conventions.</li>
@@ -628,16 +762,214 @@ Because Rokade's primary backend generates clean C in <code>build/generated/main
 </section>
 
 
+<section class="chapter" id="c-comparison">
+  <div class="chapter-header">
+    <h2 class="chapter-title">3. Direct Comparison: Standard C vs. Rook</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>For systems engineers and C programmers evaluating Rook, this chapter provides a direct, comprehensive comparison between standard C and Rook across eight essential architectural and day-to-day programming patterns. Rook is designed to feel immediately natural to C developers while eliminating common failure modes at compile time.</p>
+
+<h3>3.1 Modular Code vs. Header Synchronization</h3>
+<p>In standard C, sharing code between multiple files requires manually maintaining separate header declarations (<code>.h</code>) with preprocessor include guards, and source definitions (<code>.c</code>). Rook uses single-file modules imported with <code>#comprise</code>; the compiler extracts declarations and prevents symbol collisions automatically.</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Feature Dimension</th><th>Standard C</th><th>Rook</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Source Organization</strong></td>
+      <td>Dual-file maintenance: <code>math.h</code> (declarations) and <code>math.c</code> (definitions).</td>
+      <td>Single-file modules: <code>math.rook</code> contains both interface and implementation.</td>
+    </tr>
+    <tr>
+      <td><strong>Import Semantics</strong></td>
+      <td><code>#include "math.h"</code> textually pastes header contents; requires <code>#ifndef</code> guard macros.</td>
+      <td><code>#comprise math</code> parses module AST once and deduplicates symbols cleanly.</td>
+    </tr>
+    <tr>
+      <td><strong>Signature Drift</strong></td>
+      <td>Changing a function signature requires editing both <code>.h</code> and <code>.c</code>; mismatches cause linker errors.</td>
+      <td>Single source of truth permanently eliminates declaration/definition drift.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Header + Implementation</span></div><pre><code class="language-c">// math.h
+#ifndef MATH_H
+#define MATH_H
+int add(int a, int b);
+#endif
+
+// math.c
+#include "math.h"
+int add(int a, int b) { return a + b; }</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Clean Modular Import</span></div><pre><code class="language-rook">// src/math.rook
+fn add(a: int, b: int) -&gt; int {
+    return a + b;
+}
+
+// src/main.rook
+#comprise math
+#include &lt;stdio.h&gt;
+
+int main() {
+    printf("Sum: %d
+", add(10, 20));
+    return 0;
+}</code></pre></div>
+<h3>3.2 Variable Initialization &amp; Stack Safety</h3>
+<p>In standard C, local variables declared without an initializer inherit whatever arbitrary bit patterns existed on the CPU stack. Reading an uninitialized variable is undefined behavior (UB) and a frequent source of security vulnerabilities.</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Condition</th><th>Standard C</th><th>Rook</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Uninitialized Local</strong></td>
+      <td><code>int x;</code> has indeterminate value (stack garbage).</td>
+      <td><code>int x;</code> is guaranteed zero-initialized (lowered to <code>int x = {0};</code>).</td>
+    </tr>
+    <tr>
+      <td><strong>Array Initialization</strong></td>
+      <td><code>int arr[100];</code> contains 100 garbage integers.</td>
+      <td><code>int arr[100];</code> is guaranteed zeroed out at declaration.</td>
+    </tr>
+    <tr>
+      <td><strong>Struct Initialization</strong></td>
+      <td><code>Point p;</code> has uninitialized padding and fields.</td>
+      <td><code>Point p;</code> has all fields cleanly initialized to zero.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3.3 Accidental Assignment in Conditional Expressions</h3>
+<p>In standard C, mistakenly typing a single equals sign (<code>=</code>) instead of a double equals sign (<code>==</code>) inside an <code>if</code> condition silently overwrites the variable and evaluates the assigned value as a truth condition. Rook detects assignments inside conditionals at compile time and immediately halts compilation with an actionable diagnostic.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Dangerous Silent Mutation)</span></div><pre><code class="language-c">// Standard C: Compiles silently with a warning (or none), mutating state!
+if (status = 0) { // Bug: status is set to 0, block never executes
+    handle_success();
+}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook (Compile-Time Enforcement)</span></div><pre><code class="language-rook">// Rook: Compile-time error!
+if (status = 0) { // Compile Error: assignment in condition is banned
+    handle_success();
+}
+// Fix: use equality operator ==
+if (status == 0) {
+    handle_success();
+}</code></pre></div>
+<h3>3.4 Encapsulation &amp; Single Inheritance</h3>
+<p>Standard C has no native concept of methods or object inheritance; programmers must manually nest structs and cast pointers, losing type safety. Rook introduces the <code>object</code> keyword and <code>impl</code> blocks, producing <strong>zero runtime overhead</strong> with 1:1 C struct compatibility.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Emulated Inheritance</span></div><pre><code class="language-c">// Standard C: Manual struct nesting &amp; pointer casts
+typedef struct { float x, y; } Point;
+typedef struct { Point base; float radius; } Circle;
+
+void point_move(Point* p, float dx, float dy) { p-&gt;x += dx; p-&gt;y += dy; }
+
+Circle c = { {10.0f, 20.0f}, 5.0f };
+point_move((Point*)&amp;c, 1.0f, 2.0f); // Manual, unverified cast</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Clean Single Inheritance</span></div><pre><code class="language-rook">// Rook: First-class object inheritance with zero overhead
+object Point {
+    x: float;
+    y: float;
+}
+
+object Circle : Point {
+    radius: float;
+}
+
+impl Point {
+    fn move(self, dx: float, dy: float) {
+        self.x += dx;
+        self.y += dy;
+    }
+}
+
+Circle c = Circle{ x: 10.0f, y: 20.0f, radius: 5.0f };
+c.move(1.0f, 2.0f); // Type-safe, calls point_move(&amp;c._base, 1.0f, 2.0f)</code></pre></div>
+<h3>3.5 Tagged Unions &amp; Algebraic Sum Types</h3>
+<p>Representing data that can take one of several shapes in standard C requires an <code>enum</code> tag, a <code>union</code>, and disciplined manual bookkeeping. Rook provides first-class <code>sum</code> types with compile-time pattern matching.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Rook: Algebraic Sum Types & Pattern Matching</span></div><pre><code class="language-rook">sum NetworkEvent {
+    Connected{ client_id: int; ip: const char*; };
+    DataReceived{ client_id: int; bytes: int; };
+    Disconnected{ client_id: int; };
+}
+
+void handle_event(NetworkEvent* ev) {
+    match (*ev) {
+        Connected(c) =&gt; printf("Client %d connected from %s
+", c.client_id, c.ip),
+        DataReceived(d) =&gt; printf("Client %d sent %d bytes
+", d.client_id, d.bytes),
+        Disconnected(q) =&gt; printf("Client %d disconnected
+", q.client_id),
+    }
+}</code></pre></div>
+<h3>3.6 Resource Management: <code>goto cleanup;</code> vs. <code>defer</code></h3>
+<p>Robust error handling in C typically requires manual cleanup labels and <code>goto</code> ladders. Rook provides <code>defer</code>, which schedules execution at the end of the enclosing scope in Last-In, First-Out (LIFO) order.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Error Cleanup Ladder</span></div><pre><code class="language-c">// Standard C: goto cleanup ladder
+int process(const char* path) {
+    FILE* fp = fopen(path, "r");
+    if (!fp) return -1;
+    char* buf = malloc(1024);
+    if (!buf) { fclose(fp); return -2; }
+    
+    int ret = 0;
+    if (do_work(fp, buf) &lt; 0) { ret = -3; goto cleanup; }
+    
+cleanup:
+    free(buf);
+    fclose(fp);
+    return ret;
+}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Clean defer Cleanup</span></div><pre><code class="language-rook">// Rook: Deterministic LIFO defer
+int process(const char* path) {
+    FILE* fp = fopen(path, "r");
+    if (!fp) return -1;
+    defer fclose(fp); // Guaranteed cleanup on any return path
+
+    char* buf = (char*)malloc(1024);
+    if (!buf) return -2;
+    defer free(buf); // Runs before fclose(fp)
+
+    if (do_work(fp, buf) &lt; 0) return -3;
+    return 0;
+}</code></pre></div>
+<h3>3.7 Pointer Safety &amp; Explicit Arithmetic</h3>
+<p>Standard C allows pointer arithmetic on untyped <code>void*</code> pointers via compiler extensions. Rook enforces strict type checking: arithmetic on <code>void*</code> is banned at compile time, requiring explicit casts to byte pointers (<code>char*</code> or <code>u8*</code>).</p>
+
+<h3>3.8 Toolchain, Build System &amp; Execution Security</h3>
+<p>C projects often rely on Makefiles or custom shell scripts where unquoted variables or external flags can trigger shell command injection. The Rokade build system parses declarative <code>rokade.toml</code> files and invokes compilers directly using POSIX <code>fork()</code>/<code>execv()</code> without shell wrappers (<code>sh -c</code>).</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Category</th><th>Standard C Ecosystem</th><th>Rook &amp; Rokade</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Build Config</strong></td><td>Complex Makefiles, CMakeLists.txt, Ninja scripts</td><td>Declarative <code>rokade.toml</code> package manifest</td></tr>
+    <tr><td><strong>Toolchain Execution</strong></td><td>Often wrapped via <code>system()</code> or shell scripts</td><td>Direct POSIX <code>fork()</code>/<code>execv()</code> (zero shell injection)</td></tr>
+    <tr><td><strong>Cross-Compilation</strong></td><td>Manual toolchain prefix management</td><td>Native <code>--target=&lt;triple&gt;</code> support and auto-detection</td></tr>
+    <tr><td><strong>Diagnostics</strong></td><td>Text output varying across GCC, Clang, MSVC</td><td>Structured ANSI terminal diagnostics + JSON for IDEs</td></tr>
+  </tbody>
+</table>
+</div>
+
+  </div>
+</section>
+
+
 <section class="chapter" id="mental-model">
   <div class="chapter-header">
-    <h2 class="chapter-title">3. Mental Model & Memory Semantics</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">4. Mental Model & Memory Semantics</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Unlike languages that impose managed runtimes, tracing garbage collection, or complex reference counting, Rook adopts the <strong>flat, transparent memory model of C</strong>, augmented by deterministic safety guarantees.</p>
 
-<h3>3.1 The Stack &amp; Automatic Zero-Initialization</h3>
+<h3>4.1 The Stack &amp; Automatic Zero-Initialization</h3>
 <p>In standard C, uninitialized local stack variables contain arbitrary leftover memory contents, leading to undefined behavior and security exploits:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Dangerous)</span></div><pre><code class="language-c">// Standard C: Undefined Behavior
 void compute(void) {
@@ -652,7 +984,7 @@ void compute(void) {
     return 0;
 }</code></pre></div>
 
-<h3>3.2 The Heap &amp; Deterministic Lifecycle</h3>
+<h3>4.2 The Heap &amp; Deterministic Lifecycle</h3>
 <p>Heap memory in Rook is explicit. You allocate memory using standard functions (such as <code>malloc</code> / <code>calloc</code>) or specialized memory structures like <code>std/mem</code> bump arenas. Rook provides no background garbage collector; heap allocations live until explicitly reclaimed.</p>
 
 <p>To eliminate memory leaks and ensure resources are properly released along all code paths (including early returns and error conditions), Rook introduces the <code>defer</code> statement:</p>
@@ -672,7 +1004,7 @@ int process_file(const char* path) {
     return 0; // Both buffer and fp are automatically cleaned up here
 }</code></pre></div>
 
-<h3>3.3 Object Memory Layout</h3>
+<h3>4.3 Object Memory Layout</h3>
 <p>Rook's object system provides single inheritance with <strong>zero runtime overhead</strong>. An object inheriting from a base type embeds the base struct as its first member (<code>struct Base _base;</code>). There are no virtual method tables (vtables), no runtime type indicators, and no pointer indirections. A pointer to a derived object can be safely cast and passed to any function expecting a pointer to its base type.</p>
 
   </div>
@@ -681,21 +1013,21 @@ int process_file(const char* path) {
 
 <section class="chapter" id="installation">
   <div class="chapter-header">
-    <h2 class="chapter-title">4. Installation, Setup & Diagnostics</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">5. Installation, Setup & Diagnostics</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook is distributed as source and installs cleanly into user space without requiring root privileges (<code>sudo</code>).</p>
 
-<h3>4.1 System Prerequisites</h3>
+<h3>5.1 System Prerequisites</h3>
 <ul>
   <li><strong>Host C Compiler:</strong> <code>gcc</code> (version 9+) or <code>clang</code> (version 10+)</li>
   <li><strong>Build System:</strong> <code>cmake</code> (version 3.16+)</li>
   <li><strong>Optional Language Server:</strong> Rust <code>cargo</code> (required only if building <code>rook-lsp</code>)</li>
 </ul>
 
-<h3>4.2 Quick Installation</h3>
+<h3>5.2 Quick Installation</h3>
 <p><strong>Linux &amp; macOS:</strong></p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Linux / macOS Install</span></div><pre><code class="language-bash">git clone https://github.com/bknsehan/Rook.git
 cd Rook
@@ -709,7 +1041,7 @@ cd Rook
 cd Rook
 .\install.ps1 -WithZed</code></pre></div>
 
-<h3>4.3 Toolchain Verification: <code>rokade doctor</code></h3>
+<h3>5.3 Toolchain Verification: <code>rokade doctor</code></h3>
 <p>Rokade includes a built-in diagnostics command that verifies your compiler setup, include search paths, standard library availability, and toolchain dependencies:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Run Diagnostics</span></div><pre><code class="language-bash">rokade doctor</code></pre></div>
 
@@ -730,14 +1062,14 @@ cd Rook
 
 <section class="chapter" id="quickstart">
   <div class="chapter-header">
-    <h2 class="chapter-title">5. Project Lifecycle & Quickstart</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">6. Project Lifecycle & Quickstart</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rokade provides a unified project management interface for scaffolding, configuring, building, and running Rook projects.</p>
 
-<h3>5.1 Project Scaffolding</h3>
+<h3>6.1 Project Scaffolding</h3>
 <p>To scaffold a new executable project:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Scaffold Application</span></div><pre><code class="language-bash">rokade new my_service
 cd my_service</code></pre></div>
@@ -745,7 +1077,7 @@ cd my_service</code></pre></div>
 <p>To scaffold a library project suitable for sharing or vendoring:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Scaffold Library</span></div><pre><code class="language-bash">rokade new --lib math_utils</code></pre></div>
 
-<h3>5.2 Directory Layout</h3>
+<h3>6.2 Directory Layout</h3>
 <p>A standard Rook project follows a clean, predictable structure:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Project Structure</span></div><pre><code class="language-text">my_service/
 ├── rokade.toml          # Project manifest &amp; build configuration
@@ -759,7 +1091,7 @@ cd my_service</code></pre></div>
     └── linux/
         └── my_service   # Final compiled native executable</code></pre></div>
 
-<h3>5.3 The Standard Workflow</h3>
+<h3>6.3 The Standard Workflow</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Core CLI Workflow</span></div><pre><code class="language-bash"># Build the project using configuration in rokade.toml
 rokade build
 
@@ -778,14 +1110,14 @@ rokade run --jit</code></pre></div>
 
 <section class="chapter" id="variables">
   <div class="chapter-header">
-    <h2 class="chapter-title">6. Variables, Types & Invariants</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">7. Variables, Types & Invariants</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook provides concise, expressive variable declarations while maintaining strict static typing.</p>
 
-<h3>6.1 Declaration Forms in v0.4.1</h3>
+<h3>7.1 Declaration Forms in v0.4.1</h3>
 <p>Rook supports three primary declaration forms:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Variable Declarations</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
@@ -813,7 +1145,7 @@ This eliminates syntactic ambiguities with labels, ternary operators, and struct
 Use either <code>let x = 10;</code>, <code>let x: int = 10;</code>, or C-style <code>int x = 10;</code>.
 </div></div>
 
-<h3>6.2 Primitive Types &amp; Sizes</h3>
+<h3>7.2 Primitive Types &amp; Sizes</h3>
 <div class="table-container">
 <table>
   <thead>
@@ -834,7 +1166,7 @@ Use either <code>let x = 10;</code>, <code>let x: int = 10;</code>, or C-style <
 </table>
 </div>
 
-<h3>6.3 Fixed-Size Arrays</h3>
+<h3>7.3 Fixed-Size Arrays</h3>
 <p>Array declarations follow C memory layout. Uninitialized arrays are automatically zero-filled:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Arrays & Iteration</span></div><pre><code class="language-rook">int values[4]; // Lowered to: int values[4] = {0};
 values[0] = 10;
@@ -851,14 +1183,14 @@ for item in [100, 200, 300] {
 
 <section class="chapter" id="pointers">
   <div class="chapter-header">
-    <h2 class="chapter-title">7. Pointers & Pointer Safety</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">8. Pointers & Pointer Safety</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Pointers are fundamental to systems programming. Rook preserves direct pointer access and low-level memory manipulation, but eliminates syntactical confusion and enforces strict compile-time safety checks.</p>
 
-<h3>7.1 Standardized Postfix Notation</h3>
+<h3>8.1 Standardized Postfix Notation</h3>
 <p>In standard C, whitespace variability creates confusing pointer declarations (e.g. <code>int *p</code> vs <code>int* p</code>). Rook standardizes strictly on postfix notation:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Valid Pointer Syntax</span></div><pre><code class="language-rook">int* ptr = &amp;x;     // Correct in Rook
 const char* name;  // Correct in Rook</code></pre></div>
@@ -868,7 +1200,7 @@ Prefix notation like <code>*int ptr;</code> is strictly rejected by the Rook par
 <pre><code>error: invalid pointer syntax '*Type'; Rook standardizes on postfix 'Type*'</code></pre>
 </div></div>
 
-<h3>7.2 Pointer Operations</h3>
+<h3>8.2 Pointer Operations</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Address-of & Dereference</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 void swap(int* a, int* b) {
@@ -885,7 +1217,7 @@ int main() {
     return 0;
 }</code></pre></div>
 
-<h3>7.3 Enforced Pointer Arithmetic Rules</h3>
+<h3>8.3 Enforced Pointer Arithmetic Rules</h3>
 <p>Rook's semantic analyzer enforces rigorous safety rules around pointer calculations:</p>
 <ul>
   <li><strong>Typed Pointer Offsets:</strong> Adding or subtracting integers from typed pointers (<code>p + 1</code>, <code>p++</code>) is permitted and steps memory by <code>sizeof(*p)</code>.</li>
@@ -911,14 +1243,14 @@ p = p &amp; 0xFF; // COMPILE ERROR: invalid operand to binary operator</code></p
 
 <section class="chapter" id="control-flow">
   <div class="chapter-header">
-    <h2 class="chapter-title">8. Control Flow & Branching</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">9. Control Flow & Branching</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook provides structured control flow primitives familiar to C developers, with compile-time enforcements that prevent classic logical errors.</p>
 
-<h3>8.1 Conditionals: if / else</h3>
+<h3>9.1 Conditionals: if / else</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Standard Conditional</span></div><pre><code class="language-rook">if (status == 200) {
     printf("OK\n");
 } else if (status &gt;= 400 &amp;&amp; status &lt; 500) {
@@ -940,7 +1272,7 @@ Rook's semantic analyzer recursively inspects condition expressions (stripping p
 <pre><code>error: assignment used as condition; did you mean '=='?</code></pre>
 </div></div>
 
-<h3>8.2 Iteration: while, do-while, for, and for-in</h3>
+<h3>9.2 Iteration: while, do-while, for, and for-in</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Looping Constructs</span></div><pre><code class="language-rook">// 1. Classic while loop
 int i = 0;
 while (i &lt; 5) {
@@ -958,7 +1290,7 @@ for score in [95, 88, 72, 100] {
     printf("score: %d\n", score);
 }</code></pre></div>
 
-<h3>8.3 Scalar Branching: C switch</h3>
+<h3>9.3 Scalar Branching: C switch</h3>
 <p>For scalar dispatch (integers and enums) using jump tables, Rook supports standard C <code>switch</code>:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Classic C switch</span></div><pre><code class="language-rook">switch (opcode) {
     case 1:
@@ -978,7 +1310,7 @@ In Rook v0.4.1, arrow switch was removed to keep <code>switch</code> dedicated e
 All modern pattern matching, destructuring, and expression branching are consolidated into the <code>match</code> construct (see Chapter 12).
 </div></div>
 
-<h3>8.4 Prohibition of goto</h3>
+<h3>9.4 Prohibition of goto</h3>
 <p>Rook explicitly bans the <code>goto</code> keyword. All control flow must be expressed via structured constructs (<code>if</code>, <code>while</code>, <code>for</code>, <code>switch</code>, <code>match</code>, <code>break</code>, <code>continue</code>, and <code>return</code>).</p>
 
   </div>
@@ -987,14 +1319,14 @@ All modern pattern matching, destructuring, and expression branching are consoli
 
 <section class="chapter" id="functions">
   <div class="chapter-header">
-    <h2 class="chapter-title">9. Functions & Call Semantics</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">10. Functions & Call Semantics</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Functions in Rook follow standard C declaration syntax, avoiding redundant keywords like <code>fn</code>, <code>def</code>, or <code>function</code>.</p>
 
-<h3>9.1 Signature &amp; Implementation</h3>
+<h3>10.1 Signature &amp; Implementation</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Function Definitions</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 // Return type, identifier, typed parameter list
@@ -1012,14 +1344,14 @@ int main() {
     return 0;
 }</code></pre></div>
 
-<h3>9.2 Compile-Time Enforcements</h3>
+<h3>10.2 Compile-Time Enforcements</h3>
 <ul>
   <li><strong>Strict Return Validation:</strong> Any non-void function must return an appropriate value across all execution paths. A function falling through without a <code>return</code> triggers a compile-time error.</li>
   <li><strong>Arity &amp; Type Verification:</strong> Function calls are statically verified against declarations. Calling a function with missing or extraneous arguments fails immediately.</li>
   <li><strong>Top-Level Scope Enforcement:</strong> Nested function declarations (defining a function inside another function body) are illegal and rejected.</li>
 </ul>
 
-<h3>9.3 Foreign Function Declarations (extern)</h3>
+<h3>10.3 Foreign Function Declarations (extern)</h3>
 <p>When calling external C functions that are not provided via header includes, declare their prototype with <code>extern</code>:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">extern Function Declarations</span></div><pre><code class="language-rook">extern int puts(const char* s);
 extern void* memcpy(void* dest, const void* src, size_t n);
@@ -1035,14 +1367,14 @@ int main() {
 
 <section class="chapter" id="structs">
   <div class="chapter-header">
-    <h2 class="chapter-title">10. Structs & Memory Layout</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">11. Structs & Memory Layout</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Structs in Rook represent Plain Old Data (POD). They have direct, transparent mapping to C struct layout, ensuring exact memory alignment, size, and field offsets.</p>
 
-<h3>10.1 Definition &amp; Initialization</h3>
+<h3>11.1 Definition &amp; Initialization</h3>
 <p>Rook supports both C-style field definitions and colon-separated field syntax:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Struct Definitions & Designated Initializers</span></div><pre><code class="language-rook">// Definition
 struct Vector2 {
@@ -1062,7 +1394,7 @@ int main() {
     return 0;
 }</code></pre></div>
 
-<h3>10.2 Field Access &amp; Pointers</h3>
+<h3>11.2 Field Access &amp; Pointers</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Member Access Operators</span></div><pre><code class="language-rook">Vector2 v = Vector2{ x: 1.0f, y: 2.0f };
 Vector2* ptr = &amp;v;
 
@@ -1084,14 +1416,14 @@ This ensures zero runtime copying or initialization overhead.
 
 <section class="chapter" id="objects">
   <div class="chapter-header">
-    <h2 class="chapter-title">11. Objects, Methods & Single Inheritance</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">12. Objects, Methods & Single Inheritance</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook provides an elegant object model featuring <strong>single inheritance and method dispatch with zero runtime cost</strong>. Unlike C++, Rook introduces no virtual method tables (vtables), no runtime type information (RTTI), and no hidden pointer indirection.</p>
 
-<h3>11.1 The object Keyword</h3>
+<h3>12.1 The object Keyword</h3>
 <p>An <code>object</code> defines a record type that can participate in single inheritance:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Object Inheritance</span></div><pre><code class="language-rook">object Entity {
     int id;
@@ -1105,7 +1437,7 @@ object Player : Entity {
     const char* username;
 }</code></pre></div>
 
-<h3>11.2 Memory Lowering &amp; ABI Parity</h3>
+<h3>12.2 Memory Lowering &amp; ABI Parity</h3>
 <p>When Rook transpiles <code>object Player : Entity</code>, it lowers the inheritance hierarchy by embedding the base type as the first struct member named <code>_base</code>:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Lowered C Struct Representation</span></div><pre><code class="language-c">// Generated C representation
 typedef struct Entity {
@@ -1122,7 +1454,7 @@ typedef struct Player {
 
 <p>Because <code>_base</code> is located at offset 0 of <code>Player</code>, a pointer to <code>Player</code> is binary-compatible with a pointer to <code>Entity</code> under standard C ABI rules. Any function accepting <code>Entity*</code> can receive <code>(Entity*)player_ptr</code> without overhead.</p>
 
-<h3>11.3 Method Dispatch with impl</h3>
+<h3>12.3 Method Dispatch with impl</h3>
 <p>Methods are defined outside the struct definition using <code>impl</code> blocks:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Methods & Inheritance in Action</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
@@ -1173,14 +1505,14 @@ Dispatch is 100% static, inlined by the C compiler, and incurs zero vtable indir
 
 <section class="chapter" id="sum-match">
   <div class="chapter-header">
-    <h2 class="chapter-title">12. Algebraic Data Types: sum, enum & match</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">13. Algebraic Data Types: sum, enum & match</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Modern systems software requires robust representation of polymorphic data without complex class hierarchies. Rook provides first-class <strong>sum types (tagged unions)</strong> and pattern matching via <code>match</code>.</p>
 
-<h3>12.1 Enumerations: enum</h3>
+<h3>13.1 Enumerations: enum</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Standard Enum</span></div><pre><code class="language-rook">enum HttpMethod {
     Get,
     Post,
@@ -1188,7 +1520,7 @@ Dispatch is 100% static, inlined by the C compiler, and incurs zero vtable indir
     Delete
 }</code></pre></div>
 
-<h3>12.2 Sum Types (Tagged Unions)</h3>
+<h3>13.2 Sum Types (Tagged Unions)</h3>
 <p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variants may be unit variants (bearing no payload) or data variants:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span></div><pre><code class="language-rook">sum Node {
     Leaf { value: int; };
@@ -1205,7 +1537,7 @@ Dispatch is 100% static, inlined by the C compiler, and incurs zero vtable indir
     };
 } Node;</code></pre></div>
 
-<h3>12.3 Pattern Matching: match</h3>
+<h3>13.3 Pattern Matching: match</h3>
 <p>The <code>match</code> construct provides comprehensive destructuring for sum types, enums, and scalar values. It is supported in both statement and expression forms.</p>
 
 <h4>Statement Form:</h4>
@@ -1234,7 +1566,7 @@ float calculate_area(Shape s) {
     };
 }</code></pre></div>
 
-<h3>12.4 Instantiating Sum Types &amp; Methods with impl</h3>
+<h3>13.4 Instantiating Sum Types &amp; Methods with impl</h3>
 <p>To instantiate a sum type, specify the sum type name as the variable type (or use explicit type annotation with <code>let</code>) and provide the variant constructor:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Instantiation & Methods</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
@@ -1273,14 +1605,14 @@ int main() {
 
 <section class="chapter" id="cleanup-defer">
   <div class="chapter-header">
-    <h2 class="chapter-title">13. Deterministic Cleanup: defer</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">14. Deterministic Cleanup: defer</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Manual resource cleanup is the primary source of memory leaks and descriptor exhaustion in C. Rook solves this with the <code>defer</code> statement, providing deterministic scope-based resource reclamation.</p>
 
-<h3>13.1 defer Mechanics</h3>
+<h3>14.1 defer Mechanics</h3>
 <p>When <code>defer &lt;stmt&gt;;</code> is encountered, the deferred statement is scheduled to run when the surrounding lexical scope terminates. Multiple deferred statements execute in <strong>Last-In, First-Out (LIFO)</strong> order (stack unwinding):</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">LIFO Execution Order</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
@@ -1302,7 +1634,7 @@ Third deferred (runs first)
 Second deferred (runs middle)
 First deferred (runs last)</code></pre></div>
 
-<h3>13.2 Resource Pairing Idioms</h3>
+<h3>14.2 Resource Pairing Idioms</h3>
 <p>Place <code>defer</code> immediately after acquiring any resource to guarantee deallocation, regardless of whether the function returns early or encounters an error:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Safe Resource Management</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -1330,14 +1662,14 @@ int process_data(const char* filename) {
 
 <section class="chapter" id="modules">
   <div class="chapter-header">
-    <h2 class="chapter-title">14. Modules, Namespaces & Directives</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">15. Modules, Namespaces & Directives</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook modernizes code organization by eliminating C header files (<code>.h</code>) entirely for Rook code, while providing a clear distinction between native Rook modules and external C headers.</p>
 
-<h3>14.1 Directives Overview</h3>
+<h3>15.1 Directives Overview</h3>
 <div class="table-container">
 <table>
   <thead>
@@ -1352,7 +1684,7 @@ int process_data(const char* filename) {
 </table>
 </div>
 
-<h3>14.2 Modular Multi-File Organization</h3>
+<h3>15.2 Modular Multi-File Organization</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">src/math.rook</span></div><pre><code class="language-rook">// src/math.rook
 int add(int a, int b) {
     return a + b;
@@ -1375,7 +1707,7 @@ int main() {
 Unlike C where header files require <code>#ifndef HEADER_H</code> include guards to prevent duplicate definitions, Rook's <code>#comprise</code> directive automatically deduplicates modules. If Module A and Module B both comprise Module C, Module C is parsed and compiled exactly once.
 </div></div>
 
-<h3>14.3 Security Sandboxing: The Include Jail</h3>
+<h3>15.3 Security Sandboxing: The Include Jail</h3>
 <p>To defend against directory traversal attacks and unauthorized filesystem reading during compilation, Rokade implements an <strong>Include Jail</strong>. All file inclusion directives are resolved and validated against a sandboxed boundary:</p>
 <ul>
   <li>Paths must reside within the project root, the Rook standard library installation, vendored package directories, or verified system include directories.</li>
@@ -1388,14 +1720,14 @@ Unlike C where header files require <code>#ifndef HEADER_H</code> include guards
 
 <section class="chapter" id="dependencies">
   <div class="chapter-header">
-    <h2 class="chapter-title">15. Vendored Dependencies & Packages</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">16. Vendored Dependencies & Packages</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Modern software relies on shared libraries. Rokade provides a built-in dependency and vendoring system that resolves packages without external package managers or centralized registries.</p>
 
-<h3>15.1 Defining Dependencies in rokade.toml</h3>
+<h3>16.1 Defining Dependencies in rokade.toml</h3>
 <p>Dependencies are declared in the <code>[dependencies]</code> table of your project's <code>rokade.toml</code> using relative paths:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml Dependencies</span></div><pre><code class="language-toml">[package]
 name = "my_game"
@@ -1409,7 +1741,7 @@ targets = ["linux"]
 engine = { path = "vendor/engine" }
 physics = { path = "vendor/physics" }</code></pre></div>
 
-<h3>15.2 The vendor/ Directory Hierarchy</h3>
+<h3>16.2 The vendor/ Directory Hierarchy</h3>
 <p>Vendored dependencies are self-contained Rook projects located within the <code>vendor/</code> directory:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Vendored Project Layout</span></div><pre><code class="language-text">my_game/
 ├── rokade.toml
@@ -1421,7 +1753,7 @@ physics = { path = "vendor/physics" }</code></pre></div>
         └── src/
             └── engine.rook</code></pre></div>
 
-<h3>15.3 Transitive Dependency Resolution</h3>
+<h3>16.3 Transitive Dependency Resolution</h3>
 <p>When building your project, Rokade automatically performs dependency graph resolution:</p>
 <ol>
   <li>Inspects each dependency declared in <code>[dependencies]</code>.</li>
@@ -1444,14 +1776,14 @@ int main() {
 
 <section class="chapter" id="c-interop">
   <div class="chapter-header">
-    <h2 class="chapter-title">16. C Interoperability & Integration</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">17. C Interoperability & Integration</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook's ultimate strength is its <strong>seamless, zero-overhead interoperability with C</strong>. Because Rook transpiles to standard C and shares identical calling conventions, any C library can be used immediately without foreign function interfaces (FFI), code generators, or runtime bridges.</p>
 
-<h3>16.1 Integrating System Libraries via pkg-config</h3>
+<h3>17.1 Integrating System Libraries via pkg-config</h3>
 <p>To integrate popular C libraries (such as Raylib, SDL2, SQLite3, or GTK), declare them in the <code>pkg-config</code> array in <code>rokade.toml</code>:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml with pkg-config</span></div><pre><code class="language-toml">[package]
 name = "raylib_demo"
@@ -1463,7 +1795,7 @@ pkg-config = ["raylib"]</code></pre></div>
 
 <p>Rokade automatically executes <code>pkg-config --cflags --libs raylib</code> using safe argument vectors and configures the compilation and linking pipelines.</p>
 
-<h3>16.2 Concrete Example: Complete Raylib Window</h3>
+<h3>17.2 Concrete Example: Complete Raylib Window</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook (Raylib GUI)</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 #include &lt;raylib.h&gt;
 
@@ -1489,7 +1821,7 @@ int main() {
     return 0;
 }</code></pre></div>
 
-<h3>16.3 Mixing Raw C Code Directly in .rook Files</h3>
+<h3>17.3 Mixing Raw C Code Directly in .rook Files</h3>
 <p>You can embed C declarations, typedefs, and inline C helpers directly in a <code>.rook</code> file. Rokade recognizes standard C syntax and passes it through directly to the generated C source:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Embedding Raw C</span></div><pre><code class="language-rook">typedef struct {
     int code;
@@ -1511,20 +1843,20 @@ int calculate_hash(const char* str) {
 
 <section class="chapter" id="stdlib">
   <div class="chapter-header">
-    <h2 class="chapter-title">17. Standard Library Reference (std/)</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">18. Standard Library Reference (std/)</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Rook includes a lightweight, modular standard library located in the <code>std/</code> directory. Standard library modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or all at once via <code>#comprise &lt;std&gt;</code>.</p>
 
-<h3>17.1 std/io — Fast Console I/O</h3>
+<h3>18.1 std/io — Fast Console I/O</h3>
 <p>Import with <code>#comprise &lt;std/io&gt;</code></p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/io Example</span></div><pre><code class="language-rook">println("Standard output with newline");
 print("Standard output without newline");
 eprintln("Standard error log");</code></pre></div>
 
-<h3>17.2 std/str — Non-Owning String Slice (Str)</h3>
+<h3>18.2 std/str — Non-Owning String Slice (Str)</h3>
 <p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a lightweight struct containing a pointer and a length (<code>const char* data; size_t len;</code>). It provides zero-allocation string slicing and inspections:</p>
 <div class="table-container">
 <table>
@@ -1547,7 +1879,7 @@ eprintln("Standard error log");</code></pre></div>
 </table>
 </div>
 
-<h3>17.3 std/vec — Dynamic Vector &amp; StringBuilder</h3>
+<h3>18.3 std/vec — Dynamic Vector &amp; StringBuilder</h3>
 <p>Import with <code>#comprise &lt;std/vec&gt;</code></p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/vec Example</span></div><pre><code class="language-rook">// Dynamic Vector of pointers
 Vec v = vec_new(8);
@@ -1566,7 +1898,7 @@ sb.append_int(42);
 sb.append_cstr(" ms\n");
 printf("%s", sb.to_cstr());</code></pre></div>
 
-<h3>17.4 std/mem — Bump Arena Allocator</h3>
+<h3>18.4 std/mem — Bump Arena Allocator</h3>
 <p>Import with <code>#comprise &lt;std/mem&gt;</code>. The <code>Arena</code> allocator allocates memory sequentially from a fixed contiguous block, allowing hundreds of small allocations to be freed instantly with a single call:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/mem Arena Allocator</span></div><pre><code class="language-rook">Arena arena = arena_new(65536); // 64 KB memory pool
 defer arena.destroy();
@@ -1577,7 +1909,7 @@ void* block2 = arena.alloc(512);
 
 arena.reset(); // Instantly clears all allocations</code></pre></div>
 
-<h3>17.5 std/result — Result and Option Types</h3>
+<h3>18.5 std/result — Result and Option Types</h3>
 <p>Import with <code>#comprise &lt;std/result&gt;</code>. Provides algebraic return types for explicit error handling:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/result Example</span></div><pre><code class="language-rook">Result r = result_ok(payload);
 if (r.is_ok()) {
@@ -1591,7 +1923,7 @@ if (opt.is_some()) {
     void* val = opt.unwrap();
 }</code></pre></div>
 
-<h3>17.6 Other Standard Modules</h3>
+<h3>18.6 Other Standard Modules</h3>
 <ul>
   <li><strong>std/fs:</strong> File operations (<code>fs_read_to_string</code>, <code>fs_write_file</code>, <code>fs_exists</code>) and path utilities (<code>path_basename</code>, <code>path_dirname</code>, <code>path_extension</code>).</li>
   <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
@@ -1604,8 +1936,8 @@ if (opt.is_some()) {
 
 <section class="chapter" id="safety">
   <div class="chapter-header">
-    <h2 class="chapter-title">18. Safety Invariants & Compile-Time Checks</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">19. Safety Invariants & Compile-Time Checks</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
@@ -1675,7 +2007,7 @@ if (opt.is_some()) {
 </table>
 </div>
 
-<h3>18.1 Catalog of Concrete Compiler Diagnostics</h3>
+<h3>19.1 Catalog of Concrete Compiler Diagnostics</h3>
 <p>Below are representative examples of illegal constructs and the precise compiler errors emitted by Rokade's semantic analyzer (<code>sema.c</code>):</p>
 
 <div class="code-block"><div class="code-header"><span class="code-lang">Compile-Time Diagnostic Catalog</span></div><pre><code class="language-rook">// 1. Assignment in Condition (Recursively Strips Parentheses)
@@ -1718,17 +2050,17 @@ int calculate(int x) {
 
 <section class="chapter" id="config">
   <div class="chapter-header">
-    <h2 class="chapter-title">19. Configuration & Multi-Target Builds (rokade.toml)</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">20. Configuration & Multi-Target Builds (rokade.toml)</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>Every Rook project is configured via a declarative <code>rokade.toml</code> manifest. Rokade handles multi-target cross-compilation without requiring manual Makefiles or complex CMake scripts.</p>
 
-<h3>19.1 Complete rokade.toml Schema</h3>
+<h3>20.1 Complete rokade.toml Schema</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Complete rokade.toml Schema</span></div><pre><code class="language-toml">[package]
 name = "service_engine"
-version = "0.4.2"
+version = "0.4.1"
 authors = ["Engineering Team &lt;dev@example.com&gt;"]
 description = "High-throughput telemetry daemon"
 
@@ -1756,7 +2088,7 @@ api = 24
 arch = ["arm64-v8a", "x86_64"]
 cflags = "-fPIC -O3"</code></pre></div>
 
-<h3>19.2 Cross-Compilation Support</h3>
+<h3>20.2 Cross-Compilation Support</h3>
 <p>Rokade includes built-in cross-compilation target drivers:</p>
 <ul>
   <li><strong>Linux:</strong> Compiles natively via host <code>gcc</code> or <code>clang</code>.</li>
@@ -1779,14 +2111,14 @@ rokade build --all</code></pre></div>
 
 <section class="chapter" id="cli">
   <div class="chapter-header">
-    <h2 class="chapter-title">20. Compiler CLI & Architecture Reference</h2>
-    <a class="back-to-top" href="#top" title="Back to top">↑ Top</a>
+    <h2 class="chapter-title">21. Compiler CLI & Architecture Reference</h2>
+    <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
 <p>The <code>rokade</code> executable is a self-contained command-line driver providing build orchestration, static analysis, code generation, and diagnostics.</p>
 
-<h3>20.1 Command-Line Reference</h3>
+<h3>21.1 Command-Line Reference</h3>
 <div class="table-container">
 <table>
   <thead>
@@ -1811,7 +2143,7 @@ rokade build --all</code></pre></div>
 </table>
 </div>
 
-<h3>20.2 Zero-Shell Process Execution Architecture</h3>
+<h3>21.2 Zero-Shell Process Execution Architecture</h3>
 <p>To ensure security in automated CI/CD and multi-user environments, Rokade completely eschews shell execution (e.g. <code>system()</code> or <code>popen("sh -c ...")</code>) when invoking compiler tools:</p>
 <ul>
   <li>All compiler commands, flags, and library parameters are passed as structured argument vectors (<code>char* argv[]</code>) directly to POSIX <code>fork()</code> and <code>execv()</code>.</li>
@@ -1822,19 +2154,814 @@ rokade build --all</code></pre></div>
   </div>
 </section>
 
+  </div>
+
+  <!-- VIEW 2: BEGINNER COURSE -->
+  <div id="view-beginner" class="view-container" style="display:none;">
+    <header class="hero" id="top-beginner">
+      <div class="badges">
+        <span class="badge pedagogy">Beginner Foundations</span>
+        <span class="badge">High School Graduate Level</span>
+        <span class="badge">Zero Coding Background Needed</span>
+        <span class="badge">12 Complete Modules</span>
+        <span class="badge">Purely Educational</span>
+      </div>
+      <h1>Programming Foundations: From Scratch</h1>
+      <p class="hero-tagline">
+        A friendly, thorough, and step-by-step educational course designed for students and newcomers learning computer programming from the ground up. Master computational thinking, memory, data structures, and problem solving in plain English.
+      </p>
+      <div class="hero-meta">
+        Audience: High school graduates &amp; beginners &nbsp;|&nbsp; Approach: Real-world analogies &amp; clean concepts &nbsp;|&nbsp; Fully self-contained.
+      </div>
+    </header>
+
+    
+<section class="chapter beginner-chapter" id="b1-how-computers-work">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 1: How Computers Actually Work</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this—just a few simple mental models.</p>
+
+<h3>1.1 The Physical Triumvirate: CPU, RAM, and Storage</h3>
+<p>Every computer—from the phone in your pocket to massive supercomputers in data centers—relies on three core physical components working in harmony:</p>
+
+<div class="arch-diagram">
+  <div class="arch-box"><strong>The Storage (SSD / Hard Drive)</strong><br>Permanent Library<br>Large, durable, but slow</div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box"><strong>The RAM (Working Memory)</strong><br>Kitchen Countertop<br>Blazing fast, temporary scratchpad</div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box"><strong>The CPU (The Processor)</strong><br>The Chef / Calculator<br>Executes billions of simple steps per second</div>
+</div>
+
+<ul>
+  <li><strong>The Storage (SSD or Hard Drive):</strong> Think of this as a permanent bookshelf or filing cabinet. When you turn your computer off, everything stored here remains safe. Your operating system, games, and code files live here. However, storage is relatively slow for the CPU to interact with directly.</li>
+  <li><strong>RAM (Random Access Memory):</strong> Think of this as your active kitchen countertop or desk scratchpad. When you launch an application or compile code, the program is copied from storage into RAM. The CPU can read and write data in RAM in nanoseconds. However, RAM is <em>volatile</em>: when you shut down the computer, everything on the countertop is wiped clean.</li>
+  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction—billions of times per second.</li>
+</ul>
+
+<h3>1.2 Bits and Bytes: The Alphabet of Hardware</h3>
+<p>Computers do not speak English, Spanish, or Indonesian. At the microscopic hardware level, computer chips consist of billions of microscopic transistors that act like light switches:</p>
+<ul>
+  <li>A switch can only be in one of two states: <strong>OFF (0)</strong> or <strong>ON (1)</strong>.</li>
+  <li>A single 0 or 1 is called a <strong>bit</strong> (short for <em>binary digit</em>).</li>
+  <li>Because a single bit can only represent two states, computers group bits into sets of eight. A group of 8 bits is called a <strong>byte</strong>.</li>
+</ul>
+
+<div class="callout callout-note">
+  <div class="callout-title">💡 Why 8 Bits = 1 Byte?</div>
+  <div class="callout-body">
+    With 8 bits, you can create 256 unique combinations of 0s and 1s (from <code>00000000</code> to <code>11111111</code>). In decimal numbers, that covers 0 through 255. This was historically enough to assign a unique number to every English letter (A-Z, a-z), digit (0-9), and punctuation symbol in the standard ASCII character table!
+  </div>
+</div>
+
+<h3>1.3 Source Code vs. Machine Code: What is a Compiler?</h3>
+<p>Humans cannot reasonably write billions of 1s and 0s by hand (called <em>machine code</em>). Instead, we write human-readable text called <strong>source code</strong> using a programming language like Rook or C.</p>
+
+<p>Because the CPU cannot directly run human text, we use a special tool called a <strong>compiler</strong> (such as <code>rokade</code>):</p>
+<ol>
+  <li><strong>You write source code:</strong> Clear, human-readable instructions saved in a text file (e.g. <code>main.rook</code>).</li>
+  <li><strong>The compiler inspects your code:</strong> It checks for grammar errors, verifies data types, and ensures safety rules are respected.</li>
+  <li><strong>The compiler emits machine code:</strong> It translates your human instructions into raw binary instructions that your CPU can execute directly at maximum speed.</li>
+</ol>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 1</div><div class="callout-body">
+<ul>
+  <li>The CPU is the brain/calculator; RAM is the fast temporary workspace; Storage is the permanent library.</li>
+  <li>All computer data ultimately consists of bits (0s and 1s) and bytes (groups of 8 bits).</li>
+  <li>Source code is what humans write; machine code is what the CPU executes.</li>
+  <li>A compiler is the bridge that translates your human logic into blazing-fast machine instructions.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b2-first-program">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 2: Your Very First Program</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Every programmer's journey begins with a sacred tradition: writing a program that prints the words <code>"Hello, World!"</code> to your screen. Let's look at the complete code, and then dissect every single character so you understand why it is there.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Your First Program (src/main.rook)</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}</code></pre></div>
+<h3>2.1 Line-by-Line Breakdown</h3>
+<ol>
+  <li><strong><code>#include &lt;stdio.h&gt;</code></strong><br>
+  Programs rarely start from scratch. Standard libraries provide pre-built tools for common tasks. Here, <code>stdio.h</code> stands for <em>Standard Input/Output</em>. Including this tells the compiler: "Please let me borrow the standard tools for reading from the keyboard and writing text to the terminal."</li>
+  
+  <li><strong><code>int main()</code></strong><br>
+  This is the official front door of your program. When your operating system (Linux, Windows, or macOS) starts your application, it specifically searches for a function named <code>main</code> to begin execution. The word <code>int</code> before <code>main</code> means that when the program finishes, it will hand back a whole integer number (an exit code) to the operating system.</li>
+
+  <li><strong>The Curly Braces <code>{ ... }</code></strong><br>
+  In Rook and C, curly braces define a <strong>block of code</strong>. Everything between the opening <code>{</code> and the closing <code>}</code> belongs to the <code>main</code> function. Think of it like the walls of a room where the work happens.</li>
+
+  <li><strong><code>printf("Hello, World!\n");</code></strong><br>
+  <code>printf</code> stands for <em>Print Formatted</em>. It takes the text inside the quotation marks and displays it on your terminal screen. Notice the funny characters <code>\n</code> at the end: this is an <em>escape sequence</em> that tells the computer to press the "Enter" key and move to a fresh new line.</li>
+
+  <li><strong>The Semicolon <code>;</code></strong><br>
+  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation; the compiler won't know where one thought ends and the next begins.</li>
+
+  <li><strong><code>return 0;</code></strong><br>
+  This is your program telling the operating system: "I have finished all my work, and everything went successfully without any errors!" In computing convention, a return code of <code>0</code> signifies success, while non-zero numbers (like 1, -1, or 404) signify various error codes.</li>
+</ol>
+
+<h3>2.2 The Lifecycle: From Text File to Running Application</h3>
+<div class="arch-diagram">
+  <div class="arch-box">1. Write Code<br><code>src/main.rook</code></div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box">2. Compile &amp; Link<br><code>rokade build</code></div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box">3. Run Executable<br><code>./build/my_app</code></div>
+</div>
+
+<p>When you run <code>rokade run</code> in your terminal, the compiler performs the compilation and linking automatically, producing a native binary file and immediately launching it so you see the result in milliseconds.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 2</div><div class="callout-body">
+<ul>
+  <li><code>main()</code> is the designated entry point where every program starts running.</li>
+  <li>Statements must end with semicolons (<code>;</code>), and blocks of code are enclosed in braces (<code>{ ... }</code>).</li>
+  <li><code>printf()</code> outputs text, and <code>\n</code> creates a new line.</li>
+  <li><code>return 0;</code> signals to the operating system that your program completed successfully.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b3-variables-types">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 3: Storing Information: Variables and Types</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Programs are not static text; they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
+
+<h3>3.1 The Labeled Storage Box Analogy</h3>
+<p>Imagine your computer's RAM as a vast warehouse. A <strong>variable</strong> is like a sturdy cardboard box with a name tag written on the outside:</p>
+<ul>
+  <li><strong>The Variable Name (Identifier):</strong> The name written on the box (e.g. <code>player_score</code> or <code>age</code>).</li>
+  <li><strong>The Data Type:</strong> The specific shape of the box, which determines what kind of items can fit inside (e.g. integers only, or decimal numbers only).</li>
+  <li><strong>The Value:</strong> The actual item currently sitting inside the box (e.g. <code>100</code>).</li>
+</ul>
+
+<h3>3.2 Fundamental Data Types</h3>
+<p>Computers handle different kinds of information differently. Storing someone's age is very different from storing their bank account balance or their name. Here are the core data types you will use every day:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Type Keyword</th><th>Name &amp; Purpose</th><th>Typical Size</th><th>Example Values</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>int</code></td>
+      <td><strong>Integer:</strong> Whole numbers (positive, negative, and zero).</td>
+      <td>4 bytes (32 bits)</td>
+      <td><code>0</code>, <code>42</code>, <code>-15</code>, <code>1000000</code></td>
+    </tr>
+    <tr>
+      <td><code>float</code></td>
+      <td><strong>Floating-Point:</strong> Numbers with decimal points.</td>
+      <td>4 bytes (32 bits)</td>
+      <td><code>3.14f</code>, <code>-0.5f</code>, <code>99.99f</code></td>
+    </tr>
+    <tr>
+      <td><code>double</code></td>
+      <td><strong>Double Precision:</strong> Extra-precise decimal numbers.</td>
+      <td>8 bytes (64 bits)</td>
+      <td><code>2.718281828459</code></td>
+    </tr>
+    <tr>
+      <td><code>char</code></td>
+      <td><strong>Character:</strong> A single letter, digit, or symbol in single quotes.</td>
+      <td>1 byte (8 bits)</td>
+      <td><code>'A'</code>, <code>'z'</code>, <code>'!'</code>, <code>'9'</code></td>
+    </tr>
+    <tr>
+      <td><code>bool</code></td>
+      <td><strong>Boolean:</strong> Truth values for logic and decision making.</td>
+      <td>1 byte</td>
+      <td><code>true</code> or <code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>const char*</code></td>
+      <td><strong>String:</strong> A sequence of text enclosed in double quotes.</td>
+      <td>Pointer size</td>
+      <td><code>"Hello, World!"</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3.3 Declaring and Using Variables</h3>
+<p>Here is how you create and use variables in Rook:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Variables in Action</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    // 1. Explicit type declaration
+    int player_health = 100;
+    float walking_speed = 4.5f;
+    char rank_letter = 'A';
+    bool is_alive = true;
+
+    // 2. Printing variable values
+    // %d prints an integer, %.1f prints a float, %c prints a char
+    printf("Health: %d\n", player_health);
+    printf("Speed: %.1f\n", walking_speed);
+    printf("Rank: %c\n", rank_letter);
+
+    // 3. Modifying a variable
+    player_health = 85; // Took 15 damage!
+    printf("Updated Health: %d\n", player_health);
+
+    return 0;
+}</code></pre></div>
+<div class="callout callout-note">
+  <div class="callout-title">💡 Rook's Automatic Zero-Initialization</div>
+  <div class="callout-body">
+    In older languages like C, if you write <code>int score;</code> without giving it a value, the box contains random garbage left over in RAM from whatever app ran earlier! In Rook, if you don't give a variable a value, it is <strong>guaranteed to start at 0</strong>.
+  </div>
+</div>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 3</div><div class="callout-body">
+<ul>
+  <li>A variable is a named storage location in memory that holds a specific type of data.</li>
+  <li><code>int</code> is for whole numbers, <code>float</code> for decimals, <code>char</code> for single characters, <code>bool</code> for true/false.</li>
+  <li>Use <code>=</code> to assign or update a value inside a variable box.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b4-math-operators">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 4: Doing Math & Making Comparisons</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Once you have variables, you want to perform calculations and make comparisons. In programming, we do this using <strong>operators</strong>.</p>
+
+<h3>4.1 Basic Arithmetic Operators</h3>
+<p>You already know most of these from middle school math:</p>
+<ul>
+  <li><code>+</code> (Addition): <code>10 + 5</code> results in <code>15</code></li>
+  <li><code>-</code> (Subtraction): <code>10 - 5</code> results in <code>5</code></li>
+  <li><code>*</code> (Multiplication): <code>10 * 5</code> results in <code>50</code></li>
+  <li><code>/</code> (Division): <code>10 / 5</code> results in <code>2</code></li>
+  <li><code>%</code> (Modulo / Remainder): <code>10 % 3</code> results in <code>1</code> (because 3 goes into 10 three times with 1 left over).</li>
+</ul>
+
+<div class="callout callout-warn">
+  <div class="callout-title">⚠️ The Integer Division Surprise!</div>
+  <div class="callout-body">
+    What happens if you divide <code>7 / 2</code> using integers? In math class, the answer is <code>3.5</code>. But because both 7 and 2 are <code>int</code>, the computer performs <em>integer division</em>: it throws away the decimal remainder and gives you <code>3</code>! If you want the decimal <code>3.5</code>, at least one of the numbers must be a decimal: <code>7.0f / 2.0f</code>.
+  </div>
+</div>
+
+<h3>4.2 Comparison Operators (Asking Questions)</h3>
+<p>Computers make decisions by testing whether something is true or false:</p>
+<ul>
+  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value; double <code>==</code> compares values).</li>
+  <li><code>!=</code> (Is NOT Equal To?): <code>x != 5</code> (True if x is anything other than 5).</li>
+  <li><code>&gt;</code> and <code>&lt;</code> (Greater than / Less than): <code>score &gt; 100</code></li>
+  <li><code>&gt;=</code> and <code>&lt;=</code> (Greater than or equal / Less than or equal): <code>age &gt;= 18</code></li>
+</ul>
+
+<h3>4.3 Boolean Logic: Combining Conditions</h3>
+<p>Often you need to check multiple conditions at the same time:</p>
+<ul>
+  <li><strong>Logical AND (<code>&amp;&amp;</code>):</strong> Both conditions must be true.<br>
+  <em>Analogy:</em> To ride the roller coaster, you must be tall enough <strong>AND</strong> have a ticket. If either is missing, you cannot ride.</li>
+  <li><strong>Logical OR (<code>||</code>):</strong> At least one condition must be true.<br>
+  <em>Analogy:</em> You get a discount if it is Sunday <strong>OR</strong> you are a student. If either is true, you get the discount.</li>
+  <li><strong>Logical NOT (<code>!</code>):</strong> Flips true to false, and false to true.<br>
+  <em>Analogy:</em> <code>!is_raining</code> means "it is NOT raining".</li>
+</ul>
+<div class="code-block"><div class="code-header"><span class="code-lang">Operators in Action</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    int age = 20;
+    bool has_id = true;
+
+    // Both must be true
+    if (age &gt;= 18 &amp;&amp; has_id) {
+        printf("Access granted: adult with ID.\n");
+    }
+
+    // Remainder calculation
+    int items = 14;
+    int pack_size = 4;
+    int leftover = items % pack_size;
+    printf("Leftover items: %d\n", leftover); // Prints 2
+
+    return 0;
+}</code></pre></div><div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 4</div><div class="callout-body">
+<ul>
+  <li>Integer division discards decimals; use floats when you need fractions.</li>
+  <li>Use <code>==</code> to compare values, and <code>=</code> to assign values.</li>
+  <li><code>&&</code> means AND (both true); <code>||</code> means OR (either true); <code>!</code> means NOT (invert).</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b5-control-flow">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 5: Making Choices: Control Flow</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in; otherwise, show an error message." We call this <strong>control flow</strong>.</p>
+
+<h3>5.1 The <code>if</code>, <code>else if</code>, and <code>else</code> Construct</h3>
+<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path; otherwise, it skips ahead.</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Grade Evaluation Branching</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    int score = 85;
+
+    if (score &gt;= 90) {
+        printf("Grade: A - Outstanding!\n");
+    } else if (score &gt;= 80) {
+        printf("Grade: B - Great job!\n");
+    } else if (score &gt;= 70) {
+        printf("Grade: C - Satisfactory.\n");
+    } else {
+        printf("Grade: F - Needs improvement.\n");
+    }
+
+    return 0;
+}</code></pre></div>
+<p>How the computer evaluates this:</p>
+<ol>
+  <li>It checks <code>score &gt;= 90</code>. Since 85 is not &gt;= 90, it moves to the next branch.</li>
+  <li>It checks <code>score &gt;= 80</code>. Since 85 is &gt;= 80, this condition is <code>true</code>!</li>
+  <li>It runs the block printing "Grade: B", and then <strong>skips all remaining branches</strong> completely!</li>
+</ol>
+
+<h3>5.2 Banned Assignment in Conditions</h3>
+<p>One of the most catastrophic bugs in old C code was accidentally writing <code>if (score = 100)</code> instead of <code>if (score == 100)</code>. In C, that overwrote the score to 100 and ran the block! In Rook, the compiler checks your code and <strong>strictly refuses to compile</strong> if you put an assignment inside an <code>if</code> condition, protecting you from subtle bugs.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 5</div><div class="callout-body">
+<ul>
+  <li>Use <code>if</code> to execute code only when a condition is met.</li>
+  <li>Use <code>else if</code> to test alternative conditions, and <code>else</code> as a final catch-all.</li>
+  <li>Only the first matching branch in an <code>if/else if</code> chain is executed.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b6-loops-repetition">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 6: Repetition: Automating with Loops</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Humans get bored and make mistakes when performing the same task over and over again. Computers, on the other hand, can repeat an operation a billion times with flawless precision. To repeat code, we use <strong>loops</strong>.</p>
+
+<h3>6.1 The <code>while</code> Loop: Repeat While Condition is True</h3>
+<p>A <code>while</code> loop checks a condition. As long as that condition remains true, it keeps executing its code block:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Countdown with a while Loop</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    int countdown = 5;
+
+    while (countdown &gt; 0) {
+        printf("%d...\n", countdown);
+        countdown = countdown - 1; // Decrement countdown
+    }
+
+    printf("Blastoff!\n");
+    return 0;
+}</code></pre></div>
+<div class="callout callout-warn">
+  <div class="callout-title">⚠️ Beware the Infinite Loop!</div>
+  <div class="callout-body">
+    If you forget to change <code>countdown</code> inside the loop (e.g. leaving out <code>countdown = countdown - 1;</code>), the condition <code>countdown &gt; 0</code> will stay true forever! Your program will freeze in an <em>infinite loop</em>. Always ensure your loop has progress toward termination.
+  </div>
+</div>
+
+<h3>6.2 The <code>for</code> Loop: The Counting Specialist</h3>
+<p>When you know exactly how many times you want to repeat something (like counting from 1 to 10), a <code>for</code> loop is cleaner because it bundles the starting count, the condition, and the step into one line:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Counting with a for Loop</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    // for (start; condition; step)
+    for (int i = 1; i &lt;= 5; i++) {
+        printf("Iteration number: %d\n", i);
+    }
+    return 0;
+}</code></pre></div>
+<ul>
+  <li><code>int i = 1;</code>: Runs once at the very beginning to initialize the counter.</li>
+  <li><code>i &lt;= 5;</code>: Checked before every iteration. If false, the loop ends.</li>
+  <li><code>i++</code>: Shorthand for <code>i = i + 1</code>. Runs after every iteration to increment the counter.</li>
+</ul>
+
+<h3>6.3 Controlling Loops: <code>break</code> and <code>continue</code></h3>
+<ul>
+  <li><strong><code>break</code>:</strong> Immediately exits the loop, skipping any remaining cycles.</li>
+  <li><strong><code>continue</code>:</strong> Immediately stops the current iteration and jumps directly to the next cycle.</li>
+</ul>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 6</div><div class="callout-body">
+<ul>
+  <li>Loops automate repetitive work without copy-pasting code.</li>
+  <li>Use <code>while</code> when you don't know in advance how many repetitions you will need.</li>
+  <li>Use <code>for</code> when counting or iterating a known number of times.</li>
+  <li>Always ensure the loop condition eventually becomes false to avoid freezing in an infinite loop.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b7-functions">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 7: Functions: Reusable Building Blocks</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>As programs grow, writing all your logic inside <code>main()</code> becomes messy and unmaintainable. To organize software, we divide code into small, named, reusable pieces called <strong>functions</strong>.</p>
+
+<h3>7.1 The Recipe &amp; Kitchen Appliance Analogy</h3>
+<p>Think of a function as an appliance, like a blender or toaster:</p>
+<ul>
+  <li><strong>Inputs (Parameters):</strong> What you feed into the machine (e.g. slices of bread).</li>
+  <li><strong>The Work (Function Body):</strong> What happens inside (heating the coils for 2 minutes).</li>
+  <li><strong>Output (Return Value):</strong> What comes out of the machine (warm toast).</li>
+</ul>
+<div class="code-block"><div class="code-header"><span class="code-lang">Creating and Calling Functions</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+// A function that takes two integers, adds them, and returns the result
+fn add(a: int, b: int) -&gt; int {
+    return a + b;
+}
+
+// A function that doesn't return anything (void)
+fn greet(name: const char*) {
+    printf("Welcome to Rook, %s!\n", name);
+}
+
+int main() {
+    // Calling our functions
+    greet("Alice");
+    greet("Bob");
+
+    int sum = add(15, 25);
+    printf("15 + 25 = %d\n", sum);
+
+    return 0;
+}</code></pre></div>
+<h3>7.2 Variable Scope: Where Variables Live and Die</h3>
+<p>Variables created inside a function are <strong>local</strong> to that function. They are born when the function begins running, and they are completely destroyed when the function finishes. A function cannot see or accidentally change local variables inside another function.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 7</div><div class="callout-body">
+<ul>
+  <li>Functions break large programs into small, readable, testable, and reusable blocks.</li>
+  <li>Parameters are inputs passed into the function; the <code>return</code> statement sends an output back.</li>
+  <li>Functions with no return value use <code>void</code>.</li>
+  <li>Local variables only exist inside their own function, preventing unintended side effects.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b8-structs">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 8: Grouping Data: Structures</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>In the real world, things are rarely single numbers. A person has a name, age, and height. A car has a make, model, year, and fuel level. Storing these as loose, disconnected variables (like <code>car1_year</code>, <code>car2_year</code>, <code>car3_year</code>) quickly creates chaos. In programming, we bundle related variables together using a <strong>struct</strong> (short for structure).</p>
+
+<h3>8.1 Defining and Creating a Struct</h3>
+<p>A struct is like designing your own custom data blueprint:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Using Structs to Model Data</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+// Define our custom blueprint
+struct Player {
+    name: const char*;
+    health: int;
+    score: int;
+};
+
+int main() {
+    // Create an instance of Player and initialize its fields
+    Player hero = Player{
+        name: "Knight Arthur",
+        health: 100,
+        score: 0
+    };
+
+    // Access fields using the dot (.) operator
+    printf("Player: %s\n", hero.name);
+    printf("Health: %d HP\n", hero.health);
+
+    // Modify a field
+    hero.score += 500;
+    printf("New Score: %d points\n", hero.score);
+
+    return 0;
+}</code></pre></div>
+<p>Notice how clean this is: <code>hero</code> is a single unified package containing all the state for Arthur. If you need a second player, you just declare <code>Player villain = Player{ ... };</code>.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 8</div><div class="callout-body">
+<ul>
+  <li>A <code>struct</code> lets you create custom data types that group related fields together.</li>
+  <li>Use designated initializers (<code>Player{ name: "Arthur", ... }</code>) to set field values clearly.</li>
+  <li>Use the dot operator (<code>player.health</code>) to read or update individual fields.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b9-memory-pointers">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 9: Demystifying Memory: Pointers</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Pointers have a scary reputation among programming students. But once you learn the fundamental real-world analogy, pointers are surprisingly simple and intuitive.</p>
+
+<h3>9.1 The House vs. The Street Address Analogy</h3>
+<p>Imagine a long residential street where every house has a unique number painted on the curb (like 100 Main St, 102 Main St, 104 Main St):</p>
+<ul>
+  <li><strong>The Variable:</strong> The physical house itself, containing furniture, people, and rooms (the data).</li>
+  <li><strong>The Pointer:</strong> A small slip of paper with the <em>address</em> of the house written on it.</li>
+</ul>
+
+<p>The slip of paper is not the house! It is tiny and lightweight, but if you look at the address written on it, you can walk down the street to the house and see what is inside.</p>
+
+<h3>9.2 The Two Essential Operators: <code>&amp;</code> and <code>*</code></h3>
+<ol>
+  <li><strong>Address-of Operator (<code>&amp;</code>):</strong> "What is the street address of this variable?"<br>
+  If <code>x</code> is a variable, <code>&amp;x</code> gives you the memory address where <code>x</code> lives in RAM.</li>
+  <li><strong>Dereference Operator (<code>*</code>):</strong> "Go to the house at this address and look/change what is inside."<br>
+  If <code>ptr</code> holds the address of <code>x</code>, then <code>*ptr</code> reaches into that house!</li>
+</ol>
+<div class="code-block"><div class="code-header"><span class="code-lang">Pointers in Action</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    int gold = 50;       // A house containing 50 gold pieces
+    int* ptr = &amp;gold;    // A paper holding the memory address of gold
+
+    printf("Value of gold: %d\n", gold);
+    printf("Memory address of gold: %p\n", (void*)ptr);
+
+    // Reach into the house using the pointer and change the gold!
+    *ptr = 100;
+
+    printf("Updated gold: %d\n", gold); // Now prints 100!
+    return 0;
+}</code></pre></div>
+<h3>9.3 Why Do We Need Pointers?</h3>
+<p>If you already have the variable, why bother writing down its address?</p>
+<ul>
+  <li><strong>Modifying variables inside functions:</strong> When you pass a variable to a function, the computer usually makes a copy (pass-by-value). If the function modifies its copy, your original variable remains unchanged. But if you pass a pointer (the address), the function can reach back into your original memory and update it directly!</li>
+  <li><strong>Efficiency:</strong> If you have a huge struct holding 1,000 game objects, copying it takes time and RAM. Passing a pointer to that struct only copies an 8-byte address, which takes less than a nanosecond!</li>
+</ul>
+
+<h3>9.4 What is a NULL Pointer?</h3>
+<p>A <strong>null pointer</strong> is a slip of paper with address <code>0</code> (nowhere). If you try to dereference a null pointer (knocking on a door at an address that does not exist), the operating system immediately protects itself by terminating your program with a <em>segmentation fault</em> (crash). Always make sure a pointer points to valid memory before dereferencing it.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 9</div><div class="callout-body">
+<ul>
+  <li>A variable holds data; a pointer holds the memory address where data lives.</li>
+  <li><code>&x</code> gets the address of <code>x</code>.</li>
+  <li><code>*ptr</code> accesses or modifies the value at the address stored in <code>ptr</code>.</li>
+  <li>Pointers allow functions to modify caller data and pass large structures with zero copy overhead.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b10-arrays">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 10: Working with Lists: Arrays</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>What if you need to store the high scores of 100 players, or the temperature readings for every day of the year? Creating 365 separate variables would be unbearable. To store an ordered collection of items of the same type, we use an <strong>array</strong>.</p>
+
+<h3>10.1 The Row of Lockers Analogy</h3>
+<p>Think of an array as a straight row of identical, numbered metal lockers in a school hallway:</p>
+<ul>
+  <li>All lockers in the row hold the same kind of thing (e.g. all hold integers).</li>
+  <li>The lockers sit side-by-side in memory in a continuous sequence.</li>
+</ul>
+
+<h3>10.2 Why Do Programmers Start Counting at 0?</h3>
+<p>In programming, array indices start at <code>0</code>, not <code>1</code>. Why? Because the index is actually an <strong>offset</strong> (distance from the start):</p>
+<ul>
+  <li>Locker <code>[0]</code> is 0 steps away from the beginning (it is the very first locker).</li>
+  <li>Locker <code>[1]</code> is 1 step away from the beginning (the second locker).</li>
+  <li>If an array has 5 items, their indices are <code>0, 1, 2, 3, 4</code>.</li>
+</ul>
+<div class="code-block"><div class="code-header"><span class="code-lang">Working with Arrays</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    // An array of 5 integers
+    int scores[5] = {95, 88, 72, 99, 84};
+
+    // Reading specific elements
+    printf("First score: %d\n", scores[0]); // 95
+    printf("Third score: %d\n", scores[2]); // 72
+
+    // Modifying an element
+    scores[2] = 78;
+
+    // Looping through all elements to calculate the sum
+    int total = 0;
+    for (int i = 0; i &lt; 5; i++) {
+        total += scores[i];
+    }
+
+    printf("Total sum: %d\n", total);
+    printf("Average: %.1f\n", (float)total / 5.0f);
+
+    return 0;
+}</code></pre></div>
+<div class="callout callout-warn">
+  <div class="callout-title">⚠️ Array Bounds: Never Step Off the Edge!</div>
+  <div class="callout-body">
+    If an array has 5 items (indices 0 through 4), trying to read or write to <code>scores[10]</code> is called an <em>out-of-bounds access</em> or <em>buffer overflow</em>. In C, this can read arbitrary memory or corrupt other variables. In Rokade, compiling with the <code>-b</code> flag adds automatic runtime checks that halt the program safely if you go out of bounds.
+  </div>
+</div>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 10</div><div class="callout-body">
+<ul>
+  <li>An array stores a fixed-size sequence of elements of the same type in continuous memory.</li>
+  <li>Indices start at <code>0</code>: an array of size N has valid indices from 0 to N - 1.</li>
+  <li>Combine loops and arrays to process large amounts of data with minimal code.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b11-multi-file">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 11: Building Real Projects</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>When you build real-world software—like a game engine, a web server, or a desktop app—putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
+
+<h3>11.1 Project Structure</h3>
+<p>When you scaffold a new project with <code>rokade new my_project</code>, Rokade generates a clean, standardized layout:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard Project Layout</span></div><pre><code class="language-text">my_project/
+├── rokade.toml          # Project configuration, name, version, and dependencies
+├── src/
+│   ├── main.rook        # Entry point containing main()
+│   ├── math_utils.rook  # Helper functions
+│   └── physics.rook     # Physics calculations
+└── build/               # Generated binaries and compiled artifacts</code></pre></div>
+<h3>11.2 Connecting Files with <code>#comprise</code></h3>
+<p>In standard C, connecting two files requires creating and synchronizing <code>.h</code> header files with header guards. In Rook, you simply use the <code>#comprise</code> directive:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Modular Multi-File Code</span></div><pre><code class="language-rook">// src/math_utils.rook
+fn square(x: int) -&gt; int {
+    return x * x;
+}
+
+// src/main.rook
+#comprise math_utils
+#include &lt;stdio.h&gt;
+
+int main() {
+    int val = 8;
+    printf("%d squared is %d\n", val, square(val));
+    return 0;
+}</code></pre></div>
+<p>When Rokade builds your program, it automatically reads <code>math_utils.rook</code>, verifies its types, and compiles both files into a single unified binary without duplicate symbols.</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 11</div><div class="callout-body">
+<ul>
+  <li>Real software is split into separate files by topic (math, graphics, network).</li>
+  <li><code>rokade.toml</code> configures your package name, version, and compiler settings.</li>
+  <li>Use <code>#comprise filename</code> to import and share functions across files cleanly without header boilerplate.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b12-debugging-thinking">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 12: How to Think Like a Programmer</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Programming is not about memorizing syntax rules; it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
+
+<h3>12.1 Problem Decomposition: Breaking Big Problems into Tiny Steps</h3>
+<p>When faced with a complex task (like "build a chess game"), the task feels overwhelming. The secret of programming is <strong>decomposition</strong>:</p>
+<ol>
+  <li>Don't try to build the whole thing at once.</li>
+  <li>Break the problem down into smaller and smaller pieces until each piece is trivial.</li>
+  <li><em>Example:</em> "How do I make a chess board?" ➔ "How do I represent 64 squares?" ➔ "How do I represent 1 square?" ➔ "A struct with an X and Y coordinate!"</li>
+  <li>Solve that one tiny piece, verify that it works, and build the next piece.</li>
+</ol>
+
+<h3>12.2 Reading Compiler Errors Without Fear</h3>
+<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you; it is a helpful assistant pointing out where something doesn't make sense:</p>
+<ol>
+  <li><strong>Look for the file and line number:</strong> It will look like <code>src/main.rook:14:5: error</code>. This tells you exactly where the problem occurred (line 14, column 5).</li>
+  <li><strong>Read the error description:</strong> Usually it's something simple, like a missing semicolon <code>;</code>, an undefined variable name, or passing the wrong type of argument.</li>
+  <li><strong>Fix only the first error:</strong> Often, one typo causes 10 secondary errors below it. Fix the very first error at the top, recompile, and see if the rest disappear!</li>
+</ol>
+
+<h3>12.3 Print Debugging: Your Most Reliable Superpower</h3>
+<p>When a program compiles successfully but does not give the expected answer, the easiest way to find the bug is <strong>print debugging</strong>. Add <code>printf()</code> statements at critical steps to inspect variable values:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Print Debugging in Practice</span></div><pre><code class="language-rook">int calculate_discount(int price, int customer_years) {
+    printf("[DEBUG] Starting calculate_discount: price=%d, years=%d\n", price, customer_years);
+    
+    int discount = 0;
+    if (customer_years &gt; 5) {
+        discount = 20;
+    }
+    printf("[DEBUG] Calculated discount: %d\n", discount);
+    
+    return price - discount;
+}</code></pre></div>
+<p>By watching the printed output, you can see exactly where the computer's logic diverged from what you intended.</p>
+
+<h3>12.4 Welcoming Mistakes on Your Journey</h3>
+<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming—it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
+<div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 12</div><div class="callout-body">
+<ul>
+  <li>Break big problems down into small, easily solvable steps.</li>
+  <li>Read compiler errors from top to bottom; fix the first error first.</li>
+  <li>Use print debugging to inspect variables when programs don't behave as expected.</li>
+  <li>Bugs are normal and natural—treat every error as a fun puzzle to solve.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+  </div>
 
   <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem; text-align: center;">
-    <p>Rook Language Guide &bull; Version 0.4.2 &bull; Built for Systems Programmers &bull; Completely Offline</p>
+    <p>Rook Language Guide &amp; Programming Foundations &bull; Version 0.4.2 &bull; Built with Care &bull; Completely Offline</p>
   </footer>
 </main>
 
 <script>
-  // Filter sidebar navigation items
+  // Mode switcher: 'guide' vs 'beginner'
+  function switchMode(mode) {
+    var btnGuide = document.getElementById('btn-mode-guide');
+    var btnBeginner = document.getElementById('btn-mode-beginner');
+    var navGuide = document.getElementById('nav-guide');
+    var navBeginner = document.getElementById('nav-beginner');
+    var viewGuide = document.getElementById('view-guide');
+    var viewBeginner = document.getElementById('view-beginner');
+    var filterInput = document.getElementById('filter-input');
+
+    if (mode === 'beginner') {
+      btnGuide.classList.remove('active');
+      btnBeginner.classList.add('active');
+      navGuide.style.display = 'none';
+      navBeginner.style.display = 'flex';
+      viewGuide.style.display = 'none';
+      viewBeginner.style.display = 'block';
+      filterInput.placeholder = 'Filter beginner modules...';
+    } else {
+      btnBeginner.classList.remove('active');
+      btnGuide.classList.add('active');
+      navBeginner.style.display = 'none';
+      navGuide.style.display = 'flex';
+      viewBeginner.style.display = 'none';
+      viewGuide.style.display = 'block';
+      filterInput.placeholder = 'Filter guide chapters...';
+    }
+    filterInput.value = '';
+    filterChapters();
+  }
+
+  // Filter visible sidebar navigation items
   function filterChapters() {
     var input = document.getElementById('filter-input');
     var filter = input.value.toLowerCase();
-    var navList = document.getElementById('nav-list');
-    var items = navList.getElementsByClassName('nav-item');
+    var activeNav = document.getElementById('nav-beginner').style.display !== 'none' 
+      ? document.getElementById('nav-beginner') 
+      : document.getElementById('nav-guide');
+    var items = activeNav.getElementsByClassName('nav-item');
     for (var i = 0; i < items.length; i++) {
       var text = items[i].textContent || items[i].innerText;
       if (text.toLowerCase().indexOf(filter) > -1) {
@@ -1845,13 +2972,109 @@ rokade build --all</code></pre></div>
     }
   }
 
-  // ScrollSpy to highlight active chapter
-  window.addEventListener('DOMContentLoaded', function() {
-    var sections = document.querySelectorAll('.chapter');
-    var navLinks = document.querySelectorAll('.nav-item');
+  // Pure JavaScript Client-Side Syntax Highlighter (100% Offline)
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
 
+  function highlightCAndRook(src) {
+    var masterRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')|(^\s*#(?:include|comprise|define|raw_c|end_raw_c|ifdef|ifndef|endif|comprise_lib)[^\n]*)|(\b(?:let|fn|struct|object|impl|sum|enum|match|defer|return|if|else|while|for|in|switch|case|default|break|continue|extern|auto|typedef|sizeof|const|inline|static)\b)|(\b(?:int|uint|float|double|i8|u8|i16|u16|i32|u32|i64|u64|f32|f64|bool|void|char|string|size_t|ssize_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|FILE|Vector2|Point|Entity|Shape|Node|Rectangle|Color|Circle)\b)|(\b(?:true|false|NULL|null)\b)|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?(?:f|u|U|L|LL|ll)?\b)|(\b[a-zA-Z_]\w*(?=\s*\())/gm;
+    var lastIndex = 0;
+    var out = "";
+    var match;
+    while ((match = masterRegex.exec(src)) !== null) {
+      if (match.index > lastIndex) {
+        out += escapeHtml(src.substring(lastIndex, match.index));
+      }
+      var full = match[0];
+      var cmt = match[1], str = match[2], prep = match[3], kw = match[4], type = match[5], boolean = match[6], num = match[7], fn = match[8];
+      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
+      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
+      else if (prep) out += '<span class="tok-prep">' + escapeHtml(prep) + '</span>';
+      else if (kw) out += '<span class="tok-kw">' + escapeHtml(kw) + '</span>';
+      else if (type) out += '<span class="tok-type">' + escapeHtml(type) + '</span>';
+      else if (boolean) out += '<span class="tok-bool">' + escapeHtml(boolean) + '</span>';
+      else if (num) out += '<span class="tok-num">' + escapeHtml(num) + '</span>';
+      else if (fn) out += '<span class="tok-fn">' + escapeHtml(fn) + '</span>';
+      lastIndex = masterRegex.lastIndex;
+    }
+    if (lastIndex < src.length) {
+      out += escapeHtml(src.substring(lastIndex));
+    }
+    return out;
+  }
+
+  function highlightToml(src) {
+    var masterRegex = /(#[^\n]*)|(^\s*\[[^\]]+\])|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*[\w.-]+(?=\s*=))|(\b(?:true|false)\b)|(\b\d+\b)/gm;
+    var lastIndex = 0;
+    var out = "";
+    var match;
+    while ((match = masterRegex.exec(src)) !== null) {
+      if (match.index > lastIndex) {
+        out += escapeHtml(src.substring(lastIndex, match.index));
+      }
+      var cmt = match[1], hdr = match[2], str = match[3], key = match[4], boolean = match[5], num = match[6];
+      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
+      else if (hdr) out += '<span class="tok-hdr">' + escapeHtml(hdr) + '</span>';
+      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
+      else if (key) out += '<span class="tok-key">' + escapeHtml(key) + '</span>';
+      else if (boolean) out += '<span class="tok-bool">' + escapeHtml(boolean) + '</span>';
+      else if (num) out += '<span class="tok-num">' + escapeHtml(num) + '</span>';
+      lastIndex = masterRegex.lastIndex;
+    }
+    if (lastIndex < src.length) {
+      out += escapeHtml(src.substring(lastIndex));
+    }
+    return out;
+  }
+
+  function highlightBash(src) {
+    var masterRegex = /(#[^\n]*)|("(?:\\.|[^"\\])*"|'[^']*')|(\b(?:rokade|git|cmake|ninja|cargo|gcc|clang|sudo|apt-get|export|cd|rm|bash)\b)|(--?[\w-]+)/gm;
+    var lastIndex = 0;
+    var out = "";
+    var match;
+    while ((match = masterRegex.exec(src)) !== null) {
+      if (match.index > lastIndex) {
+        out += escapeHtml(src.substring(lastIndex, match.index));
+      }
+      var cmt = match[1], str = match[2], cmd = match[3], opt = match[4];
+      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
+      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
+      else if (cmd) out += '<span class="tok-cmd">' + escapeHtml(cmd) + '</span>';
+      else if (opt) out += '<span class="tok-opt">' + escapeHtml(opt) + '</span>';
+      lastIndex = masterRegex.lastIndex;
+    }
+    if (lastIndex < src.length) {
+      out += escapeHtml(src.substring(lastIndex));
+    }
+    return out;
+  }
+
+  function highlightAllCodeBlocks() {
+    var blocks = document.querySelectorAll('pre code[class*="language-"]');
+    for (var i = 0; i < blocks.length; i++) {
+      var codeEl = blocks[i];
+      var raw = codeEl.textContent;
+      var className = codeEl.className;
+      if (className.indexOf('language-rook') > -1 || className.indexOf('language-c') > -1) {
+        codeEl.innerHTML = highlightCAndRook(raw);
+      } else if (className.indexOf('language-toml') > -1) {
+        codeEl.innerHTML = highlightToml(raw);
+      } else if (className.indexOf('language-bash') > -1 || className.indexOf('language-powershell') > -1) {
+        codeEl.innerHTML = highlightBash(raw);
+      }
+    }
+  }
+
+  // ScrollSpy to highlight active chapter in current view
+  function setupScrollSpy() {
     function onScroll() {
-      var scrollPos = window.scrollY + 100;
+      var scrollPos = window.scrollY + 120;
+      var activeNavId = document.getElementById('nav-beginner').style.display !== 'none' ? 'nav-beginner' : 'nav-guide';
+      var activeViewId = activeNavId === 'nav-beginner' ? 'view-beginner' : 'view-guide';
+      var sections = document.querySelectorAll('#' + activeViewId + ' .chapter');
+      var navLinks = document.querySelectorAll('#' + activeNavId + ' .nav-item');
+
       sections.forEach(function(sec) {
         var top = sec.offsetTop;
         var height = sec.offsetHeight;
@@ -1866,10 +3089,33 @@ rokade build --all</code></pre></div>
         }
       });
     }
-
     window.addEventListener('scroll', onScroll);
     onScroll();
+  }
+
+  // Route URL hash on load or hash change
+  function handleHashRoute() {
+    var hash = window.location.hash;
+    if (hash) {
+      var id = hash.substring(1);
+      if (id.indexOf('b') === 0 || id.indexOf('beginner') === 0) {
+        switchMode('beginner');
+      } else {
+        switchMode('guide');
+      }
+      var target = document.getElementById(id);
+      if (target) {
+        setTimeout(function() { target.scrollIntoView(); }, 50);
+      }
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', function() {
+    highlightAllCodeBlocks();
+    setupScrollSpy();
+    handleHashRoute();
   });
+  window.addEventListener('hashchange', handleHashRoute);
 </script>
 
 </body>
