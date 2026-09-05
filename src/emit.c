@@ -414,16 +414,24 @@ static void e_struct(Emit* e, StructDef* st) {
     for (int i = 0; i < st->nfields; i++) {
         StructField* f = &st->fields[i];
         e_indent(e, 1);
-        /* All fields emitted as C-style: type name; */
-        e_type(e, f->type);
-        sb_append(&e->sb, " ");
-        sb_append(&e->sb, f->name);
-        if (f->dim) {
-            sb_append(&e->sb, "[");
-            e_expr(e, f->dim);
-            sb_append(&e->sb, "]");
+        if (f->style == FIELD_YUP) {
+            /* Preserve Rook-style: name: Type (round-trip stable). */
+            sb_append(&e->sb, f->name);
+            sb_append(&e->sb, ": ");
+            e_type(e, f->type);
+            sb_append(&e->sb, "\n");
+        } else {
+            /* C-style: type name[dim]; */
+            e_type(e, f->type);
+            sb_append(&e->sb, " ");
+            sb_append(&e->sb, f->name);
+            if (f->dim) {
+                sb_append(&e->sb, "[");
+                e_expr(e, f->dim);
+                sb_append(&e->sb, "]");
+            }
+            sb_append(&e->sb, ";\n");
         }
-        sb_append(&e->sb, ";\n");
     }
     sb_append(&e->sb, "}");
 }
@@ -449,11 +457,29 @@ static void e_enum(Emit* e, EnumDef* ed) {
         if (ed->variants[i].nfields) {
             sb_append(&e->sb, " { ");
             for (int j = 0; j < ed->variants[i].nfields; j++) {
+                StructField* vf = &ed->variants[i].fields[j];
                 if (j) sb_append(&e->sb, " ");
-                sb_append(&e->sb, ed->variants[i].fields[j].name);
-                sb_append(&e->sb, ": ");
-                e_type(e, ed->variants[i].fields[j].type);
-                sb_append(&e->sb, ";");
+                if (vf->style == FIELD_YUP) {
+                    sb_append(&e->sb, vf->name);
+                    sb_append(&e->sb, ": ");
+                    e_type(e, vf->type);
+                    if (vf->dim) {
+                        sb_append(&e->sb, "[");
+                        e_expr(e, vf->dim);
+                        sb_append(&e->sb, "]");
+                    }
+                    sb_append(&e->sb, ";");
+                } else {
+                    e_type(e, vf->type);
+                    sb_append(&e->sb, " ");
+                    sb_append(&e->sb, vf->name);
+                    if (vf->dim) {
+                        sb_append(&e->sb, "[");
+                        e_expr(e, vf->dim);
+                        sb_append(&e->sb, "]");
+                    }
+                    sb_append(&e->sb, ";");
+                }
             }
             sb_append(&e->sb, " }");
         }
