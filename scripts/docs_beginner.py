@@ -505,15 +505,26 @@ int main() {
 <p>In the real world, things are rarely single numbers. A person has a name, age, and height. A car has a make, model, year, and fuel level. Storing these as loose, disconnected variables (like <code>car1_year</code>, <code>car2_year</code>, <code>car3_year</code>) quickly creates chaos. In programming, we bundle related variables together using a <strong>struct</strong> (short for structure).</p>
 
 <h3>8.1 Defining and Creating a Struct</h3>
-<p>A struct is like designing your own custom data blueprint:</p>
+<p>A struct is like designing your own custom data blueprint. In Rook, you can declare fields in two clean ways, exactly like variables:</p>
+<ul>
+  <li><strong>C-Style (Type first):</strong> <code>const char* name; int health;</code> (natural for C programmers and header compatibility).</li>
+  <li><strong>Let-Style:</strong> <code>let name: const char*; let health: int;</code> (matching Rook's <code>let</code> declaration syntax).</li>
+</ul>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
-// Define our custom blueprint
+// Define our custom blueprint (C-style)
 struct Player {
-    name: const char*;
-    health: int;
-    score: int;
+    const char* name;
+    int health;
+    int score;
+};
+
+// Or equivalently, using let-style:
+struct PlayerLet {
+    let name: const char*;
+    let health: int;
+    let score: int;
 };
 
 int main() {
@@ -768,13 +779,13 @@ int calculate_discount(int price, int customer_years) {
 <p>As programs grow larger, you often need to bundle data <em>and</em> the operations on that data together. Rook provides two keywords for this: <code>object</code> (to define the data) and <code>impl</code> (to attach methods to it). This idea, sometimes called <strong>object-oriented programming</strong>, exists in many languages under names like <em>class</em> (Java, Python, C++), <em>struct + impl</em> (Rust), or <em>interface</em> (Go). Not every language has it, but understanding the concept helps you read and write almost any modern codebase.</p>
 
 <h3>13.1 Defining an Object</h3>
-<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You declare the fields in the <code>object</code> block:</p>
+<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You can declare fields using C-style (<code>Type name;</code>) or let-style (<code>let name: Type;</code>):</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 object Animal {
-    name: const char*
-    legs: int
+    const char* name;
+    int legs;
 }
 """, "Defining an Object") + """
 <h3>13.2 Attaching Methods with impl</h3>
@@ -783,8 +794,8 @@ object Animal {
 #include <stdio.h>
 
 object Animal {
-    name: const char*
-    legs: int
+    const char* name;
+    int legs;
 }
 
 impl Animal {
@@ -811,7 +822,7 @@ int main() {
 <p>One object can extend another using <code>:</code>. The child object gains all the fields and methods of the parent, and can add more of its own:</p>
 """ + make_code_box("rook", """
 object Cat : Animal {
-    lives: int
+    int lives;
 }
 
 impl Cat {
@@ -834,7 +845,7 @@ int main() {
 Object-oriented features like <code>object</code>, <code>impl</code>, and inheritance are powerful tools for organizing large programs. They exist in C++, Java, Python, and Rust (among others), each with different syntax. Some languages (like C and Go) deliberately leave them out and use different organizational patterns instead. Knowing both styles makes you a more flexible programmer.
 """) + make_callout("tip", "Key Takeaways of Module 13", """
 <ul>
-  <li><code>object</code> defines a custom data type with named fields.</li>
+  <li><code>object</code> defines a custom data type with named fields (supporting both <code>Type name;</code> and <code>let name: Type;</code>).</li>
   <li><code>impl</code> attaches methods to an object, each receiving a <code>self</code> pointer to the instance.</li>
   <li>Call methods using the dot operator: <code>dog.speak()</code>.</li>
   <li>Use <code>object Child : Parent</code> to inherit all parent fields and methods.</li>
@@ -874,8 +885,8 @@ int main() {
 #include <stdio.h>
 
 sum Shape {
-    Circle { r: float; };
-    Rect   { w: float; h: float; };
+    Circle { float r; };
+    Rect   { float w; float h; };
     Point;
 }
 

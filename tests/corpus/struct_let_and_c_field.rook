@@ -1,0 +1,55 @@
+#include <stdio.h>
+
+struct PointC {
+    int x;
+    int y;
+};
+
+struct PointLet {
+    let x: int;
+    let y: int;
+};
+
+object AnimalC {
+    const char* name;
+    int legs;
+}
+
+object AnimalLet {
+    let name: const char*;
+    let legs: int;
+}
+
+sum Shape {
+    CircleC { float r; };
+    CircleLet { let r: float; };
+    Point;
+}
+
+int main() {
+    PointC p1 = PointC{ x: 10, y: 20 };
+    PointLet p2 = PointLet{ x: 30, y: 40 };
+    printf("%d %d\n", p1.x, p1.y);
+    printf("%d %d\n", p2.x, p2.y);
+
+    AnimalC a1;
+    a1.name = "Lion";
+    a1.legs = 4;
+    AnimalLet a2;
+    a2.name = "Eagle";
+    a2.legs = 2;
+    printf("%s %d\n", a1.name, a1.legs);
+    printf("%s %d\n", a2.name, a2.legs);
+
+    Shape s1 = CircleC{ r: 3.5f };
+    Shape s2 = CircleLet{ r: 7.0f };
+    match (s1) {
+        CircleC { r } => printf("C: %.1f\n", r),
+        _ => printf("other\n"),
+    }
+    match (s2) {
+        CircleLet { r } => printf("Let: %.1f\n", r),
+        _ => printf("other\n"),
+    }
+    return 0;
+}

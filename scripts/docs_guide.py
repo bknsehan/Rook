@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.4.2).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.4.2a).
 Contains Chapters 1 to 21.
 """
 
@@ -767,12 +767,18 @@ int main() {
 <p>Structs in Rook represent Plain Old Data (POD). They have direct, transparent mapping to C struct layout, ensuring exact memory alignment, size, and field offsets.</p>
 
 <h3>11.1 Definition &amp; Initialization</h3>
-<p>Rook supports both C-style field definitions and colon-separated field syntax:</p>
+<p>Rook supports two standard field definition styles, matching how variables are declared in the language: C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
 {make_code_box("rook", """
-// Definition
+// 1. C-style field definitions (Type name;)
 struct Vector2 {
     float x;
     float y;
+};
+
+// 2. Let-style field definitions (let name: Type;)
+struct Vector2Let {
+    let x: float;
+    let y: float;
 };
 
 int main() {
@@ -915,11 +921,11 @@ enum HttpMethod {
 """, "Standard Enum")}
 
 <h3>13.2 Sum Types (Tagged Unions)</h3>
-<p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variants may be unit variants (bearing no payload) or data variants:</p>
+<p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variant payloads support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>) field declarations:</p>
 {make_code_box("rook", """
 sum Node {
-    Leaf { value: int; };
-    Branch { left: Node*; right: Node*; };
+    Leaf { int value; };
+    Branch { Node* left; Node* right; };
     Empty;
 }
 """, "Sum Type Declaration")}

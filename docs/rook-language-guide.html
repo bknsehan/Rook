@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rook Language Guide &amp; Programming Foundations (v0.4.2)</title>
+<title>Rook Language Guide &amp; Programming Foundations (v0.4.2a)</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -567,7 +567,7 @@
   <div class="sidebar-header">
     <div class="sidebar-title">
       <span>Rook Guide</span>
-      <span class="sidebar-badge">v0.4.2</span>
+      <span class="sidebar-badge">v0.4.2a</span>
     </div>
     <div class="sidebar-sub">Systems Programming &amp; Foundations</div>
   </div>
@@ -1390,11 +1390,17 @@ int main() {
 <p>Structs in Rook represent Plain Old Data (POD). They have direct, transparent mapping to C struct layout, ensuring exact memory alignment, size, and field offsets.</p>
 
 <h3>11.1 Definition &amp; Initialization</h3>
-<p>Rook supports both C-style field definitions and colon-separated field syntax:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Struct Definitions & Designated Initializers</span></div><pre><code class="language-rook">// Definition
+<p>Rook supports two standard field definition styles, matching how variables are declared in the language: C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Struct Definitions & Designated Initializers</span></div><pre><code class="language-rook">// 1. C-style field definitions (Type name;)
 struct Vector2 {
     float x;
     float y;
+};
+
+// 2. Let-style field definitions (let name: Type;)
+struct Vector2Let {
+    let x: float;
+    let y: float;
 };
 
 int main() {
@@ -1536,10 +1542,10 @@ Dispatch is 100% static, inlined by the C compiler, and incurs zero vtable indir
 }</code></pre></div>
 
 <h3>13.2 Sum Types (Tagged Unions)</h3>
-<p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variants may be unit variants (bearing no payload) or data variants:</p>
+<p>A <code>sum</code> type represents a value that can hold one of several distinct variant shapes. Variant payloads support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>) field declarations:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span></div><pre><code class="language-rook">sum Node {
-    Leaf { value: int; };
-    Branch { left: Node*; right: Node*; };
+    Leaf { int value; };
+    Branch { Node* left; Node* right; };
     Empty;
 }</code></pre></div>
 
@@ -2701,14 +2707,25 @@ int main() {
 <p>In the real world, things are rarely single numbers. A person has a name, age, and height. A car has a make, model, year, and fuel level. Storing these as loose, disconnected variables (like <code>car1_year</code>, <code>car2_year</code>, <code>car3_year</code>) quickly creates chaos. In programming, we bundle related variables together using a <strong>struct</strong> (short for structure).</p>
 
 <h3>8.1 Defining and Creating a Struct</h3>
-<p>A struct is like designing your own custom data blueprint:</p>
+<p>A struct is like designing your own custom data blueprint. In Rook, you can declare fields in two clean ways, exactly like variables:</p>
+<ul>
+  <li><strong>C-Style (Type first):</strong> <code>const char* name; int health;</code> (natural for C programmers and header compatibility).</li>
+  <li><strong>Let-Style:</strong> <code>let name: const char*; let health: int;</code> (matching Rook's <code>let</code> declaration syntax).</li>
+</ul>
 <div class="code-block"><div class="code-header"><span class="code-lang">Using Structs to Model Data</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
-// Define our custom blueprint
+// Define our custom blueprint (C-style)
 struct Player {
-    name: const char*;
-    health: int;
-    score: int;
+    const char* name;
+    int health;
+    int score;
+};
+
+// Or equivalently, using let-style:
+struct PlayerLet {
+    let name: const char*;
+    let health: int;
+    let score: int;
 };
 
 int main() {
@@ -2977,20 +2994,20 @@ int main() {
 <p>As programs grow larger, you often need to bundle data <em>and</em> the operations on that data together. Rook provides two keywords for this: <code>object</code> (to define the data) and <code>impl</code> (to attach methods to it). This idea, sometimes called <strong>object-oriented programming</strong>, exists in many languages under names like <em>class</em> (Java, Python, C++), <em>struct + impl</em> (Rust), or <em>interface</em> (Go). Not every language has it, but understanding the concept helps you read and write almost any modern codebase.</p>
 
 <h3>13.1 Defining an Object</h3>
-<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You declare the fields in the <code>object</code> block:</p>
+<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You can declare fields using C-style (<code>Type name;</code>) or let-style (<code>let name: Type;</code>):</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Defining an Object</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 object Animal {
-    name: const char*
-    legs: int
+    const char* name;
+    int legs;
 }</code></pre></div>
 <h3>13.2 Attaching Methods with impl</h3>
 <p>An <code>impl</code> block attaches functions (called <strong>methods</strong>) to the object. Each method receives a pointer to the object as its first argument, named <code>self</code> by convention:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Object with Methods</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 object Animal {
-    name: const char*
-    legs: int
+    const char* name;
+    int legs;
 }
 
 impl Animal {
@@ -3015,7 +3032,7 @@ int main() {
 <h3>13.3 Inheritance</h3>
 <p>One object can extend another using <code>:</code>. The child object gains all the fields and methods of the parent, and can add more of its own:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Inheritance in Rook</span></div><pre><code class="language-rook">object Cat : Animal {
-    lives: int
+    int lives;
 }
 
 impl Cat {
@@ -3037,7 +3054,7 @@ int main() {
 Object-oriented features like <code>object</code>, <code>impl</code>, and inheritance are powerful tools for organizing large programs. They exist in C++, Java, Python, and Rust (among others), each with different syntax. Some languages (like C and Go) deliberately leave them out and use different organizational patterns instead. Knowing both styles makes you a more flexible programmer.
 </div></div><div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 13</div><div class="callout-body">
 <ul>
-  <li><code>object</code> defines a custom data type with named fields.</li>
+  <li><code>object</code> defines a custom data type with named fields (supporting both <code>Type name;</code> and <code>let name: Type;</code>).</li>
   <li><code>impl</code> attaches methods to an object, each receiving a <code>self</code> pointer to the instance.</li>
   <li>Call methods using the dot operator: <code>dog.speak()</code>.</li>
   <li>Use <code>object Child : Parent</code> to inherit all parent fields and methods.</li>
@@ -3079,8 +3096,8 @@ int main() {
 <div class="code-block"><div class="code-header"><span class="code-lang">match on Sum Types</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 sum Shape {
-    Circle { r: float; };
-    Rect   { w: float; h: float; };
+    Circle { float r; };
+    Rect   { float w; float h; };
     Point;
 }
 
@@ -3121,7 +3138,7 @@ Pattern matching on tagged unions is a hallmark of languages like Rust (<code>en
   </div>
 
   <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem; text-align: center;">
-    <p>Rook Language Guide &amp; Programming Foundations &bull; Version 0.4.2 &bull; Built with Care &bull; Completely Offline</p>
+    <p>Rook Language Guide &amp; Programming Foundations &bull; Version 0.4.2a &bull; Built with Care &bull; Completely Offline</p>
   </footer>
 </main>
 

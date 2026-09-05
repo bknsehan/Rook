@@ -1104,8 +1104,71 @@ static int looks_like_dstyle_fn(Parser* p) {
     return ok;
 }
 
+/* Parse a field definition inside `struct`, `object`, or `sum` variant payload.
+   Supports:
+     1. `let name: Type;` (let-style, matching variable declaration)
+     2. `Type name;`      (canonical C-style)
+     3. `name: Type;`     (colon-style)
+   All styles support optional array dimensions `[dim]` and optional `;`. */
+static int parse_struct_field(Parser* p, StructField* f) {
+    memset(f, 0, sizeof *f);
+    Token* t = cur(p);
+
+    /* 1. 'let name: Type;' style */
+    if (is_kw(t, "let")) {
+        adv(p);
+        f->style = FIELD_YUP;
+        f->name = ident(p);
+        if (!f->name) return 0;
+        if (!expect_punct(p, ":")) return 0;
+        f->type = parse_type(p);
+        if (!f->type) return 0;
+        if (tok_is(cur(p), "[")) {
+            adv(p);
+            f->dim = parse_expr(p);
+            if (!f->dim) return 0;
+            if (!expect_punct(p, "]")) return 0;
+        }
+        if (tok_is(cur(p), ";")) adv(p);
+        return 1;
+    }
+
+    /* 2. Colon style: 'name: Type;' (permissive compatibility) */
+    if (t->kind == TK_IDENT && tok_is(peek(p, 1), ":")) {
+        f->style = FIELD_YUP;
+        f->name = ident(p);
+        if (!f->name) return 0;
+        adv(p); /* skip ':' */
+        f->type = parse_type(p);
+        if (!f->type) return 0;
+        if (tok_is(cur(p), "[")) {
+            adv(p);
+            f->dim = parse_expr(p);
+            if (!f->dim) return 0;
+            if (!expect_punct(p, "]")) return 0;
+        }
+        if (tok_is(cur(p), ";")) adv(p);
+        return 1;
+    }
+
+    /* 3. Canonical C-style: 'Type name;' */
+    f->style = FIELD_C;
+    f->type = parse_type(p);
+    if (!f->type) return 0;
+    f->name = ident(p);
+    if (!f->name) return 0;
+    if (tok_is(cur(p), "[")) {
+        adv(p);
+        f->dim = parse_expr(p);
+        if (!f->dim) return 0;
+        if (!expect_punct(p, "]")) return 0;
+    }
+    if (tok_is(cur(p), ";")) adv(p);
+    return 1;
+}
+
 /* Parse `sum Name { Variant { field: type; }; Unit; }` into a TOP_ENUM item.
-   Variants may be unit (`A`) or carry named payload fields (`B { r: float; }`).
+   Variants may be unit (`A`) or carry named payload fields (`B { r: float; }` or `B { float r; }` or `B { let r: float; }`).
    Positional `B(type)` payloads are rejected (use named fields or C enums). */
 static EnumDef* parse_sum_def(Parser* p, int is_c_enum) {
     EnumDef* ed = calloc(1, sizeof *ed);
@@ -1132,17 +1195,7 @@ static EnumDef* parse_sum_def(Parser* p, int is_c_enum) {
             adv(p);
             while (!tok_is(cur(p), "}")) {
                 StructField sf;
-                memset(&sf, 0, sizeof sf);
-                sf.style = FIELD_YUP;
-                sf.name = ident(p);
-                if (!sf.name) {
-                    error_at(p, cur(p), "expected field name in variant %s", v.name);
-                    return NULL;
-                }
-                if (!expect_punct(p, ":")) return NULL;
-                sf.type = parse_type(p);
-                if (!sf.type) return NULL;
-                if (!expect_punct(p, ";")) return NULL;
+                if (!parse_struct_field(p, &sf)) return NULL;
                 v.fields = realloc(v.fields, (v.nfields + 1) * sizeof *v.fields);
                 if (!v.fields) exit(1);
                 v.fields[v.nfields++] = sf;
@@ -1298,33 +1351,7 @@ static Item* parse_top(Parser* p) {
         if (!expect_punct(p, "{")) return NULL;
         while (!tok_is(cur(p), "}")) {
             StructField f;
-            memset(&f, 0, sizeof f);
-            Token* ft = cur(p);
-            if (ft->kind != TK_IDENT) {
-                error_at(p, ft, "expected struct field");
-                return NULL;
-            }
-            if (tok_is(peek(p, 1), ":")) {
-                f.style = FIELD_YUP;
-                f.name = ident(p);
-                if (!f.name) return NULL;
-                adv(p); /* : */
-                f.type = parse_type(p);
-                if (!f.type) return NULL;
-            } else {
-                f.style = FIELD_C;
-                f.type = parse_type(p);
-                if (!f.type) return NULL;
-                f.name = ident(p);
-                if (!f.name) return NULL;
-                if (tok_is(cur(p), "[")) {
-                    adv(p);
-                    f.dim = parse_expr(p);
-                    if (!f.dim) return NULL;
-                    if (!expect_punct(p, "]")) return NULL;
-                }
-                if (tok_is(cur(p), ";")) adv(p);
-            }
+            if (!parse_struct_field(p, &f)) return NULL;
             st->fields = realloc(st->fields, (st->nfields + 1) * sizeof *st->fields);
             if (!st->fields) exit(1);
             st->fields[st->nfields++] = f;
