@@ -26,16 +26,6 @@ ROKADE_CC="${ROKADE_CC:-gcc}"
 # Tell rokade where the bundled C-API commandlist (libc signatures) lives so the
 # compiler can type/arity-check C calls. May be overridden by the caller.
 export ROKADE_DATA_DIR="${ROKADE_DATA_DIR:-$ROOK_ROOT/src/libc}"
-# BACKEND selects which compiler backend to exercise (default: c).
-# The shell runner only handles the C backend; for LLVM use:
-#   rokade test --backend=llvm <corpus-dir>
-# Fail fast if callers still pass the legacy BACKEND=llvm to this script.
-BACKEND="${BACKEND:-c}"
-if [ "$BACKEND" != "c" ]; then
-    echo "tests/run.sh only supports BACKEND=c; for LLVM run: \$ROKADE test --backend=llvm \$CORPUS" >&2
-    echo "hint: ROKADE=$ROKADE \$ROKADE test --backend=$BACKEND \"\${CORPUS:-$SCRIPT_DIR/corpus}\"" >&2
-    exit 2
-fi
 # The C code rokade emits requires C23 (`auto`); default to c2x so the corpus
 # builds on both gcc and clang. Override with CSTD=gnu99 etc. if desired.
 CSTD="${CSTD:-c2x}"
@@ -53,11 +43,17 @@ if [ ! -f "$CORPUS/basic.rook" ]; then
 fi
 if ! command -v "$ROKADE_CC" >/dev/null; then echo "C compiler '$ROKADE_CC' not found"; exit 1; fi
 
+BACKEND="${BACKEND:-c}"
+
 # ---- helpers ----------------------------------------------------------------
 
-# returns 0 if emit+C generation succeeded, 1 otherwise
-emit() { # $1=src, $2=out.c
-    "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
+# returns 0 if emit succeeded, 1 otherwise
+emit() { # $1=src, $2=out_file
+    if [ "$BACKEND" = "llvm" ]; then
+        "$ROKADE" --emit-llvm "$1" >"$2" 2>"$WORK/emit.log"
+    else
+        "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
+    fi
 }
 
 # ---- counters ----------------------------------------------------------------
@@ -82,13 +78,24 @@ for src in "$CORPUS"/*.rook; do
     out_ref="$CORPUS/$base.out"
     # ---- expected-output test ------------------------------------------------
     if [ -f "$out_ref" ]; then
-        if ! emit "$src" "$WORK/t.c"; then
-            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
-            continue
-        fi
-        if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
-            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
-            continue
+        if [ "$BACKEND" = "llvm" ]; then
+            if ! emit "$src" "$WORK/t.ll"; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-llvm) $base"
+                continue
+            fi
+            if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm >/dev/null 2>&1; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (clang) $base"
+                continue
+            fi
+        else
+            if ! emit "$src" "$WORK/t.c"; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
+                continue
+            fi
+            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
+                continue
+            fi
         fi
         # optional stdin from a sibling <base>.in
         if [ -f "$CORPUS/$base.in" ]; then

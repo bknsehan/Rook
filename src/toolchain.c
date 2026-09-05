@@ -465,7 +465,9 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
         }
     }
 
-    write_cache(tc);
+    if (!spec || (!spec->target_os[0] && !spec->target_arch[0])) {
+        write_cache(tc);
+    }
     return 0;
 }
 

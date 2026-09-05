@@ -52,7 +52,7 @@ jobs:
 
       - name: Test LLVM Backend Corpus
         run: |
-          ./build/rokade test --backend=llvm tests/corpus
+          ROKADE=./build/rokade BACKEND=llvm bash tests/run.sh
 
       - name: Verify CLI & Scaffolding
         run: |
