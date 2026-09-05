@@ -1816,7 +1816,9 @@ static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name) {
 
     for (int i = 0; i < fn->nparams; i++) {
         Param* p = &fn->params[i];
-        LLVMTypeRef pt = gen_llvm_type(g, p->type);
+        LLVMTypeRef pt = (p->name && strcmp(p->name, "self") == 0)
+            ? LLVMPointerTypeInContext(g->ctx, 0)
+            : gen_llvm_type(g, p->type);
         LLVMValueRef param_val = LLVMGetParam(fn_val, i + p_offset);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, pt, p->name);
         LLVMBuildStore(g->builder, param_val, alloca_ref);
@@ -2005,7 +2007,11 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
                     pts[pi++] = LLVMPointerTypeInContext(ctx, 0);
                 }
                 for (int p = 0; p < fn->nparams; p++) {
-                    pts[pi++] = gen_llvm_type(&g, fn->params[p].type);
+                    if (fn->params[p].name && strcmp(fn->params[p].name, "self") == 0) {
+                        pts[pi++] = LLVMPointerTypeInContext(ctx, 0);
+                    } else {
+                        pts[pi++] = gen_llvm_type(&g, fn->params[p].type);
+                    }
                 }
                 LLVMTypeRef fn_t = LLVMFunctionType(ret_t, pts, np, 0);
                 LLVMAddFunction(module, mname, fn_t);
