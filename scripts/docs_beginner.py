@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_beginner.py
-Comprehensive "Programming Foundations" educational course for new enthusiast learners
-learning computer programming from scratch.
+Programming Foundations course for learners studying computer programming fundamentals.
 """
 
 def get_beginner_modules(make_code_box, make_callout):
@@ -12,305 +11,290 @@ def get_beginner_modules(make_code_box, make_callout):
         modules.append((mid, title, content))
 
     # ============================================================
-    # Module B1: How Computers Actually Work (The Mental Model)
+    # Module B1: How Computers Work
     # ============================================================
     m1 = """
-<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this,just a few simple mental models.</p>
+<p>Before writing code, it helps to understand how computers run programs and manage data. A computer relies on three main physical components: storage, memory, and the processor.</p>
 
-<h3>1.1 The Physical Triumvirate: CPU, RAM, and Storage</h3>
-<p>Every computer,from the phone in your pocket to massive supercomputers in data centers,relies on three core physical components working in harmony:</p>
+<h3>1.1 Hardware Basics: Storage, RAM, and CPU</h3>
+<p>Every computer relies on three main components to run software:</p>
 
 <div class="arch-diagram">
-  <div class="arch-box"><strong>The Storage (SSD / Hard Drive)</strong><br>Permanent Library<br>Large, durable, but slow</div>
+  <div class="arch-box"><strong>Storage (SSD / Hard Drive)</strong><br>Permanent storage<br>Holds files when powered off</div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box"><strong>The RAM (Working Memory)</strong><br>Kitchen Countertop<br>Blazing fast, temporary scratchpad</div>
+  <div class="arch-box"><strong>RAM (Working Memory)</strong><br>Temporary workspace<br>Fast access, cleared on shutdown</div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box"><strong>The CPU (The Processor)</strong><br>The Chef / Calculator<br>Executes billions of simple steps per second</div>
+  <div class="arch-box"><strong>CPU (Processor)</strong><br>Calculation engine<br>Executes instructions sequentially</div>
 </div>
 
 <ul>
-  <li><strong>The Storage (SSD or Hard Drive):</strong> Think of this as a permanent bookshelf or filing cabinet. When you turn your computer off, everything stored here remains safe. Your operating system, games, and code files live here. However, storage is relatively slow for the CPU to interact with directly.</li>
-  <li><strong>RAM (Random Access Memory):</strong> Think of this as your active kitchen countertop or desk scratchpad. When you launch an application or compile code, the program is copied from storage into RAM. The CPU can read and write data in RAM in nanoseconds. However, RAM is <em>volatile</em>: when you shut down the computer, everything on the countertop is wiped clean.</li>
-  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction,billions of times per second.</li>
+  <li><strong>Storage (SSD or Hard Drive):</strong> Holds data permanently. When you shut down your computer, your files, operating system, and programs remain intact on disk. Storage has high capacity, but the CPU cannot access it directly at memory speeds.</li>
+  <li><strong>RAM (Random Access Memory):</strong> The working memory where active programs run. When you launch a program, the operating system copies it from storage into RAM. The CPU reads and writes RAM in nanoseconds. RAM is volatile: when the computer turns off, all data in RAM is cleared.</li>
+  <li><strong>CPU (Central Processing Unit):</strong> The processor that executes program instructions. The CPU fetches an instruction from RAM, executes it (such as adding two numbers or checking a condition), and moves to the next instruction.</li>
 </ul>
 
-<h3>1.2 Bits and Bytes: The Alphabet of Hardware</h3>
-<p>Computers do not speak English, Spanish, or Indonesian. At the microscopic hardware level, computer chips consist of billions of microscopic transistors that act like light switches:</p>
+<h3>1.2 Bits and Bytes: How Hardware Represents Data</h3>
+<p>At the hardware level, digital circuits store and transmit information using voltages that represent two states: 0 and 1.</p>
 <ul>
-  <li>A switch can only be in one of two states: <strong>OFF (0)</strong> or <strong>ON (1)</strong>.</li>
-  <li>A single 0 or 1 is called a <strong>bit</strong> (short for <em>binary digit</em>).</li>
-  <li>Because a single bit can only represent two states, computers group bits into sets of eight. A group of 8 bits is called a <strong>byte</strong>.</li>
+  <li>A single 0 or 1 is called a <strong>bit</strong> (binary digit).</li>
+  <li>Computers group bits into sets of eight. A group of 8 bits is called a <strong>byte</strong>.</li>
 </ul>
 
-<div class="callout callout-note">
-  <div class="callout-title">💡 Why 8 Bits = 1 Byte?</div>
-  <div class="callout-body">
-    With 8 bits, you can create 256 unique combinations of 0s and 1s (from <code>00000000</code> to <code>11111111</code>). In decimal numbers, that covers 0 through 255. This was historically enough to assign a unique number to every English letter (A-Z, a-z), digit (0-9), and punctuation symbol in the standard ASCII character table!
-  </div>
-</div>
+""" + make_callout("note", "Why 8 Bits Make a Byte", """
+An 8-bit byte can represent 256 distinct patterns (from <code>00000000</code> to <code>11111111</code>, or 0 through 255 in decimal). Historically, 256 values were sufficient to map every English letter, digit, and punctuation mark in the standard ASCII character set.
+""") + """
 
-<h3>1.3 Source Code vs. Machine Code: What is a Compiler?</h3>
-<p>Humans cannot reasonably write billions of 1s and 0s by hand (called <em>machine code</em>). Instead, we write human-readable text called <strong>source code</strong> using a programming language like Rook or C.</p>
+<h3>1.3 Source Code, Machine Code, and Compilers</h3>
+<p>Processors only execute machine code: numeric binary instructions tailored to the processor architecture. Because writing machine code directly is impractical, programmers write source code in human-readable text files using languages like Rook or C.</p>
 
-<p>Because the CPU cannot directly run human text, we use a special tool called a <strong>compiler</strong> (such as <code>rokade</code>):</p>
+<p>A <strong>compiler</strong> translates source code into machine code:</p>
 <ol>
-  <li><strong>You write source code:</strong> Clear, human-readable instructions saved in a text file (e.g. <code>main.rook</code>).</li>
-  <li><strong>The compiler inspects your code:</strong> It checks for grammar errors, verifies data types, and ensures safety rules are respected.</li>
-  <li><strong>The compiler emits machine code:</strong> It translates your human instructions into raw binary instructions that your CPU can execute directly at maximum speed.</li>
+  <li><strong>Write source code:</strong> Instructions saved in a text file (such as <code>main.rook</code>).</li>
+  <li><strong>Compile the code:</strong> The compiler checks syntax, validates types, enforces safety rules, and generates native machine code.</li>
+  <li><strong>Run the executable:</strong> The resulting binary runs directly on the CPU.</li>
 </ol>
-<h3>1.4 High-Level vs. Low-Level Languages</h3>
-<p>Not all programming languages speak at the same altitude. We broadly divide them into two categories:</p>
+
+<h3>1.4 Low-Level and High-Level Languages</h3>
+<p>Programming languages differ in how closely they expose hardware details:</p>
 <ul>
-  <li><strong>Low-Level Languages</strong> sit very close to the hardware. They give you direct control over memory, CPU registers, and individual bytes. The closer you are to the machine, the faster your code can run, but the more details you have to manage yourself. Examples include Assembly and C.</li>
-  <li><strong>High-Level Languages</strong> sit further from the hardware and handle many details for you automatically, such as memory management, type conversions, and common data structures. They let you think in human-friendly concepts (lists, objects, events) rather than memory addresses. Examples include Python, JavaScript, and Ruby.</li>
+  <li><strong>Low-level languages</strong> (such as Assembly and C) provide direct control over memory addresses, data layout, and hardware registers. This allows fine-tuned performance, but requires developers to handle memory allocation and types manually.</li>
+  <li><strong>High-level languages</strong> (such as Python, JavaScript, and Ruby) abstract away memory management and hardware specifics. They emphasize rapid development, but introduce runtime interpreters or garbage collectors.</li>
 </ul>
-<p>Rook occupies the low-to-middle ground: it gives you C-level control when you need it, but removes common sources of mistakes that low-level C programs suffer from, such as implicit type coercions and uninitialized memory.</p>
+<p>Rook bridges these two styles: it retains C-level control and memory layout predictability, while adding compile-time checks that prevent common memory and syntax mistakes.</p>
 
 <h3>1.5 Compiled, Interpreted, and Transpiled Languages</h3>
-<p>There is more than one way to turn source code into something a computer can run. The three most common approaches are:</p>
+<p>Languages take different paths to turn source text into execution:</p>
 
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Approach</th><th>What it does</th><th>When it happens</th><th>Examples</th></tr>
+    <tr><th>Approach</th><th>How it works</th><th>When translation happens</th><th>Examples</th></tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Compiled</strong></td>
-      <td>A compiler reads your source code once, checks it for errors, and produces a native binary file (an <code>.exe</code> on Windows, or no extension on Linux/macOS). That binary runs directly on the CPU with no extra tools needed.</td>
-      <td>Once, before you run the program</td>
+      <td>A compiler translates the entire source program into machine code ahead of time, creating a native binary.</td>
+      <td>Once, before execution</td>
       <td>C, C++, Rook, Rust, Go</td>
     </tr>
     <tr>
       <td><strong>Interpreted</strong></td>
-      <td>An interpreter reads your source code line by line and executes each instruction on the spot. There is no separate compile step, but an interpreter must be installed on every machine that runs your code.</td>
-      <td>Every time the program runs</td>
+      <td>An interpreter program reads and executes source instructions line by line at runtime.</td>
+      <td>During program execution</td>
       <td>Python, Ruby, Bash</td>
     </tr>
     <tr>
       <td><strong>Transpiled</strong></td>
-      <td>A transpiler converts source code in one language into equivalent source code in another language, which is then compiled or interpreted normally. The output is human-readable code, not machine code.</td>
-      <td>Once, producing another source file</td>
-      <td>TypeScript (to JS), CoffeeScript (to JS), Sass (to CSS)</td>
+      <td>A source-to-source translator converts code written in one language into another high-level language, which is then compiled or interpreted.</td>
+      <td>Before compilation or execution</td>
+      <td>TypeScript (to JS), Rook C-backend (to C)</td>
     </tr>
   </tbody>
 </table>
 </div>
-""" + make_callout("note", "Where does Rook fit?", """
-Rook is a <strong>compiled language</strong>. The <code>rokade</code> compiler reads your <code>.rook</code> files, checks them thoroughly for errors, and produces either a native binary (via a C backend) or LLVM IR (via the LLVM backend). The result runs directly on the CPU without any runtime interpreter.
-""") + """
-""" + make_callout("tip", "Key Takeaways of Module 1", """
+""" + make_callout("note", "Where Rook Fits", """
+Rook is a compiled systems language. The <code>rokade</code> compiler translates Rook source code into clean C code (default backend) or LLVM IR (LLVM backend), which is then compiled into a standalone native executable. It requires no virtual machine or runtime interpreter.
+""") + make_callout("tip", "Summary of Module 1", """
 <ul>
-  <li>The CPU is the brain/calculator, RAM is the fast temporary workspace, and Storage is the permanent library.</li>
-  <li>All computer data ultimately consists of bits (0s and 1s) and bytes (groups of 8 bits).</li>
-  <li>Source code is what humans write, machine code is what the CPU executes.</li>
-  <li>A compiler translates your source code into a fast native binary once, before the program runs.</li>
-  <li>Low-level languages give hardware control, high-level languages abstract the details away. Rook sits in between.</li>
-  <li>Compiled languages produce binaries, interpreted languages use a runtime, transpiled languages convert to another source language.</li>
+  <li>Storage holds files permanently, RAM provides fast working memory, and the CPU executes instructions.</li>
+  <li>Digital data is stored as bits (0 and 1) grouped into 8-bit bytes.</li>
+  <li>Source code is human-readable text; compilers convert it into machine code for the CPU.</li>
+  <li>Compiled programs run as native binaries without requiring a runtime interpreter.</li>
 </ul>
 """)
-    add_mod("b1-how-computers-work", "Module 1: How Computers Actually Work", m1)
+    add_mod("b1-how-computers-work", "Module 1: How Computers Work", m1)
 
 
     # ============================================================
-    # Module B2: Your Very First Program & The Journey of Code
+    # Module B2: Your First Program
     # ============================================================
     m2 = """
-<p>Every programmer's journey begins with a sacred tradition: writing a program that prints the words <code>"Hello, World!"</code> to your screen. Let's look at the complete code, and then dissect every single character so you understand why it is there.</p>
+<p>A standard introduction to any language is printing text to the terminal. Here is a minimal program in Rook:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 int main() {
-    printf("Hello, World!\\n");
+    printf("Hello, World!\n");
     return 0;
 }
 """, "Your First Program (src/main.rook)") + """
-<h3>2.1 Line-by-Line Breakdown</h3>
+<h3>2.1 Code Structure</h3>
 <ol>
   <li><strong><code>#include &lt;stdio.h&gt;</code></strong><br>
-  Programs rarely start from scratch. Standard libraries provide pre-built tools for common tasks. Here, <code>stdio.h</code> stands for <em>Standard Input/Output</em>. Including this tells the compiler: "Please let me borrow the standard tools for reading from the keyboard and writing text to the terminal."</li>
+  Tells the compiler to include declarations from the C standard input/output library, which defines the <code>printf</code> function.</li>
   
   <li><strong><code>int main()</code></strong><br>
-  This is the official front door of your program. When your operating system (Linux, Windows, or macOS) starts your application, it specifically searches for a function named <code>main</code> to begin execution. The word <code>int</code> before <code>main</code> means that when the program finishes, it will hand back a whole integer number (an exit code) to the operating system.</li>
+  The program entry point. When the operating system runs an application, execution begins at <code>main</code>. The <code>int</code> return type means the function returns an integer exit code to the operating system.</li>
 
-  <li><strong>The Curly Braces <code>{ ... }</code></strong><br>
-  In Rook and C, curly braces define a <strong>block of code</strong>. Everything between the opening <code>{</code> and the closing <code>}</code> belongs to the <code>main</code> function. Think of it like the walls of a room where the work happens.</li>
+  <li><strong>Braces <code>{ ... }</code></strong><br>
+  Curly braces delimit a block of code. Statements inside these braces belong to the <code>main</code> function.</li>
 
-  <li><strong><code>printf("Hello, World!\\n");</code></strong><br>
-  <code>printf</code> stands for <em>Print Formatted</em>. It takes the text inside the quotation marks and displays it on your terminal screen. Notice the funny characters <code>\\n</code> at the end: this is an <em>escape sequence</em> that tells the computer to press the "Enter" key and move to a fresh new line.</li>
+  <li><strong><code>printf("Hello, World!\n");</code></strong><br>
+  Calls <code>printf</code> to print text to standard output. The escape sequence <code>\n</code> outputs a newline character.</li>
 
-  <li><strong>The Semicolon <code>;</code></strong><br>
-  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation, the compiler won't know where one thought ends and the next begins.</li>
+  <li><strong>Semicolon <code>;</code></strong><br>
+  Each statement in Rook ends with a semicolon.</li>
 
   <li><strong><code>return 0;</code></strong><br>
-  This is your program telling the operating system: "I have finished all my work, and everything went successfully without any errors!" In computing convention, a return code of <code>0</code> signifies success, while non-zero numbers (like 1, -1, or 404) signify various error codes.</li>
+  Exits the program and returns status code <code>0</code> to the operating system, indicating that the program ran without errors.</li>
 </ol>
 
-<h3>2.2 The Lifecycle: From Text File to Running Application</h3>
+<h3>2.2 Compiling and Running</h3>
 <div class="arch-diagram">
-  <div class="arch-box">1. Write Code<br><code>src/main.rook</code></div>
+  <div class="arch-box">1. Source File<br><code>src/main.rook</code></div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box">2. Compile &amp; Link<br><code>rokade build</code></div>
+  <div class="arch-box">2. Compiler<br><code>rokade build</code></div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box">3. Run Executable<br><code>./build/my_app</code></div>
+  <div class="arch-box">3. Executable<br><code>./build/linux/my_project</code></div>
 </div>
 
-<p>When you run <code>rokade run</code> in your terminal, the compiler performs the compilation and linking automatically, producing a native binary file and immediately launching it so you see the result in milliseconds.</p>
-""" + make_callout("tip", "Key Takeaways of Module 2", """
+<p>Running <code>rokade run</code> compiles the project and executes the resulting binary in one step.</p>
+""" + make_callout("tip", "Summary of Module 2", """
 <ul>
-  <li><code>main()</code> is the designated entry point where every program starts running.</li>
-  <li>Statements must end with semicolons (<code>;</code>), and blocks of code are enclosed in braces (<code>{ ... }</code>).</li>
-  <li><code>printf()</code> outputs text, and <code>\\n</code> creates a new line.</li>
-  <li><code>return 0;</code> signals to the operating system that your program completed successfully.</li>
+  <li>Execution starts in the <code>main()</code> function.</li>
+  <li>Statements end with semicolons (<code>;</code>), and blocks use curly braces (<code>{ ... }</code>).</li>
+  <li><code>printf()</code> writes text to the terminal, and <code>\n</code> starts a new line.</li>
+  <li>Returning <code>0</code> indicates successful execution.</li>
 </ul>
 """)
-    add_mod("b2-first-program", "Module 2: Your Very First Program", m2)
+    add_mod("b2-first-program", "Module 2: Your First Program", m2)
+
 
     # ============================================================
-    # Module B3: Storing Information: Variables and Data Types
+    # Module B3: Storing Information: Variables and Types
     # ============================================================
     m3 = """
-<p>Programs are not static text, they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
+<p>Programs store data in variables. A variable is a named location in memory that holds a value of a specific data type.</p>
 
-<h3>3.1 The Labeled Storage Box Analogy</h3>
-<p>Imagine your computer's RAM as a vast warehouse. A <strong>variable</strong> is like a sturdy cardboard box with a name tag written on the outside:</p>
+<h3>3.1 Understanding Variables</h3>
+<p>A variable has three key properties:</p>
 <ul>
-  <li><strong>The Variable Name (Identifier):</strong> The name written on the box (e.g. <code>player_score</code> or <code>age</code>).</li>
-  <li><strong>The Data Type:</strong> The specific shape of the box, which determines what kind of items can fit inside (e.g. integers only, or decimal numbers only).</li>
-  <li><strong>The Value:</strong> The actual item currently sitting inside the box (e.g. <code>100</code>).</li>
+  <li><strong>Name (Identifier):</strong> How you reference the variable in code (such as <code>health</code> or <code>count</code>).</li>
+  <li><strong>Type:</strong> The kind of data it stores, determining how much memory it uses and which operations are valid.</li>
+  <li><strong>Value:</strong> The current data stored in that memory location.</li>
 </ul>
 
-<h3>3.2 Fundamental Data Types</h3>
-<p>Computers handle different kinds of information differently. Storing someone's age is very different from storing their bank account balance or their name. Here are the core data types you will use every day:</p>
-
+<h3>3.2 Common Primitive Types</h3>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Type Keyword</th><th>Name &amp; Purpose</th><th>Typical Size</th><th>Example Values</th></tr>
+    <tr><th>Type</th><th>Purpose</th><th>Size (x86_64)</th><th>Example</th></tr>
   </thead>
   <tbody>
     <tr>
       <td><code>int</code></td>
-      <td><strong>Integer:</strong> Whole numbers (positive, negative, and zero).</td>
-      <td>4 bytes (32 bits)</td>
-      <td><code>0</code>, <code>42</code>, <code>-15</code>, <code>1000000</code></td>
+      <td>Signed whole numbers</td>
+      <td>4 bytes</td>
+      <td><code>0</code>, <code>42</code>, <code>-15</code></td>
     </tr>
     <tr>
       <td><code>float</code></td>
-      <td><strong>Floating-Point:</strong> Numbers with decimal points.</td>
-      <td>4 bytes (32 bits)</td>
-      <td><code>3.14f</code>, <code>-0.5f</code>, <code>99.99f</code></td>
+      <td>Single-precision decimal numbers</td>
+      <td>4 bytes</td>
+      <td><code>3.14f</code>, <code>-0.5f</code></td>
     </tr>
     <tr>
       <td><code>double</code></td>
-      <td><strong>Double Precision:</strong> Extra-precise decimal numbers.</td>
-      <td>8 bytes (64 bits)</td>
+      <td>Double-precision decimal numbers</td>
+      <td>8 bytes</td>
       <td><code>2.718281828459</code></td>
     </tr>
     <tr>
       <td><code>char</code></td>
-      <td><strong>Character:</strong> A single letter, digit, or symbol in single quotes.</td>
-      <td>1 byte (8 bits)</td>
-      <td><code>'A'</code>, <code>'z'</code>, <code>'!'</code>, <code>'9'</code></td>
+      <td>Single character or byte</td>
+      <td>1 byte</td>
+      <td><code>'A'</code>, <code>'z'</code>, <code>'!'</code></td>
     </tr>
     <tr>
       <td><code>bool</code></td>
-      <td><strong>Boolean:</strong> Truth values for logic and decision making.</td>
+      <td>Boolean truth value</td>
       <td>1 byte</td>
-      <td><code>true</code> or <code>false</code></td>
+      <td><code>true</code>, <code>false</code></td>
     </tr>
     <tr>
       <td><code>const char*</code></td>
-      <td><strong>String:</strong> A sequence of text enclosed in double quotes.</td>
-      <td>Pointer size</td>
+      <td>Pointer to a null-terminated string</td>
+      <td>8 bytes</td>
       <td><code>"Hello, World!"</code></td>
     </tr>
   </tbody>
 </table>
 </div>
 
-<h3>3.3 Declaring and Using Variables</h3>
-<p>Here is how you create and use variables in Rook:</p>
+<h3>3.3 Declaring and Modifying Variables</h3>
+<p>Rook supports both C-style declarations and <code>let</code> declarations:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 int main() {
-    // 1. Explicit type declaration
+    // C-style declarations
     int player_health = 100;
     float walking_speed = 4.5f;
     char rank_letter = 'A';
     bool is_alive = true;
 
-    // 2. Printing variable values
-    // %d prints an integer, %.1f prints a float, %c prints a char
-    printf("Health: %d\\n", player_health);
-    printf("Speed: %.1f\\n", walking_speed);
-    printf("Rank: %c\\n", rank_letter);
+    // let-style declarations
+    let score = 50;              // Type inferred as int
+    let player_name: const char* = "Arthur";
 
-    // 3. Modifying a variable
-    player_health = 85; // Took 15 damage!
-    printf("Updated Health: %d\\n", player_health);
+    printf("Player: %s\n", player_name);
+    printf("Health: %d, Score: %d\n", player_health, score);
+
+    // Reassignment
+    player_health = 85;
+    printf("Updated Health: %d\n", player_health);
 
     return 0;
 }
-""", "Variables in Action") + """
-<div class="callout callout-note">
-  <div class="callout-title">💡 Rook's Automatic Zero-Initialization</div>
-  <div class="callout-body">
-    In older languages like C, if you write <code>int score;</code> without giving it a value, the box contains random garbage left over in RAM from whatever app ran earlier! In Rook, if you don't give a variable a value, it is <strong>guaranteed to start at 0</strong>.
-  </div>
-</div>
-""" + make_callout("tip", "Key Takeaways of Module 3", """
+""", "Declaring and Using Variables") + """
+""" + make_callout("note", "Automatic Zero-Initialization", """
+In standard C, declaring an uninitialized local variable (such as <code>int x;</code>) leaves it containing whatever random data was in that stack location. Rook automatically initializes uninitialized variables to zero (<code>= {0}</code>), preventing undefined reads.
+""") + make_callout("tip", "Summary of Module 3", """
 <ul>
-  <li>A variable is a named storage location in memory that holds a specific type of data.</li>
-  <li><code>int</code> is for whole numbers, <code>float</code> for decimals, <code>char</code> for single characters, <code>bool</code> for true/false.</li>
-  <li>Use <code>=</code> to assign or update a value inside a variable box.</li>
+  <li>Variables are named memory locations holding typed values.</li>
+  <li>Primitive types include <code>int</code> for integers, <code>float</code> for decimals, <code>char</code> for characters, and <code>bool</code> for booleans.</li>
+  <li>Variables can be declared using C style (<code>int x = 1;</code>) or let style (<code>let x = 1;</code>).</li>
+  <li>Uninitialized local variables in Rook default safely to zero.</li>
 </ul>
 """)
     add_mod("b3-variables-types", "Module 3: Storing Information: Variables and Types", m3)
 
+
     # ============================================================
-    # Module B4: Doing Math & Making Comparisons (Operators & Expressions)
+    # Module B4: Arithmetic and Comparisons
     # ============================================================
     m4 = """
-<p>Once you have variables, you want to perform calculations and make comparisons. In programming, we do this using <strong>operators</strong>.</p>
+<p>Programs compute results and evaluate conditions using operators.</p>
 
-<h3>4.1 Basic Arithmetic Operators</h3>
-<p>You already know most of these from middle school math:</p>
+<h3>4.1 Arithmetic Operators</h3>
 <ul>
-  <li><code>+</code> (Addition): <code>10 + 5</code> results in <code>15</code></li>
-  <li><code>-</code> (Subtraction): <code>10 - 5</code> results in <code>5</code></li>
-  <li><code>*</code> (Multiplication): <code>10 * 5</code> results in <code>50</code></li>
-  <li><code>/</code> (Division): <code>10 / 5</code> results in <code>2</code></li>
-  <li><code>%</code> (Modulo / Remainder): <code>10 % 3</code> results in <code>1</code> (because 3 goes into 10 three times with 1 left over).</li>
+  <li><code>+</code> (Addition): <code>10 + 5</code> evaluates to <code>15</code></li>
+  <li><code>-</code> (Subtraction): <code>10 - 5</code> evaluates to <code>5</code></li>
+  <li><code>*</code> (Multiplication): <code>10 * 5</code> evaluates to <code>50</code></li>
+  <li><code>/</code> (Division): <code>10 / 5</code> evaluates to <code>2</code></li>
+  <li><code>%</code> (Modulo / Remainder): <code>10 % 3</code> evaluates to <code>1</code></li>
 </ul>
 
-<div class="callout callout-warn">
-  <div class="callout-title">⚠️ The Integer Division Surprise!</div>
-  <div class="callout-body">
-    What happens if you divide <code>7 / 2</code> using integers? In math class, the answer is <code>3.5</code>. But because both 7 and 2 are <code>int</code>, the computer performs <em>integer division</em>: it throws away the decimal remainder and gives you <code>3</code>! If you want the decimal <code>3.5</code>, at least one of the numbers must be a decimal: <code>7.0f / 2.0f</code>.
-  </div>
-</div>
+""" + make_callout("warn", "Integer Division", """
+Dividing two integers performs integer division, which truncates the fractional portion. For example, <code>7 / 2</code> evaluates to <code>3</code>. To obtain a decimal result, use floating-point numbers: <code>7.0f / 2.0f</code> evaluates to <code>3.5f</code>.
+""") + """
 
-<h3>4.2 Comparison Operators (Asking Questions)</h3>
-<p>Computers make decisions by testing whether something is true or false:</p>
+<h3>4.2 Comparison Operators</h3>
+<p>Comparison operators compare two values and produce a boolean result (<code>true</code> or <code>false</code>):</p>
 <ul>
-  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value, double <code>==</code> compares values).</li>
-  <li><code>!=</code> (Is NOT Equal To?): <code>x != 5</code> (True if x is anything other than 5).</li>
-  <li><code>&gt;</code> and <code>&lt;</code> (Greater than / Less than): <code>score &gt; 100</code></li>
-  <li><code>&gt;=</code> and <code>&lt;=</code> (Greater than or equal / Less than or equal): <code>age &gt;= 18</code></li>
+  <li><code>==</code> (Equal to): checks if two values are equal. Note that <code>==</code> compares values, while <code>=</code> assigns them.</li>
+  <li><code>!=</code> (Not equal to): checks if two values differ.</li>
+  <li><code>&gt;</code> and <code>&lt;</code>: greater than, less than.</li>
+  <li><code>&gt;=</code> and <code>&lt;=</code>: greater than or equal, less than or equal.</li>
 </ul>
 
-<h3>4.3 Boolean Logic: Combining Conditions</h3>
-<p>Often you need to check multiple conditions at the same time:</p>
+<h3>4.3 Logical Operators</h3>
 <ul>
-  <li><strong>Logical AND (<code>&amp;&amp;</code>):</strong> Both conditions must be true.<br>
-  <em>Analogy:</em> To ride the roller coaster, you must be tall enough <strong>AND</strong> have a ticket. If either is missing, you cannot ride.</li>
-  <li><strong>Logical OR (<code>||</code>):</strong> At least one condition must be true.<br>
-  <em>Analogy:</em> You get a discount if it is Sunday <strong>OR</strong> you are a student. If either is true, you get the discount.</li>
-  <li><strong>Logical NOT (<code>!</code>):</strong> Flips true to false, and false to true.<br>
-  <em>Analogy:</em> <code>!is_raining</code> means "it is NOT raining".</li>
+  <li><code>&amp;&amp;</code> (Logical AND): true only if both operands are true.</li>
+  <li><code>||</code> (Logical OR): true if at least one operand is true.</li>
+  <li><code>!</code> (Logical NOT): inverts a boolean value (e.g. <code>!true</code> is <code>false</code>).</li>
 </ul>
+
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -318,36 +302,35 @@ int main() {
     int age = 20;
     bool has_id = true;
 
-    // Both must be true
     if (age >= 18 && has_id) {
-        printf("Access granted: adult with ID.\\n");
+        printf("Admission granted.\n");
     }
 
-    // Remainder calculation
     int items = 14;
     int pack_size = 4;
     int leftover = items % pack_size;
-    printf("Leftover items: %d\\n", leftover); // Prints 2
+    printf("Remaining items: %d\n", leftover); // Prints 2
 
     return 0;
 }
-""", "Operators in Action") + make_callout("tip", "Key Takeaways of Module 4", """
+""", "Operators in Action") + make_callout("tip", "Summary of Module 4", """
 <ul>
-  <li>Integer division discards decimals, use floats when you need fractions.</li>
   <li>Use <code>==</code> to compare values, and <code>=</code> to assign values.</li>
-  <li><code>&&</code> means AND (both true), <code>||</code> means OR (either true), <code>!</code> means NOT (invert).</li>
+  <li>Integer division discards remainders; use floating-point numbers when decimal precision is needed.</li>
+  <li>Combine conditions using <code>&&</code> (AND), <code>||</code> (OR), and <code>!</code> (NOT).</li>
 </ul>
 """)
     add_mod("b4-math-operators", "Module 4: Doing Math & Making Comparisons", m4)
 
+
     # ============================================================
-    # Module B5: Making Choices: Control Flow (if Statements)
+    # Module B5: Making Choices: Control Flow
     # ============================================================
     m5 = """
-<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in, otherwise, show an error message." We call this <strong>control flow</strong>.</p>
+<p>Control flow structures allow programs to execute different code blocks based on conditions.</p>
 
-<h3>5.1 The <code>if</code>, <code>else if</code>, and <code>else</code> Construct</h3>
-<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path, otherwise, it skips ahead.</p>
+<h3>5.1 The if, else if, and else Construct</h3>
+<p>An <code>if</code> statement evaluates a condition. If the condition is <code>true</code>, the corresponding block executes; otherwise, execution continues to the next branch.</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -355,44 +338,52 @@ int main() {
     int score = 85;
 
     if (score >= 90) {
-        printf("Grade: A - Outstanding!\\n");
+        printf("Grade: A\n");
     } else if (score >= 80) {
-        printf("Grade: B - Great job!\\n");
+        printf("Grade: B\n");
     } else if (score >= 70) {
-        printf("Grade: C - Satisfactory.\\n");
+        printf("Grade: C\n");
     } else {
-        printf("Grade: F - Needs improvement.\\n");
+        printf("Grade: F\n");
     }
 
     return 0;
 }
-""", "Grade Evaluation Branching") + """
-<p>How the computer evaluates this:</p>
+""", "Branching Evaluation") + """
+<p>Evaluation steps:</p>
 <ol>
-  <li>It checks <code>score &gt;= 90</code>. Since 85 is not &gt;= 90, it moves to the next branch.</li>
-  <li>It checks <code>score &gt;= 80</code>. Since 85 is &gt;= 80, this condition is <code>true</code>!</li>
-  <li>It runs the block printing "Grade: B", and then <strong>skips all remaining branches</strong> completely!</li>
+  <li>The program checks <code>score &gt;= 90</code>. Because 85 is less than 90, it proceeds to the next check.</li>
+  <li>It checks <code>score &gt;= 80</code>. This is <code>true</code>.</li>
+  <li>The program prints <code>Grade: B</code> and skips the remaining branches.</li>
 </ol>
 
-<h3>5.2 Banned Assignment in Conditions</h3>
-<p>One of the most catastrophic bugs in old C code was accidentally writing <code>if (score = 100)</code> instead of <code>if (score == 100)</code>. In C, that overwrote the score to 100 and ran the block! In Rook, the compiler checks your code and <strong>strictly refuses to compile</strong> if you put an assignment inside an <code>if</code> condition, protecting you from subtle bugs.</p>
-""" + make_callout("tip", "Key Takeaways of Module 5", """
+<h3>5.2 Compile-Time Enforcement: Assignments in Conditions</h3>
+<p>In standard C, accidentally writing <code>if (score = 100)</code> instead of <code>if (score == 100)</code> assigns 100 to <code>score</code> and treats the result as true. Rook checks condition expressions at compile time and rejects assignments inside conditions:</p>
+""" + make_code_box("rook", """
+// Compile error in Rook:
+// error: assignment used as condition; did you mean '=='?
+if (score = 100) {
+    printf("Perfect\n");
+}
+""", "Compile Error on Assignment in Condition") + """
+""" + make_callout("tip", "Summary of Module 5", """
 <ul>
-  <li>Use <code>if</code> to execute code only when a condition is met.</li>
-  <li>Use <code>else if</code> to test alternative conditions, and <code>else</code> as a final catch-all.</li>
+  <li>Use <code>if</code> and <code>else if</code> to branch based on conditions.</li>
   <li>Only the first matching branch in an <code>if/else if</code> chain is executed.</li>
+  <li>Assignments inside conditional expressions are compile-time errors in Rook.</li>
 </ul>
 """)
     add_mod("b5-control-flow", "Module 5: Making Choices: Control Flow", m5)
 
+
     # ============================================================
-    # Module B6: Repetition: Automating Work with Loops
+    # Module B6: Repetition: Automating with Loops
     # ============================================================
     m6 = """
-<p>Humans get bored and make mistakes when performing the same task over and over again. Computers, on the other hand, can repeat an operation a billion times with flawless precision. To repeat code, we use <strong>loops</strong>.</p>
+<p>Loops repeat a block of code as long as a condition is met, or across a specific count.</p>
 
-<h3>6.1 The <code>while</code> Loop: Repeat While Condition is True</h3>
-<p>A <code>while</code> loop checks a condition. As long as that condition remains true, it keeps executing its code block:</p>
+<h3>6.1 The while Loop</h3>
+<p>A <code>while</code> loop continues executing its body as long as the condition remains true:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -400,127 +391,114 @@ int main() {
     int countdown = 5;
 
     while (countdown > 0) {
-        printf("%d...\\n", countdown);
-        countdown = countdown - 1; // Decrement countdown
+        printf("%d...\n", countdown);
+        countdown = countdown - 1;
     }
 
-    printf("Blastoff!\\n");
+    printf("Done.\n");
     return 0;
 }
-""", "Countdown with a while Loop") + """
-<div class="callout callout-warn">
-  <div class="callout-title">⚠️ Beware the Infinite Loop!</div>
-  <div class="callout-body">
-    If you forget to change <code>countdown</code> inside the loop (e.g. leaving out <code>countdown = countdown - 1;</code>), the condition <code>countdown &gt; 0</code> will stay true forever! Your program will freeze in an <em>infinite loop</em>. Always ensure your loop has progress toward termination.
-  </div>
-</div>
+""", "Countdown with while") + """
+""" + make_callout("warn", "Infinite Loops", """
+If the loop condition never becomes false (for example, if <code>countdown</code> is not decremented), the loop will run indefinitely. Ensure that the loop body makes progress toward terminating the condition.
+""") + """
 
-<h3>6.2 The <code>for</code> Loop: The Counting Specialist</h3>
-<p>When you know exactly how many times you want to repeat something (like counting from 1 to 10), a <code>for</code> loop is cleaner because it bundles the starting count, the condition, and the step into one line:</p>
+<h3>6.2 The for Loop</h3>
+<p>When iterating a specific number of times, a <code>for</code> loop groups the initialization, condition, and step in one place:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 int main() {
-    // for (start; condition; step)
     for (int i = 1; i <= 5; i++) {
-        printf("Iteration number: %d\\n", i);
+        printf("Iteration: %d\n", i);
     }
     return 0;
 }
-""", "Counting with a for Loop") + """
+""", "Counting with for") + """
 <ul>
-  <li><code>int i = 1;</code>: Runs once at the very beginning to initialize the counter.</li>
-  <li><code>i &lt;= 5;</code>: Checked before every iteration. If false, the loop ends.</li>
-  <li><code>i++</code>: Shorthand for <code>i = i + 1</code>. Runs after every iteration to increment the counter.</li>
+  <li><code>int i = 1;</code>: initializes the loop counter once at the start.</li>
+  <li><code>i &lt;= 5;</code>: checked before each iteration. When false, the loop ends.</li>
+  <li><code>i++</code>: increments the counter after each iteration.</li>
 </ul>
 
-<h3>6.3 Controlling Loops: <code>break</code> and <code>continue</code></h3>
+<h3>6.3 Loop Control: break and continue</h3>
 <ul>
-  <li><strong><code>break</code>:</strong> Immediately exits the loop, skipping any remaining cycles.</li>
-  <li><strong><code>continue</code>:</strong> Immediately stops the current iteration and jumps directly to the next cycle.</li>
+  <li><code>break</code> exits the enclosing loop immediately.</li>
+  <li><code>continue</code> skips the rest of the current iteration and begins the next cycle.</li>
 </ul>
-""" + make_callout("tip", "Key Takeaways of Module 6", """
+""" + make_callout("tip", "Summary of Module 6", """
 <ul>
-  <li>Loops automate repetitive work without copy-pasting code.</li>
-  <li>Use <code>while</code> when you don't know in advance how many repetitions you will need.</li>
-  <li>Use <code>for</code> when counting or iterating a known number of times.</li>
-  <li>Always ensure the loop condition eventually becomes false to avoid freezing in an infinite loop.</li>
+  <li>Use <code>while</code> when the number of iterations depends on runtime state.</li>
+  <li>Use <code>for</code> when counting or iterating a known number of steps.</li>
+  <li>Use <code>break</code> to exit early and <code>continue</code> to skip to the next iteration.</li>
 </ul>
 """)
     add_mod("b6-loops-repetition", "Module 6: Repetition: Automating with Loops", m6)
+
 
     # ============================================================
     # Module B7: Functions: Reusable Building Blocks
     # ============================================================
     m7 = """
-<p>As programs grow, writing all your logic inside <code>main()</code> becomes messy and unmaintainable. To organize software, we divide code into small, named, reusable pieces called <strong>functions</strong>.</p>
+<p>Functions organize code into named, modular units that take inputs, perform computations, and return results.</p>
 
-<h3>7.1 The Recipe &amp; Kitchen Appliance Analogy</h3>
-<p>Think of a function as an appliance, like a blender or toaster:</p>
-<ul>
-  <li><strong>Inputs (Parameters):</strong> What you feed into the machine (e.g. slices of bread).</li>
-  <li><strong>The Work (Function Body):</strong> What happens inside (heating the coils for 2 minutes).</li>
-  <li><strong>Output (Return Value):</strong> What comes out of the machine (warm toast).</li>
-</ul>
+<h3>7.1 Function Structure</h3>
+<p>A function definition specifies its return type, name, parameters, and body:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
-// A function that takes two integers, adds them, and returns the result
+// Takes two integers, returns their sum
 int add(int a, int b) {
     return a + b;
 }
 
-// A function that doesn't return anything (void)
+// Takes a string, returns nothing (void)
 void greet(const char* name) {
-    printf("Welcome to Rook, %s!\\n", name);
+    printf("Hello, %s!\n", name);
 }
 
 int main() {
-    // Calling our functions
     greet("Alice");
     greet("Bob");
 
     int sum = add(15, 25);
-    printf("15 + 25 = %d\\n", sum);
+    printf("15 + 25 = %d\n", sum);
 
     return 0;
 }
-""", "Creating and Calling Functions") + """
-<h3>7.2 Variable Scope: Where Variables Live and Die</h3>
-<p>Variables created inside a function are <strong>local</strong> to that function. They are born when the function begins running, and they are completely destroyed when the function finishes. A function cannot see or accidentally change local variables inside another function.</p>
-""" + make_callout("tip", "Key Takeaways of Module 7", """
+""", "Defining and Calling Functions") + """
+<h3>7.2 Variable Scope</h3>
+<p>Variables declared inside a function are local to that function. They are created when the function executes and discarded when it returns. Functions cannot directly read or modify local variables defined in other functions.</p>
+""" + make_callout("tip", "Summary of Module 7", """
 <ul>
-  <li>Functions break large programs into small, readable, testable, and reusable blocks.</li>
-  <li>Parameters are inputs passed into the function, and the <code>return</code> statement sends an output back.</li>
-  <li>Functions with no return value use <code>void</code>.</li>
-  <li>Local variables only exist inside their own function, preventing unintended side effects.</li>
+  <li>Functions divide logic into named, reusable components.</li>
+  <li>Parameters receive input arguments; the <code>return</code> statement sends back a result.</li>
+  <li>Functions that return no value use the <code>void</code> return type.</li>
+  <li>Local variables are scoped to the function in which they are declared.</li>
 </ul>
 """)
     add_mod("b7-functions", "Module 7: Functions: Reusable Building Blocks", m7)
 
+
     # ============================================================
-    # Module B8: Grouping Data: Structures (struct)
+    # Module B8: Grouping Data: Structures
     # ============================================================
     m8 = """
-<p>In the real world, things are rarely single numbers. A person has a name, age, and height. A car has a make, model, year, and fuel level. Storing these as loose, disconnected variables (like <code>car1_year</code>, <code>car2_year</code>, <code>car3_year</code>) quickly creates chaos. In programming, we bundle related variables together using a <strong>struct</strong> (short for structure).</p>
+<p>A <code>struct</code> (structure) groups related variables under a single custom data type.</p>
 
-<h3>8.1 Defining and Creating a Struct</h3>
-<p>A struct is like designing your own custom data blueprint. In Rook, you can declare fields in two clean ways, exactly like variables:</p>
-<ul>
-  <li><strong>C-Style (Type first):</strong> <code>const char* name; int health;</code> (natural for C programmers and header compatibility).</li>
-  <li><strong>Let-Style:</strong> <code>let name: const char*; let health: int;</code> (matching Rook's <code>let</code> declaration syntax).</li>
-</ul>
+<h3>8.1 Defining and Instantiating a Struct</h3>
+<p>In Rook, fields can be declared using either C style (<code>Type name;</code>) or let style (<code>let name: Type;</code>):</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
-// Define our custom blueprint (C-style)
+// C-style field definitions
 struct Player {
     const char* name;
     int health;
     int score;
 };
 
-// Or equivalently, using let-style:
+// Equivalent let-style field definitions
 struct PlayerLet {
     let name: const char*;
     let health: int;
@@ -528,172 +506,151 @@ struct PlayerLet {
 };
 
 int main() {
-    // Create an instance of Player and initialize its fields
+    // Initializing with named fields
     Player hero = Player{
-        name: "Knight Arthur",
+        name: "Arthur",
         health: 100,
         score: 0
     };
 
-    // Access fields using the dot (.) operator
-    printf("Player: %s\\n", hero.name);
-    printf("Health: %d HP\\n", hero.health);
+    // Accessing fields with dot notation
+    printf("Player: %s\n", hero.name);
+    printf("Health: %d HP\n", hero.health);
 
-    // Modify a field
+    // Updating a field
     hero.score += 500;
-    printf("New Score: %d points\\n", hero.score);
+    printf("Updated Score: %d\n", hero.score);
 
     return 0;
 }
-""", "Using Structs to Model Data") + """
-<p>Notice how clean this is: <code>hero</code> is a single unified package containing all the state for Arthur. If you need a second player, you just declare <code>Player villain = Player{ ... };</code>.</p>
-""" + make_callout("tip", "Key Takeaways of Module 8", """
+""", "Struct Definition and Field Access") + """
+""" + make_callout("tip", "Summary of Module 8", """
 <ul>
-  <li>A <code>struct</code> lets you create custom data types that group related fields together.</li>
-  <li>Use designated initializers (<code>Player{ name: "Arthur", ... }</code>) to set field values clearly.</li>
-  <li>Use the dot operator (<code>player.health</code>) to read or update individual fields.</li>
+  <li>Structs bundle multiple related variables into a single record.</li>
+  <li>Field declarations support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>).</li>
+  <li>Fields are accessed and modified using the dot operator (<code>hero.health</code>).</li>
 </ul>
 """)
     add_mod("b8-structs", "Module 8: Grouping Data: Structures", m8)
 
+
     # ============================================================
-    # Module B9: Demystifying Memory: Addresses & Pointers
+    # Module B9: Demystifying Memory: Pointers
     # ============================================================
     m9 = """
-<p>Pointers have a scary reputation among programming students. But once you learn the fundamental real-world analogy, pointers are surprisingly simple and intuitive.</p>
+<p>In systems programming, programs interact directly with computer memory. A <strong>pointer</strong> is a variable that stores the memory address of another value.</p>
 
-<h3>9.1 The House vs. The Street Address Analogy</h3>
-<p>Imagine a long residential street where every house has a unique number painted on the curb (like 100 Main St, 102 Main St, 104 Main St):</p>
+<h3>9.1 Addresses and Pointers</h3>
+<p>Every variable resides at a distinct location in RAM, identified by its memory address:</p>
 <ul>
-  <li><strong>The Variable:</strong> The physical house itself, containing furniture, people, and rooms (the data).</li>
-  <li><strong>The Pointer:</strong> A small slip of paper with the <em>address</em> of the house written on it.</li>
+  <li>The <strong>variable</strong> holds the actual data value.</li>
+  <li>The <strong>pointer</strong> holds the numerical memory address where that variable is located.</li>
 </ul>
 
-<p>The slip of paper is not the house! It is tiny and lightweight, but if you look at the address written on it, you can walk down the street to the house and see what is inside.</p>
-
-<h3>9.2 The Two Essential Operators: <code>&amp;</code> and <code>*</code></h3>
-<ol>
-  <li><strong>Address-of Operator (<code>&amp;</code>):</strong> "What is the street address of this variable?"<br>
-  If <code>x</code> is a variable, <code>&amp;x</code> gives you the memory address where <code>x</code> lives in RAM.</li>
-  <li><strong>Dereference Operator (<code>*</code>):</strong> "Go to the house at this address and look/change what is inside."<br>
-  If <code>ptr</code> holds the address of <code>x</code>, then <code>*ptr</code> reaches into that house!</li>
-</ol>
+<h3>9.2 The Address-Of (&amp;) and Dereference (*) Operators</h3>
+<ul>
+  <li><code>&amp;</code> (Address-of): returns the memory address of a variable (e.g. <code>&amp;x</code>).</li>
+  <li><code>*</code> (Dereference): accesses the value stored at the address a pointer holds (e.g. <code>*ptr</code>).</li>
+</ul>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 int main() {
-    int gold = 50;       // A house containing 50 gold pieces
-    int* ptr = &gold;    // A paper holding the memory address of gold
+    int value = 42;
+    int* ptr = &value; // ptr stores the address of value
 
-    printf("Value of gold: %d\\n", gold);
-    printf("Memory address of gold: %p\\n", (void*)ptr);
+    printf("Value: %d\n", value);
+    printf("Address: %p\n", (void*)ptr);
 
-    // Reach into the house using the pointer and change the gold!
+    // Modify value through the pointer
     *ptr = 100;
+    printf("New Value: %d\n", value); // Prints 100
 
-    printf("Updated gold: %d\\n", gold); // Now prints 100!
     return 0;
 }
-""", "Pointers in Action") + """
-<h3>9.3 Why Do We Need Pointers?</h3>
-<p>If you already have the variable, why bother writing down its address?</p>
+""", "Pointers and Dereferencing") + """
+<h3>9.3 Common Uses for Pointers</h3>
 <ul>
-  <li><strong>Modifying variables inside functions:</strong> When you pass a variable to a function, the computer usually makes a copy (pass-by-value). If the function modifies its copy, your original variable remains unchanged. But if you pass a pointer (the address), the function can reach back into your original memory and update it directly!</li>
-  <li><strong>Efficiency:</strong> If you have a huge struct holding 1,000 game objects, copying it takes time and RAM. Passing a pointer to that struct only copies an 8-byte address, which takes less than a nanosecond!</li>
+  <li><strong>Modifying values across function calls:</strong> When arguments are passed by value, the function receives a copy. Passing a pointer allows a function to update the caller's original data.</li>
+  <li><strong>Passing large structures efficiently:</strong> Passing a pointer copies an 8-byte memory address rather than duplicating entire structs in memory.</li>
 </ul>
 
-<h3>9.4 What is a NULL Pointer?</h3>
-<p>A <strong>null pointer</strong> is a slip of paper with address <code>0</code> (nowhere). If you try to dereference a null pointer (knocking on a door at an address that does not exist), the operating system immediately protects itself by terminating your program with a <em>segmentation fault</em> (crash). Always make sure a pointer points to valid memory before dereferencing it.</p>
-""" + make_callout("tip", "Key Takeaways of Module 9", """
+<h3>9.4 Null Pointers</h3>
+<p>A pointer with an address of <code>0</code> is called a null pointer. It indicates that the pointer does not reference valid memory. Attempting to dereference a null pointer causes an immediate operating system crash (segmentation fault). Check pointers before dereferencing when an address may be absent.</p>
+""" + make_callout("tip", "Summary of Module 9", """
 <ul>
-  <li>A variable holds data, while a pointer holds the memory address where data lives.</li>
-  <li><code>&x</code> gets the address of <code>x</code>.</li>
-  <li><code>*ptr</code> accesses or modifies the value at the address stored in <code>ptr</code>.</li>
-  <li>Pointers allow functions to modify caller data and pass large structures with zero copy overhead.</li>
+  <li>A pointer stores the memory address of another variable.</li>
+  <li>Use <code>&</code> to get a variable's address, and <code>*</code> to access the value at that address.</li>
+  <li>Pointers allow functions to mutate caller values and avoid copying large data structures.</li>
+  <li>Dereferencing a null pointer causes a segmentation fault.</li>
 </ul>
 """)
     add_mod("b9-memory-pointers", "Module 9: Demystifying Memory: Pointers", m9)
+
 
     # ============================================================
     # Module B10: Working with Lists: Arrays
     # ============================================================
     m10 = """
-<p>What if you need to store the high scores of 100 players, or the temperature readings for every day of the year? Creating 365 separate variables would be unbearable. To store an ordered collection of items of the same type, we use an <strong>array</strong>.</p>
+<p>An array stores a fixed-size sequence of elements of the same data type in contiguous memory.</p>
 
-<h3>10.1 The Row of Lockers Analogy</h3>
-<p>Think of an array as a straight row of identical, numbered metal lockers in a school hallway:</p>
-<ul>
-  <li>All lockers in the row hold the same kind of thing (e.g. all hold integers).</li>
-  <li>The lockers sit side-by-side in memory in a continuous sequence.</li>
-</ul>
-
-<h3>10.2 Why Do Programmers Start Counting at 0?</h3>
-<p>In programming, array indices start at <code>0</code>, not <code>1</code>. Why? Because the index is actually an <strong>offset</strong> (distance from the start):</p>
-<ul>
-  <li>Locker <code>[0]</code> is 0 steps away from the beginning (it is the very first locker).</li>
-  <li>Locker <code>[1]</code> is 1 step away from the beginning (the second locker).</li>
-  <li>If an array has 5 items, their indices are <code>0, 1, 2, 3, 4</code>.</li>
-</ul>
+<h3>10.1 Declaring and Indexing Arrays</h3>
+<p>Array indices in Rook and C are zero-based, representing an offset from the start of the array:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
 int main() {
-    // An array of 5 integers
     int scores[5] = {95, 88, 72, 99, 84};
 
-    // Reading specific elements
-    printf("First score: %d\\n", scores[0]); // 95
-    printf("Third score: %d\\n", scores[2]); // 72
+    // Reading elements by index
+    printf("First: %d\n", scores[0]); // Index 0
+    printf("Third: %d\n", scores[2]); // Index 2
 
     // Modifying an element
     scores[2] = 78;
 
-    // Looping through all elements to calculate the sum
+    // Summing elements with a loop
     int total = 0;
     for (int i = 0; i < 5; i++) {
         total += scores[i];
     }
 
-    printf("Total sum: %d\\n", total);
-    printf("Average: %.1f\\n", (float)total / 5.0f);
+    printf("Total: %d\n", total);
+    printf("Average: %.1f\n", (float)total / 5.0f);
 
     return 0;
 }
-""", "Working with Arrays") + """
-<div class="callout callout-warn">
-  <div class="callout-title">⚠️ Array Bounds: Never Step Off the Edge!</div>
-  <div class="callout-body">
-    If an array has 5 items (indices 0 through 4), trying to read or write to <code>scores[10]</code> is called an <em>out-of-bounds access</em> or <em>buffer overflow</em>. In C, this can read arbitrary memory or corrupt other variables. In Rokade, compiling with the <code>-b</code> flag adds automatic runtime checks that halt the program safely if you go out of bounds.
-  </div>
-</div>
-""" + make_callout("tip", "Key Takeaways of Module 10", """
+""", "Array Declaration and Indexing") + """
+""" + make_callout("warn", "Array Bounds", """
+An array with 5 elements has valid indices from 0 to 4. Accessing <code>scores[5]</code> or higher is out of bounds. In standard C, out-of-bounds access reads or overwrites adjacent memory. In Rokade, compiling with the <code>-b</code> flag enables runtime bounds checking that stops execution if an index is out of range.
+""") + make_callout("tip", "Summary of Module 10", """
 <ul>
-  <li>An array stores a fixed-size sequence of elements of the same type in continuous memory.</li>
-  <li>Indices start at <code>0</code>: an array of size N has valid indices from 0 to N - 1.</li>
-  <li>Combine loops and arrays to process large amounts of data with minimal code.</li>
+  <li>Arrays hold a fixed number of elements of the same type stored contiguously.</li>
+  <li>Indices start at <code>0</code> and end at <code>length - 1</code>.</li>
+  <li>Use the <code>-b</code> compiler flag to detect out-of-bounds errors at runtime.</li>
 </ul>
 """)
     add_mod("b10-arrays", "Module 10: Working with Lists: Arrays", m10)
 
+
     # ============================================================
-    # Module B11: Building Real Projects: Organizing Multiple Files
+    # Module B11: Building Real Projects
     # ============================================================
     m11 = """
-<p>When you build real-world software,like a game engine, a web server, or a desktop app,putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
+<p>As applications grow, organizing code across multiple files becomes essential for maintainability.</p>
 
 <h3>11.1 Project Structure</h3>
-<p>When you scaffold a new project with <code>rokade new my_project</code>, Rokade generates a clean, standardized layout:</p>
+<p>Running <code>rokade new my_project</code> creates a standardized project directory:</p>
 """ + make_code_box("text", """
 my_project/
 ├── rokade.toml          # Project configuration, name, version, and dependencies
 ├── src/
-│   ├── main.rook        # Entry point containing main()
-│   ├── math_utils.rook  # Helper functions
-│   └── physics.rook     # Physics calculations
-└── build/               # Generated binaries and compiled artifacts
-""", "Standard Project Layout") + """
-<h3>11.2 Connecting Files with <code>#comprise</code></h3>
-<p>In standard C, connecting two files requires creating and synchronizing <code>.h</code> header files with header guards. In Rook, you simply use the <code>#comprise</code> directive:</p>
+│   ├── main.rook        # Application entry point containing main()
+│   └── math_utils.rook  # Utility functions module
+└── build/               # Generated binaries and intermediate files
+""", "Project Directory Layout") + """
+<h3>11.2 Importing Modules with #comprise</h3>
+<p>In standard C, splitting code across files requires creating <code>.h</code> header files with include guards. Rook replaces this with the <code>#comprise</code> directive:</p>
 """ + make_code_box("rook", """
 // src/math_utils.rook
 int square(int x) {
@@ -706,80 +663,77 @@ int square(int x) {
 
 int main() {
     int val = 8;
-    printf("%d squared is %d\\n", val, square(val));
+    printf("%d squared is %d\n", val, square(val));
     return 0;
 }
 """, "Modular Multi-File Code") + """
-<p>When Rokade builds your program, it automatically reads <code>math_utils.rook</code>, verifies its types, and compiles both files into a single unified binary without duplicate symbols.</p>
-""" + make_callout("tip", "Key Takeaways of Module 11", """
+<p>When Rokade builds the project, it parses <code>math_utils.rook</code>, verifies types, and compiles both modules into a single binary without duplicate symbol errors.</p>
+""" + make_callout("tip", "Summary of Module 11", """
 <ul>
-  <li>Real software is split into separate files by topic (math, graphics, network).</li>
-  <li><code>rokade.toml</code> configures your package name, version, and compiler settings.</li>
-  <li>Use <code>#comprise filename</code> to import and share functions across files cleanly without header boilerplate.</li>
+  <li>Organize code into separate files by function or module.</li>
+  <li><code>rokade.toml</code> configures project settings and dependencies.</li>
+  <li>Use <code>#comprise filename</code> to import local Rook source files directly without header files.</li>
 </ul>
 """)
     add_mod("b11-multi-file", "Module 11: Building Real Projects", m11)
 
+
     # ============================================================
-    # Module B12: How to Think Like a Programmer & Debugging
+    # Module B12: How to Think Like a Programmer
     # ============================================================
     m12 = """
-<p>Programming is not about memorizing syntax rules, it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
+<p>Programming centers on problem solving: decomposing tasks into small, verifiable steps and locating errors methodically.</p>
 
-<h3>12.1 Problem Decomposition: Breaking Big Problems into Tiny Steps</h3>
-<p>When faced with a complex task (like "build a chess game"), the task feels overwhelming. The secret of programming is <strong>decomposition</strong>:</p>
+<h3>12.1 Problem Decomposition</h3>
+<p>When solving an unfamiliar problem, avoid writing everything at once:</p>
 <ol>
-  <li>Don't try to build the whole thing at once.</li>
-  <li>Break the problem down into smaller and smaller pieces until each piece is trivial.</li>
-  <li><em>Example:</em> "How do I make a chess board?" ➔ "How do I represent 64 squares?" ➔ "How do I represent 1 square?" ➔ "A struct with an X and Y coordinate!"</li>
-  <li>Solve that one tiny piece, verify that it works, and build the next piece.</li>
+  <li>Break the task into smaller subtasks until each subtask has a straightforward solution.</li>
+  <li>Write and verify each component independently.</li>
+  <li>Compose the tested components into the complete solution.</li>
 </ol>
 
-<h3>12.2 Reading Compiler Errors Without Fear</h3>
-<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you, it is a helpful assistant pointing out where something doesn't make sense:</p>
+<h3>12.2 Reading Compiler Errors</h3>
+<p>Compiler errors provide actionable diagnostics when code violates syntax or type rules:</p>
 <ol>
-  <li><strong>Look for the file and line number:</strong> It will look like <code>src/main.rook:14:5: error</code>. This tells you exactly where the problem occurred (line 14, column 5).</li>
-  <li><strong>Read the error description:</strong> Usually it's something simple, like a missing semicolon <code>;</code>, an undefined variable name, or passing the wrong type of argument.</li>
-  <li><strong>Fix only the first error:</strong> Often, one typo causes 10 secondary errors below it. Fix the very first error at the top, recompile, and see if the rest disappear!</li>
+  <li><strong>Check the file and line number:</strong> An error like <code>src/main.rook:14:5: error</code> points to line 14, column 5.</li>
+  <li><strong>Read the error description:</strong> Common errors include missing semicolons, unrecognized identifiers, or type mismatches.</li>
+  <li><strong>Fix the top error first:</strong> A single error near the top of a file can trigger several downstream warnings. Address the first error and recompile.</li>
 </ol>
 
-<h3>12.3 Print Debugging: Your Most Reliable Superpower</h3>
-<p>When a program compiles successfully but does not give the expected answer, the easiest way to find the bug is <strong>print debugging</strong>. Add <code>printf()</code> statements at critical steps to inspect variable values:</p>
+<h3>12.3 Print Debugging</h3>
+<p>When a program compiles but produces unexpected output, adding <code>printf</code> statements lets you inspect values as execution proceeds:</p>
 """ + make_code_box("rook", """
 int calculate_discount(int price, int customer_years) {
-    printf("[DEBUG] Starting calculate_discount: price=%d, years=%d\\n", price, customer_years);
+    printf("[DEBUG] price=%d, years=%d\n", price, customer_years);
     
     int discount = 0;
     if (customer_years > 5) {
         discount = 20;
     }
-    printf("[DEBUG] Calculated discount: %d\\n", discount);
+    printf("[DEBUG] calculated discount=%d\n", discount);
     
     return price - discount;
 }
-""", "Print Debugging in Practice") + """
-<p>By watching the printed output, you can see exactly where the computer's logic diverged from what you intended.</p>
-
-<h3>12.4 Welcoming Mistakes on Your Journey</h3>
-<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming,it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
-""" + make_callout("tip", "Key Takeaways of Module 12", """
+""", "Tracing Values with printf") + """
+<p>Examining intermediate outputs clarifies where execution diverges from expectations.</p>
+""" + make_callout("tip", "Summary of Module 12", """
 <ul>
-  <li>Break big problems down into small, easily solvable steps.</li>
-  <li>Read compiler errors from top to bottom, fix the first error first.</li>
-  <li>Use print debugging to inspect variables when programs don't behave as expected.</li>
-  <li>Bugs are normal and natural, treat every error as a fun puzzle to solve.</li>
+  <li>Decompose complex requirements into small, testable steps.</li>
+  <li>Read compiler messages carefully, starting with the first reported error.</li>
+  <li>Trace program state with print statements to diagnose logic errors.</li>
 </ul>
 """)
     add_mod("b12-debugging-thinking", "Module 12: How to Think Like a Programmer", m12)
 
+
     # ============================================================
-    # Module B13: Objects and Methods (object / impl)
+    # Module B13: Objects and Methods
     # ============================================================
     m13 = """
-<p>As programs grow larger, you often need to bundle data <em>and</em> the operations on that data together. Rook provides two keywords for this: <code>object</code> (to define the data) and <code>impl</code> (to attach methods to it). This idea, sometimes called <strong>object-oriented programming</strong>, exists in many languages under names like <em>class</em> (Java, Python, C++), <em>struct + impl</em> (Rust), or <em>interface</em> (Go). Not every language has it, but understanding the concept helps you read and write almost any modern codebase.</p>
+<p>In addition to plain structs, Rook provides <code>object</code> and <code>impl</code> for organizing state and associated methods together. This model supports single inheritance with static dispatch.</p>
 
 <h3>13.1 Defining an Object</h3>
-<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You can declare fields using C-style (<code>Type name;</code>) or let-style (<code>let name: Type;</code>):</p>
+<p>An <code>object</code> defines data fields. Fields support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -789,7 +743,7 @@ object Animal {
 }
 """, "Defining an Object") + """
 <h3>13.2 Attaching Methods with impl</h3>
-<p>An <code>impl</code> block attaches functions (called <strong>methods</strong>) to the object. Each method receives a pointer to the object as its first argument, named <code>self</code> by convention:</p>
+<p>Methods are defined in an <code>impl</code> block. Each method takes a pointer to the instance as its first argument, conventionally named <code>self</code>:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -800,7 +754,7 @@ object Animal {
 
 impl Animal {
     void speak(Animal* self) {
-        printf("%s\\n", self.name);
+        printf("%s\n", self.name);
     }
     int legs_count(Animal* self) {
         return self.legs;
@@ -812,14 +766,13 @@ int main() {
     dog.name = "Rex";
     dog.legs = 4;
 
-    // Call methods using the dot operator
     dog.speak();
-    printf("Legs: %d\\n", dog.legs_count());
+    printf("Legs: %d\n", dog.legs_count());
     return 0;
 }
-""", "Object with Methods") + """
-<h3>13.3 Inheritance</h3>
-<p>One object can extend another using <code>:</code>. The child object gains all the fields and methods of the parent, and can add more of its own:</p>
+""", "Attaching Methods to Objects") + """
+<h3>13.3 Single Inheritance</h3>
+<p>An object can extend a base object using a colon (<code>:</code>). The child object inherits the parent object's fields and methods:</p>
 """ + make_code_box("rook", """
 object Cat : Animal {
     int lives;
@@ -827,7 +780,7 @@ object Cat : Animal {
 
 impl Cat {
     void meow(Cat* self) {
-        self.speak();   // inherited from Animal
+        self.speak(); // Calls inherited Animal.speak
     }
 }
 
@@ -836,32 +789,33 @@ int main() {
     c.name = "Tom";
     c.legs = 4;
     c.lives = 9;
+
     c.speak();
     c.meow();
-    printf("Lives left: %d\\n", c.lives);
+    printf("Lives: %d\n", c.lives);
     return 0;
 }
-""", "Inheritance in Rook") + make_callout("note", "Not all languages have this", """
-Object-oriented features like <code>object</code>, <code>impl</code>, and inheritance are powerful tools for organizing large programs. They exist in C++, Java, Python, and Rust (among others), each with different syntax. Some languages (like C and Go) deliberately leave them out and use different organizational patterns instead. Knowing both styles makes you a more flexible programmer.
-""") + make_callout("tip", "Key Takeaways of Module 13", """
+""", "Single Inheritance") + make_callout("note", "Language Comparison", """
+Object-oriented concepts appear across many languages. C++, Java, and Python use classes with methods. Rust uses structs with <code>impl</code> blocks. Other languages, like C and Go, avoid class inheritance in favor of composition or interface tables. Rook provides single inheritance lowered statically to nested C structs with zero vtable overhead.
+""") + make_callout("tip", "Summary of Module 13", """
 <ul>
-  <li><code>object</code> defines a custom data type with named fields (supporting both <code>Type name;</code> and <code>let name: Type;</code>).</li>
-  <li><code>impl</code> attaches methods to an object, each receiving a <code>self</code> pointer to the instance.</li>
-  <li>Call methods using the dot operator: <code>dog.speak()</code>.</li>
-  <li>Use <code>object Child : Parent</code> to inherit all parent fields and methods.</li>
-  <li>Object-oriented concepts exist in many languages under different names.</li>
+  <li><code>object</code> defines records with named fields in C-style or let-style.</li>
+  <li><code>impl</code> binds methods to an object, taking an explicit <code>self</code> pointer.</li>
+  <li><code>object Child : Parent</code> establishes single inheritance.</li>
+  <li>Method dispatch is static and maps directly to C function calls without virtual tables.</li>
 </ul>
 """)
     add_mod("b13-objects-impl", "Module 13: Objects and Methods", m13)
 
+
     # ============================================================
-    # Module B14: Pattern Matching with match
+    # Module B14: Pattern Matching
     # ============================================================
     m14 = """
-<p>Rook provides a <code>match</code> expression that lets you compare a value against several patterns and run different code for each one. It is similar to a <code>switch</code> statement in C or Java, but more expressive: it can destructure data structures and match on their inner fields in one step. Pattern matching is a feature in Rust, Swift, Haskell, and many functional languages. Not all languages have it, but it is increasingly common in modern language design.</p>
+<p>Rook provides a <code>match</code> construct that compares values against patterns and executes the matching arm. It supports scalar values, enums, and sum types (tagged unions).</p>
 
-<h3>14.1 Basic match on a Value</h3>
-<p>The simplest use of <code>match</code> is choosing between integer or enum values:</p>
+<h3>14.1 Value Matching</h3>
+<p>The simplest form matches integers or enums against constant patterns:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -869,18 +823,18 @@ int main() {
     int code = 2;
 
     match (code) {
-        1 => printf("One\\n"),
-        2 => printf("Two\\n"),
-        3 => printf("Three\\n"),
-        _ => printf("Something else\\n"),
+        1 => printf("One\n"),
+        2 => printf("Two\n"),
+        3 => printf("Three\n"),
+        _ => printf("Other\n"),
     }
     return 0;
 }
-""", "Basic match") + """
-<p>The <code>_</code> (underscore) is the catch-all pattern, similar to <code>default:</code> in a C switch statement. It matches any value not covered by the earlier arms.</p>
+""", "Basic Pattern Match") + """
+<p>The underscore <code>_</code> acts as a wildcard pattern that matches any value not matched by prior arms.</p>
 
-<h3>14.2 match on Sum Types (Tagged Unions)</h3>
-<p>Where <code>match</code> really shines is with <strong>sum types</strong> (also called tagged unions or variants). A <code>sum</code> in Rook lets a value be one of several possible shapes, and <code>match</code> lets you handle each shape differently:</p>
+<h3>14.2 Pattern Matching on Sum Types</h3>
+<p>A <code>sum</code> type represents a value that can hold one of several variant shapes. A <code>match</code> expression inspects the variant and destructures its payload fields:</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -906,20 +860,19 @@ int main() {
     Shape b = Rect { w: 3.0f, h: 4.0f };
     Shape c = Point;
 
-    printf("Circle area: %f\\n", a.area());
-    printf("Rect area:   %f\\n", b.area());
-    printf("Point area:  %f\\n", c.area());
+    printf("Circle area: %f\n", a.area());
+    printf("Rect area:   %f\n", b.area());
+    printf("Point area:  %f\n", c.area());
     return 0;
 }
-""", "match on Sum Types") + make_callout("note", "Not all languages have this", """
-Pattern matching on tagged unions is a hallmark of languages like Rust (<code>enum</code> + <code>match</code>), Swift (<code>enum</code> + <code>switch</code>), and Haskell (<code>data</code> + case expressions). Traditional C only has basic <code>switch</code> on integer values with no destructuring. If you later learn Rust or Swift, you will find these concepts map directly.
-""") + make_callout("tip", "Key Takeaways of Module 14", """
+""", "Matching on Sum Types") + make_callout("note", "Language Comparison", """
+Pattern matching on tagged unions is common in languages like Rust, Swift, and Haskell. Traditional C offers <code>switch</code> on integers without payload destructuring, requiring manual union tagging. Rook provides tagged unions and pattern matching directly in the grammar.
+""") + make_callout("tip", "Summary of Module 14", """
 <ul>
-  <li><code>match</code> compares a value against patterns and runs the first matching arm.</li>
-  <li><code>_</code> is the wildcard catch-all pattern, always placed last.</li>
-  <li>Sum types let a value be one of several distinct shapes, and <code>match</code> handles each shape cleanly.</li>
-  <li>Pattern matching is more expressive than a plain <code>switch</code> because it can unpack inner fields in the same step.</li>
-  <li>This concept exists in Rust, Swift, Haskell, and many modern languages, each with slightly different syntax.</li>
+  <li><code>match</code> compares values against patterns and executes the first matching arm.</li>
+  <li>The <code>_</code> pattern serves as the fallback arm.</li>
+  <li>Sum types represent values that can take one of multiple variant shapes.</li>
+  <li>Pattern matching destructures sum type variant payloads in a single step.</li>
 </ul>
 """)
     add_mod("b14-match-patterns", "Module 14: Pattern Matching", m14)

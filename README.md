@@ -30,13 +30,13 @@ Rook is a modern systems programming language that compiles directly into standa
 
 ## Why Rook?
 
-C is the lingua franca of software engineering, but it carries decades of legacy luggage:
-1. **Header file hell**: Every symbol must be manually synchronized across `.h` and `.c` files.
+C is the standard systems programming language, but it carries several well-known drawbacks:
+1. **Header synchronization**: Every symbol must be manually synchronized across `.h` and `.c` files.
 2. **Undefined Behavior (UB) traps**: Uninitialized stack variables, assignments disguised as conditions (`if (x = 5)`), unconstrained pointer arithmetic, and unstructured `goto`.
-3. **No native OOP**: Implementing simple object inheritance in C requires manual nested struct boilerplate, error-prone pointer casts, or heavy custom vtable macros.
-4. **Cumbersome build configurations**: Writing complex Makefiles or CMake files just to compile a basic multi-file project.
+3. **No native OOP**: Implementing simple object inheritance in C requires manual nested struct boilerplate, error-prone pointer casts, or custom macros.
+4. **Complex build configurations**: Writing Makefiles or CMake files just to compile a basic multi-file project.
 
-**Rook solves all four while remaining 100% standard C under the hood.**
+**Rook addresses these issues while remaining standard C under the hood.**
 
 ---
 
@@ -362,7 +362,7 @@ Rook provides two modern dependency mechanisms: **Source-Level Packages** for ot
 
 ### 1. Rook-to-Rook Package Dependencies
 
-Rook uses source-level module dependencies (similar to Go and Zig). Because Rook has no header files, source dependencies allow full compile-time static dispatch, whole-program optimizations, and effortless multi-target cross-compilation.
+Rook uses source-level module dependencies (similar to Go and Zig). Because Rook has no header files, source dependencies allow full compile-time static dispatch, whole-program optimizations, and consistent multi-target cross-compilation.
 
 In your consumer's `rokade.toml`:
 ```toml
