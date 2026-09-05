@@ -1088,7 +1088,29 @@ static void scan_raw_region(Checker* ck, const char* raw, int len) {
             }
             if (*cur == '\'') { *cur = ' '; cur++; }
         } else if (*cur == '#') {
-            while (*cur && *cur != '\n') { *cur = ' '; cur++; }
+            const char* line = cur;
+            cur++;
+            while (*cur == ' ' || *cur == '\t') cur++;
+            if (strncmp(cur, "define", 6) == 0 && (*(cur + 6) == ' ' || *(cur + 6) == '\t')) {
+                cur += 6;
+                while (*cur == ' ' || *cur == '\t') cur++;
+                const char* id_start = cur;
+                while (is_ident_char(*cur)) cur++;
+                int id_len = (int)(cur - id_start);
+                if (id_len > 0) {
+                    char* w = malloc(id_len + 1);
+                    if (w) {
+                        memcpy(w, id_start, id_len);
+                        w[id_len] = '\0';
+                        raw_add(w);
+                    }
+                }
+            }
+            while (*cur && *cur != '\n') {
+                if (*cur == '\\' && *(cur + 1) == '\n') cur += 2;
+                else cur++;
+            }
+            for (char* k = (char*)line; k < cur; k++) *k = ' ';
         } else {
             cur++;
         }
