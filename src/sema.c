@@ -312,6 +312,12 @@ void sema_set_source(Sema* s, const char* src, int len) {
     s->srclen = len;
 }
 
+void sema_set_include_dirs(Sema* s, const char** dirs, size_t n_dirs) {
+    if (!s) return;
+    s->include_dirs = dirs;
+    s->n_include_dirs = n_dirs;
+}
+
 static Sym* sym_new_fn(const char* name, FnDef* fn) {
     Sym* s = calloc(1, sizeof *s);
     if (!s) exit(1);

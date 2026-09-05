@@ -225,24 +225,41 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
         .Length = strlen(code)
     };
 
-    const char* args[64];
+    size_t args_cap = n_inc + 16;
+    const char** args = (const char**)malloc(args_cap * sizeof(const char*));
+    char** inc_bufs = n_inc > 0 ? (char**)malloc(n_inc * sizeof(char*)) : NULL;
     int n_args = 0;
-    args[n_args++] = "-std=c23";
-    args[n_args++] = "-w";
-    args[n_args++] = "-D_GNU_SOURCE";
-    args[n_args++] = "-D_DEFAULT_SOURCE";
-    args[n_args++] = "-D_POSIX_C_SOURCE=200809L";
+    if (args) {
+        args[n_args++] = "-std=c23";
+        args[n_args++] = "-w";
+        args[n_args++] = "-D_GNU_SOURCE";
+        args[n_args++] = "-D_DEFAULT_SOURCE";
+        args[n_args++] = "-D_POSIX_C_SOURCE=200809L";
 
-    char inc_bufs[32][4100];
-    for (size_t i = 0; i < n_inc && n_args < 60; i++) {
-        snprintf(inc_bufs[i], sizeof(inc_bufs[i]), "-I%s", inc_dirs[i]);
-        args[n_args++] = inc_bufs[i];
+        if (inc_bufs) {
+            for (size_t i = 0; i < n_inc; i++) {
+                size_t blen = strlen(inc_dirs[i]) + 4;
+                inc_bufs[i] = (char*)malloc(blen);
+                if (inc_bufs[i]) {
+                    snprintf(inc_bufs[i], blen, "-I%s", inc_dirs[i]);
+                    args[n_args++] = inc_bufs[i];
+                }
+            }
+        }
     }
 
     CXTranslationUnit tu = clang_parseTranslationUnit(
         index, "import_input.c", args, n_args, &unsaved, 1,
         CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_DetailedPreprocessingRecord
     );
+
+    if (inc_bufs) {
+        for (size_t i = 0; i < n_inc; i++) {
+            if (inc_bufs[i]) free(inc_bufs[i]);
+        }
+        free(inc_bufs);
+    }
+    if (args) free(args);
 
     if (!tu) {
         clang_disposeIndex(index);
@@ -347,13 +364,17 @@ int c_import_scan_and_load(Sema* sema, const char* src, int len, const char* bas
                             hname[hlen] = '\0';
                             /* Only import C headers (not .rook files) */
                             if (hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) {
-                                const char* all_inc[64];
+                                size_t total_cap = n_inc + 4;
+                                const char** all_inc = (const char**)malloc(total_cap * sizeof(const char*));
                                 size_t total_inc = 0;
-                                if (basedir && basedir[0]) all_inc[total_inc++] = basedir;
-                                for (size_t i = 0; i < n_inc && total_inc < 60; i++) {
-                                    all_inc[total_inc++] = inc_dirs[i];
+                                if (all_inc) {
+                                    if (basedir && basedir[0]) all_inc[total_inc++] = basedir;
+                                    for (size_t i = 0; i < n_inc; i++) {
+                                        all_inc[total_inc++] = inc_dirs[i];
+                                    }
+                                    c_import_header(sema, hname, is_sys, all_inc, total_inc);
+                                    free(all_inc);
                                 }
-                                c_import_header(sema, hname, is_sys, all_inc, total_inc);
                             }
                         }
                     }

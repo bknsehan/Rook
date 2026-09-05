@@ -2,6 +2,7 @@
 #define RK_SEMA_H
 
 #include "ast.h"
+#include <stddef.h>
 
 typedef enum {
     SYM_FN,
@@ -40,6 +41,8 @@ typedef struct Sema {
     char errbuf[1024];
     const char* src;
     int srclen;
+    const char** include_dirs;
+    size_t n_include_dirs;
 } Sema;
 
 Sema* sema_new(void);
@@ -47,6 +50,7 @@ void sema_free(Sema* s);
 
 int sema_collect(Sema* s, Program* prog);
 void sema_set_source(Sema* s, const char* src, int len);
+void sema_set_include_dirs(Sema* s, const char** dirs, size_t n_dirs);
 Sym* sema_lookup(Sema* s, const char* name);
 Sym* sema_lookup_method(Sema* s, const char* type_name, const char* method_name);
 
