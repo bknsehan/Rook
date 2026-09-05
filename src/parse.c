@@ -1256,23 +1256,23 @@ static Item* parse_top(Parser* p) {
         char* name = ident(p);
         if (!name) return NULL;
         if (!expect_punct(p, "=")) { free(name); return NULL; }
-        /* Read everything until ';' as the raw type expression */
-        SB type_sb;
-        sb_init(&type_sb);
-        while (!tok_is(cur(p), ";")) {
-            sb_appendn(&type_sb, cur(p)->text, cur(p)->len);
-            sb_append(&type_sb, " ");
-            adv(p);
-        }
-        if (!expect_punct(p, ";")) { free(name); sb_free(&type_sb); return NULL; }
+        AstType* target = parse_type(p);
+        if (!target) { free(name); return NULL; }
+        if (!expect_punct(p, ";")) { free(name); ast_type_free(target); return NULL; }
         /* Emit as TOP_RAW: "typedef <type> <name>;\n" */
         SB raw_sb;
         sb_init(&raw_sb);
         sb_append(&raw_sb, "typedef ");
-        sb_appendn(&raw_sb, type_sb.data, type_sb.len);
+        if (target->qual && target->qual[0]) {
+            sb_append(&raw_sb, target->qual);
+            sb_append(&raw_sb, " ");
+        }
+        sb_append(&raw_sb, target->name ? target->name : "int");
+        for (int i = 0; i < target->ptrs; i++) sb_append(&raw_sb, "*");
+        sb_append(&raw_sb, " ");
         sb_append(&raw_sb, name);
         sb_append(&raw_sb, ";\n");
-        sb_free(&type_sb);
+        ast_type_free(target);
         Item* it = ast_item_new(TOP_RAW);
         it->raw = sb_strdup(&raw_sb);
         it->raw_len = raw_sb.len;

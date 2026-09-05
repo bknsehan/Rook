@@ -148,9 +148,27 @@ static char* unescape_string_literal(const char* s, size_t* out_len) {
                 case 't': buf[o++] = '\t'; break;
                 case 'r': buf[o++] = '\r'; break;
                 case '0': buf[o++] = '\0'; break;
+                case 'a': buf[o++] = '\a'; break;
+                case 'b': buf[o++] = '\b'; break;
+                case 'f': buf[o++] = '\f'; break;
+                case 'v': buf[o++] = '\v'; break;
                 case '\\': buf[o++] = '\\'; break;
                 case '"': buf[o++] = '"'; break;
                 case '\'': buf[o++] = '\''; break;
+                case 'x': {
+                    if (i + 2 < in_len - 1 && isxdigit((unsigned char)s[i+1]) && isxdigit((unsigned char)s[i+2])) {
+                        char hex[3] = { s[i+1], s[i+2], 0 };
+                        buf[o++] = (char)strtol(hex, NULL, 16);
+                        i += 2;
+                    } else if (i + 1 < in_len - 1 && isxdigit((unsigned char)s[i+1])) {
+                        char hex[2] = { s[i+1], 0 };
+                        buf[o++] = (char)strtol(hex, NULL, 16);
+                        i += 1;
+                    } else {
+                        buf[o++] = s[i];
+                    }
+                    break;
+                }
                 default: buf[o++] = s[i]; break;
             }
         } else {
@@ -280,10 +298,15 @@ static char* llvm_find_method_owner(LLVMGen* g, const char* struct_name, const c
     *steps = 0;
     const char* cur = struct_name;
     while (cur) {
-        char test_name[256];
-        snprintf(test_name, sizeof(test_name), "%s_%s", cur, method);
-        if (LLVMGetNamedFunction(g->module, test_name)) {
-            return strdup(cur);
+        size_t tlen = strlen(cur) + strlen(method) + 2;
+        char* test_name = malloc(tlen);
+        if (test_name) {
+            snprintf(test_name, tlen, "%s_%s", cur, method);
+            if (LLVMGetNamedFunction(g->module, test_name)) {
+                free(test_name);
+                return strdup(cur);
+            }
+            free(test_name);
         }
         StructDef* st = sema_lookup_struct(g->sema, cur);
         if (!st || !st->parent || !st->parent[0]) break;
@@ -444,17 +467,47 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
     case E_LITERAL: {
         const char* s = e->str;
         if (!s) return NULL;
-        if (s[0] == '"') {
+        if (s[0] == '\"') {
             size_t slen = 0;
             char* u = unescape_string_literal(s, &slen);
-            LLVMValueRef str_val = LLVMBuildGlobalStringPtr(g->builder, u, "str");
+            /* Use LLVMConstStringInContext so embedded \0 bytes survive; add null terminator. */
+            LLVMValueRef str_const = LLVMConstStringInContext(g->ctx, u, (unsigned)slen, 0);
             free(u);
+            LLVMTypeRef str_arr_t = LLVMTypeOf(str_const);
+            LLVMValueRef global = LLVMAddGlobal(g->module, str_arr_t, "str");
+            LLVMSetInitializer(global, str_const);
+            LLVMSetGlobalConstant(global, 1);
+            LLVMSetLinkage(global, LLVMPrivateLinkage);
+            LLVMSetUnnamedAddress(global, LLVMGlobalUnnamedAddr);
             if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
-            return str_val;
+            return global;
         }
         if (s[0] == '\'') {
-            int ch = (s[1] == '\\') ? s[2] : s[1];
-            LLVMValueRef c_val = LLVMConstInt(LLVMInt8TypeInContext(g->ctx), ch, 0);
+            /* Decode escape sequence in char literal */
+            int ch;
+            if (s[1] == '\\') {
+                switch (s[2]) {
+                    case 'n':  ch = '\n'; break;
+                    case 't':  ch = '\t'; break;
+                    case 'r':  ch = '\r'; break;
+                    case '0':  ch = '\0'; break;
+                    case 'a':  ch = '\a'; break;
+                    case 'b':  ch = '\b'; break;
+                    case 'f':  ch = '\f'; break;
+                    case 'v':  ch = '\v'; break;
+                    case '\\': ch = '\\'; break;
+                    case '\'': ch = '\''; break;
+                    case 'x': {
+                        char hex[3] = { s[3], s[4], 0 };
+                        ch = (int)strtol(hex, NULL, 16);
+                        break;
+                    }
+                    default: ch = (unsigned char)s[2]; break;
+                }
+            } else {
+                ch = (unsigned char)s[1];
+            }
+            LLVMValueRef c_val = LLVMConstInt(LLVMInt8TypeInContext(g->ctx), (unsigned long long)(unsigned char)ch, 0);
             if (out_type) *out_type = LLVMInt8TypeInContext(g->ctx);
             return c_val;
         }
@@ -1045,19 +1098,42 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, st_type, "named_init");
         StructDef* st = sema_lookup_struct(g->sema, e->type->name);
         if (st) {
+            /* When struct has a parent, element index 0 is "_base". Own fields start at offset 1. */
+            int base_offset = (st->parent && st->parent[0]) ? 1 : 0;
             for (int i = 0; i < e->nnfields; i++) {
                 const char* fname = e->nfields[i].name;
                 int fidx = -1;
+                /* Search own fields first */
                 for (int j = 0; j < st->nfields; j++) {
                     if (strcmp(st->fields[j].name, fname) == 0) { fidx = j; break; }
                 }
                 if (fidx >= 0) {
-                    LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, fidx, fname);
+                    /* Own field: element index is fidx + base_offset */
+                    LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref,
+                                                            (unsigned)(fidx + base_offset), fname);
                     LLVMTypeRef ft = gen_llvm_type(g, st->fields[fidx].type);
                     LLVMTypeRef rt = NULL;
                     LLVMValueRef fval = gen_expr(g, e->nfields[i].e, &rt);
                     fval = cast_to_type(g, fval, rt, ft);
                     LLVMBuildStore(g->builder, fval, fptr);
+                } else if (base_offset > 0) {
+                    /* Try parent fields: GEP through _base (index 0) */
+                    StructDef* par = sema_lookup_struct(g->sema, st->parent);
+                    if (par) {
+                        for (int j = 0; j < par->nfields; j++) {
+                            if (strcmp(par->fields[j].name, fname) == 0) { fidx = j; break; }
+                        }
+                        if (fidx >= 0) {
+                            LLVMTypeRef par_type = LLVMStructGetTypeAtIndex(st_type, 0);
+                            LLVMValueRef base_ptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, 0, "_base");
+                            LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, par_type, base_ptr, (unsigned)fidx, fname);
+                            LLVMTypeRef ft = gen_llvm_type(g, par->fields[fidx].type);
+                            LLVMTypeRef rt = NULL;
+                            LLVMValueRef fval = gen_expr(g, e->nfields[i].e, &rt);
+                            fval = cast_to_type(g, fval, rt, ft);
+                            LLVMBuildStore(g->builder, fval, fptr);
+                        }
+                    }
                 }
             }
         }
@@ -1075,10 +1151,14 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             if (sname) st = sema_lookup_struct(g->sema, sname);
         }
         if (st_type) {
+            /* When struct has a parent, element 0 is _base; own fields start at index 1. */
+            int base_offset = (st && st->parent && st->parent[0]) ? 1 : 0;
             LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, st_type, "brace_init");
             for (int i = 0; i < e->nitems; i++) {
-                LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, i, "f");
-                LLVMTypeRef ft = st ? gen_llvm_type(g, st->fields[i].type) : LLVMInt32TypeInContext(g->ctx);
+                unsigned elem_idx = (unsigned)(i + base_offset);
+                LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, elem_idx, "f");
+                LLVMTypeRef ft = (st && i < st->nfields) ? gen_llvm_type(g, st->fields[i].type)
+                                                         : LLVMInt32TypeInContext(g->ctx);
                 LLVMTypeRef rt = NULL;
                 LLVMValueRef fval = gen_expr(g, e->items[i], &rt);
                 fval = cast_to_type(g, fval, rt, ft);
@@ -1095,6 +1175,8 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         if (!st_type) st_type = LLVMInt32TypeInContext(g->ctx);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, st_type, "compound_init");
         StructDef* st = (e->type && e->type->name) ? sema_lookup_struct(g->sema, e->type->name) : NULL;
+        /* When struct has a parent, element 0 is _base; own fields start at index 1. */
+        int base_offset = (st && st->parent && st->parent[0]) ? 1 : 0;
         int pos_idx = 0;
         for (int i = 0; i < e->ncitems; i++) {
             int fidx = -1;
@@ -1106,7 +1188,8 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 fidx = pos_idx++;
             }
             if (fidx >= 0 && (!st || fidx < st->nfields)) {
-                LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, fidx, "comp_f");
+                unsigned elem_idx = (unsigned)(fidx + base_offset);
+                LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, st_type, alloca_ref, elem_idx, "comp_f");
                 LLVMTypeRef ft = (st && fidx < st->nfields) ? gen_llvm_type(g, st->fields[fidx].type) : LLVMInt32TypeInContext(g->ctx);
                 LLVMTypeRef rt = NULL;
                 LLVMValueRef fval = gen_expr(g, e->citems[i].e, &rt);
@@ -1360,6 +1443,31 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
     return NULL;
 }
 
+/* Evaluate a constant integer expression (E_LITERAL, unary minus, E_BINARY with +, -, multiply, divide)
+   at codegen time. Returns the computed value, or 1 on failure (safe default for array dimensions). */
+static long eval_const_expr(Expr* e) {
+    if (!e) return 1;
+    if (e->kind == E_LITERAL && e->str) {
+        long v = atol(e->str);
+        return v > 0 ? v : 1;
+    }
+    if (e->kind == E_UNARY && e->str && strcmp(e->str, "-") == 0 && e->a) {
+        return -eval_const_expr(e->a);
+    }
+    if (e->kind == E_PAREN && e->a) {
+        return eval_const_expr(e->a);
+    }
+    if (e->kind == E_BINARY && e->str && e->a && e->b) {
+        long lhs = eval_const_expr(e->a);
+        long rhs = eval_const_expr(e->b);
+        if (strcmp(e->str, "+") == 0) return lhs + rhs;
+        if (strcmp(e->str, "-") == 0) return lhs - rhs;
+        if (strcmp(e->str, "*") == 0) return lhs * rhs;
+        if (strcmp(e->str, "/") == 0 && rhs != 0) return lhs / rhs;
+    }
+    return 1;
+}
+
 static void gen_stmt(LLVMGen* g, Stmt* s) {
     if (!s || is_block_terminated(g)) return;
 
@@ -1377,7 +1485,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         }
         LLVMTypeRef vt = gen_llvm_type(g, at);
         if (d->dim) {
-            long dim_sz = (d->dim->str) ? atol(d->dim->str) : 1;
+            long dim_sz = eval_const_expr(d->dim);
             if (dim_sz <= 0) dim_sz = 1;
             vt = LLVMArrayType(vt, (unsigned)dim_sz);
         }

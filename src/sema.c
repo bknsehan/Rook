@@ -1058,6 +1058,42 @@ static void scan_raw_region(Checker* ck, const char* raw, int len) {
         inc = strstr(inc + 8, "#include");
     }
 
+    /* Blank out comments, string/char literals, and preprocessor directives
+       so words inside them are not mistakenly collected as identifiers. */
+    char* cur = buf;
+    while (*cur) {
+        if (cur[0] == '/' && cur[1] == '/') {
+            while (*cur && *cur != '\n') { *cur = ' '; cur++; }
+        } else if (cur[0] == '/' && cur[1] == '*') {
+            *cur = ' '; cur++;
+            if (*cur) { *cur = ' '; cur++; }
+            while (*cur && !(cur[0] == '*' && cur[1] == '/')) {
+                *cur = ' ';
+                cur++;
+            }
+            if (*cur) { *cur = ' '; cur++; }
+            if (*cur) { *cur = ' '; cur++; }
+        } else if (*cur == '"') {
+            *cur = ' '; cur++;
+            while (*cur && *cur != '"') {
+                if (*cur == '\\' && *(cur + 1)) { *cur = ' '; cur++; }
+                *cur = ' '; cur++;
+            }
+            if (*cur == '"') { *cur = ' '; cur++; }
+        } else if (*cur == '\'') {
+            *cur = ' '; cur++;
+            while (*cur && *cur != '\'') {
+                if (*cur == '\\' && *(cur + 1)) { *cur = ' '; cur++; }
+                *cur = ' '; cur++;
+            }
+            if (*cur == '\'') { *cur = ' '; cur++; }
+        } else if (*cur == '#') {
+            while (*cur && *cur != '\n') { *cur = ' '; cur++; }
+        } else {
+            cur++;
+        }
+    }
+
     const char* p = buf;
     while (*p) {
         while (*p && !is_ident_char(*p)) p++;
@@ -1198,11 +1234,31 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         AstType* lt = ck_resolve_type(ck, e->a);
         AstType* rt = ck_resolve_type(ck, e->b);
         if (!lt || !rt) { free(lt); free(rt); return NULL; }
-        int lf = (lt->name && (strcmp(lt->name,"float")==0 || strcmp(lt->name,"double")==0));
-        int rf = (rt->name && (strcmp(rt->name,"float")==0 || strcmp(rt->name,"double")==0));
-        if (lf || rf) { AstType* r = ck_mk_type("float", 0); free(lt); free(rt); return r; }
-        if (ck_type_is_numeric(lt->name) && ck_type_is_numeric(rt->name)) {
-            AstType* r = ck_mk_type("int", 0); free(lt); free(rt); return r;
+        const char* op = e->str;
+        if (op && (strcmp(op, "+") == 0 || strcmp(op, "-") == 0)) {
+            if (lt->ptrs > 0 && rt->ptrs == 0 && ck_type_is_numeric(rt->name)) {
+                AstType* r = ck_clone_type(lt);
+                free(lt); free(rt);
+                return r;
+            }
+            if (strcmp(op, "+") == 0 && lt->ptrs == 0 && rt->ptrs > 0 && ck_type_is_numeric(lt->name)) {
+                AstType* r = ck_clone_type(rt);
+                free(lt); free(rt);
+                return r;
+            }
+            if (strcmp(op, "-") == 0 && lt->ptrs > 0 && rt->ptrs > 0) {
+                AstType* r = ck_mk_type("int", 0);
+                free(lt); free(rt);
+                return r;
+            }
+        }
+        if (lt->ptrs == 0 && rt->ptrs == 0) {
+            int lf = (lt->name && (strcmp(lt->name,"float")==0 || strcmp(lt->name,"double")==0));
+            int rf = (rt->name && (strcmp(rt->name,"float")==0 || strcmp(rt->name,"double")==0));
+            if (lf || rf) { AstType* r = ck_mk_type("float", 0); free(lt); free(rt); return r; }
+            if (ck_type_is_numeric(lt->name) && ck_type_is_numeric(rt->name)) {
+                AstType* r = ck_mk_type("int", 0); free(lt); free(rt); return r;
+            }
         }
         free(lt); free(rt);
         return NULL;
@@ -1425,6 +1481,38 @@ static void ck_member_field(Checker* ck, Expr* x) {
     free(t);
 }
 
+static Expr* strip_parens(Expr* e) {
+    while (e && e->kind == E_PAREN) e = e->a;
+    return e;
+}
+
+static int is_literal_zero(Expr* e) {
+    while (e) {
+        if (e->kind == E_PAREN) {
+            e = e->a;
+        } else if (e->kind == E_UNARY && e->str && (strcmp(e->str, "-") == 0 || strcmp(e->str, "+") == 0)) {
+            e = e->a;
+        } else {
+            break;
+        }
+    }
+    if (!e || e->kind != E_LITERAL || !e->str) return 0;
+    const char* s = e->str;
+    while (*s == ' ' || *s == '\t') s++;
+    if (*s == '+' || *s == '-') s++;
+    char* endp = NULL;
+    double d = strtod(s, &endp);
+    if (d == 0.0) {
+        while (endp && *endp) {
+            char c = *endp;
+            if (c != 'u' && c != 'U' && c != 'l' && c != 'L' && c != 'f' && c != 'F') return 0;
+            endp++;
+        }
+        return 1;
+    }
+    return 0;
+}
+
 static void ck_expr(Checker* ck, Expr* x) {
     if (!x || ck->is_err) return;
     switch (x->kind) {
@@ -1492,10 +1580,28 @@ static void ck_expr(Checker* ck, Expr* x) {
         break;
     case E_UNARY:
         ck_expr(ck, x->a);
+        if (x->str && (strcmp(x->str, "++") == 0 || strcmp(x->str, "--") == 0)) {
+            AstType* t = ck_resolve_type(ck, x->a);
+            if (t) {
+                if (t->ptrs > 0 && t->name && strcmp(t->name, "void") == 0) {
+                    ck_err_expr(ck, x, "pointer arithmetic on 'void*' is invalid; cast to 'char*' or 'uint8_t*'");
+                }
+                free(t);
+            }
+        }
         if (!x->type) x->type = ck_resolve_type(ck, x);
         break;
     case E_POST:
         ck_expr(ck, x->a);
+        if (x->str && (strcmp(x->str, "++") == 0 || strcmp(x->str, "--") == 0)) {
+            AstType* t = ck_resolve_type(ck, x->a);
+            if (t) {
+                if (t->ptrs > 0 && t->name && strcmp(t->name, "void") == 0) {
+                    ck_err_expr(ck, x, "pointer arithmetic on 'void*' is invalid; cast to 'char*' or 'uint8_t*'");
+                }
+                free(t);
+            }
+        }
         break;
     case E_BINARY: {
         ck_expr(ck, x->a);
@@ -1503,8 +1609,7 @@ static void ck_expr(Checker* ck, Expr* x) {
 
         /* Ban division or modulo by literal zero */
         if (x->str && (strcmp(x->str, "/") == 0 || strcmp(x->str, "%") == 0)) {
-            if (x->b && x->b->kind == E_LITERAL && x->b->str &&
-                (strcmp(x->b->str, "0") == 0 || strcmp(x->b->str, "0.0") == 0)) {
+            if (is_literal_zero(x->b)) {
                 ck_err_expr(ck, x, "division or modulo by zero");
             }
         }
@@ -1541,17 +1646,51 @@ static void ck_expr(Checker* ck, Expr* x) {
         free(rt);
         break;
     }
-    case E_TERNARY:
+    case E_TERNARY: {
+        Expr* c = strip_parens(x->a);
+        if (c && c->kind == E_ASSIGN) {
+            ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
+        }
         ck_expr(ck, x->a);
         ck_expr(ck, x->b);
         ck_expr(ck, x->c);
         break;
+    }
     case E_ASSIGN: {
         ck_expr(ck, x->a);
         ck_expr(ck, x->b);
+        const char* op = x->str ? x->str : "=";
+        if (strcmp(op, "/=") == 0 || strcmp(op, "%=") == 0) {
+            if (is_literal_zero(x->b)) {
+                ck_err_expr(ck, x, "division or modulo by zero");
+            }
+        }
         AstType* lt = ck_resolve_type(ck, x->a);
         AstType* rt = ck_resolve_type(ck, x->b);
         if (lt && rt) {
+            int lp = lt->ptrs > 0;
+            int rp = rt->ptrs > 0;
+            int lvoid = lp && lt->name && strcmp(lt->name, "void") == 0;
+            int rvoid = rp && rt->name && strcmp(rt->name, "void") == 0;
+            if (strcmp(op, "+=") == 0) {
+                if (lp && rp) {
+                    ck_err_expr(ck, x, "cannot add two pointers");
+                } else if (lvoid || rvoid) {
+                    ck_err_expr(ck, x, "pointer arithmetic on 'void*' is invalid; cast to 'char*' or 'uint8_t*'");
+                }
+            } else if (strcmp(op, "-=") == 0) {
+                if (!lp && rp) {
+                    ck_err_expr(ck, x, "cannot subtract pointer from integer");
+                } else if (lvoid || rvoid) {
+                    ck_err_expr(ck, x, "pointer arithmetic on 'void*' is invalid; cast to 'char*' or 'uint8_t*'");
+                }
+            } else if (strcmp(op, "*=") == 0 || strcmp(op, "/=") == 0 || strcmp(op, "%=") == 0 ||
+                       strcmp(op, "&=") == 0 || strcmp(op, "|=") == 0 || strcmp(op, "^=") == 0 ||
+                       strcmp(op, "<<=") == 0 || strcmp(op, ">>=") == 0) {
+                if (lp || rp) {
+                    ck_err_expr(ck, x, "invalid operand of pointer type for binary operator");
+                }
+            }
             int ok = ck_types_compatible(lt, rt);
             if (!ok) {
                 char* ls = ck_type_str(lt);
@@ -1687,7 +1826,11 @@ static void ck_decl(Checker* ck, Decl* d) {
     if (d->init) ck_expr(ck, d->init);
 
     /* validate declared type */
-    if (d->type && !ck_decl_type_valid(ck, d->type)) {
+    if (d->type && d->type->name && strcmp(d->type->name, "void") == 0 && d->type->ptrs == 0) {
+        char msg[256];
+        snprintf(msg, sizeof msg, "variable '%s' cannot have 'void' type", d->name);
+        ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
+    } else if (d->type && !ck_decl_type_valid(ck, d->type)) {
         char* ts = ck_type_str(d->type);
         char msg[256];
         snprintf(msg, sizeof msg, "unknown type '%s'", ts);
@@ -1699,6 +1842,12 @@ static void ck_decl(Checker* ck, Decl* d) {
         ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, full);
         free(full);
         free(ts);
+    }
+
+    if (!d->type && !d->init) {
+        char msg[256];
+        snprintf(msg, sizeof msg, "cannot infer type for variable '%s' without initializer", d->name);
+        ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
     }
 
     /* infer and register the local */
@@ -1815,28 +1964,33 @@ static void ck_stmt(Checker* ck, Stmt* s) {
     case S_DECL:
         ck_decl(ck, s->decl);
         break;
-    case S_IF:
-        if (s->cond && s->cond->kind == E_ASSIGN) {
-            ck_err_expr(ck, s->cond, "assignment used as condition; did you mean '=='?");
+    case S_IF: {
+        Expr* c = strip_parens(s->cond);
+        if (c && c->kind == E_ASSIGN) {
+            ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
         ck_expr(ck, s->cond);
         ck_stmt(ck, s->then);
         ck_stmt(ck, s->els);
         break;
-    case S_WHILE:
-        if (s->cond && s->cond->kind == E_ASSIGN) {
-            ck_err_expr(ck, s->cond, "assignment used as condition; did you mean '=='?");
+    }
+    case S_WHILE: {
+        Expr* c = strip_parens(s->cond);
+        if (c && c->kind == E_ASSIGN) {
+            ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
         ck_expr(ck, s->cond);
         ck->loop_depth++;
         ck_stmt(ck, s->body);
         ck->loop_depth--;
         break;
-    case S_FOR:
+    }
+    case S_FOR: {
         if (s->init_decl) ck_decl(ck, s->init_decl);
         if (s->init_expr) ck_expr(ck, s->init_expr);
-        if (s->cond && s->cond->kind == E_ASSIGN) {
-            ck_err_expr(ck, s->cond, "assignment used as condition; did you mean '=='?");
+        Expr* c = strip_parens(s->cond);
+        if (c && c->kind == E_ASSIGN) {
+            ck_err_expr(ck, c, "assignment used as condition; did you mean '=='?");
         }
         ck_expr(ck, s->cond);
         ck_expr(ck, s->step);
@@ -1844,7 +1998,11 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         ck_stmt(ck, s->body);
         ck->loop_depth--;
         break;
+    }
     case S_FORIN:
+        if (!s->iter || s->iter->kind != E_ARR_LIT) {
+            ck_err_expr(ck, s->iter, "for-in loop currently only supports array literal collections (e.g. 'for x in [1, 2, 3]')");
+        }
         ck_expr(ck, s->iter);
         /* the loop variable is `auto` from the array literal element */
         ck_add_local(ck, s->var, NULL, NULL);
@@ -1852,7 +2010,11 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         ck_stmt(ck, s->body);
         ck->loop_depth--;
         break;
-    case S_SWITCH:
+    case S_SWITCH: {
+        Expr* c = strip_parens(s->e);
+        if (c && c->kind == E_ASSIGN) {
+            ck_err_expr(ck, c, "assignment used as switch condition; did you mean '=='?");
+        }
         ck_expr(ck, s->e);
         ck->switch_depth++;
         for (int i = 0; i < s->narms; i++) {
@@ -1861,6 +2023,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         }
         ck->switch_depth--;
         break;
+    }
     case S_MATCH: {
         ck_expr(ck, s->e);
         ck->switch_depth++;

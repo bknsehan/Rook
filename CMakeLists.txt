@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(rokade C)
+project(rokade VERSION 0.4.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -89,13 +89,16 @@ option(ROOK_LSP_C_HEADERS "Enable libclang project C-header parsing in rook-lsp"
 if(ROOK_BUILD_LSP)
   find_program(CARGO_EXECUTABLE cargo)
   if(NOT CARGO_EXECUTABLE)
-    message(FATAL_ERROR
-      "ROOK_BUILD_LSP is ON but `cargo` was not found. Install the Rust "
-      "toolchain, set CMAKE_PREFIX_PATH, or configure with -DROOK_BUILD_LSP=OFF.")
+    message(STATUS
+      "cargo not found — disabling ROOK_BUILD_LSP. Install the Rust toolchain "
+      "or configure with -DROOK_BUILD_LSP=ON once cargo is available.")
+    set(ROOK_BUILD_LSP OFF CACHE BOOL "Build the rook-lsp language server" FORCE)
   endif()
+endif()
 
+if(ROOK_BUILD_LSP)
   set(_cargo_manifest ${CMAKE_SOURCE_DIR}/lsp/Cargo.toml)
-  set(_cargo_bin ${CMAKE_SOURCE_DIR}/lsp/target/release/rook-lsp)
+  set(_cargo_bin ${CMAKE_SOURCE_DIR}/lsp/target/release/rook-lsp${CMAKE_EXECUTABLE_SUFFIX})
   set(_lsp_features "")
   if(ROOK_LSP_C_HEADERS)
     list(APPEND _lsp_features --features c-headers)
@@ -104,10 +107,10 @@ if(ROOK_BUILD_LSP)
   # One recipe builds via cargo, then places the binary at build/rook-lsp.
   add_custom_target(rook_lsp ALL
     COMMAND ${CARGO_EXECUTABLE} build --release --manifest-path ${_cargo_manifest} ${_lsp_features}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cargo_bin} ${CMAKE_BINARY_DIR}/rook-lsp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cargo_bin} ${CMAKE_BINARY_DIR}/rook-lsp${CMAKE_EXECUTABLE_SUFFIX}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lsp
     BYPRODUCTS ${_cargo_bin}
-    COMMENT "Building rook-lsp (cargo) -> ${CMAKE_BINARY_DIR}/rook-lsp"
+    COMMENT "Building rook-lsp (cargo) -> ${CMAKE_BINARY_DIR}/rook-lsp${CMAKE_EXECUTABLE_SUFFIX}"
     VERBATIM)
 
   # Install the LSP binary alongside the compiler (only when built).

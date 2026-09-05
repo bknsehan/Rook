@@ -44,7 +44,6 @@ fi
 if ! command -v "$ROKADE_CC" >/dev/null; then echo "C compiler '$ROKADE_CC' not found"; exit 1; fi
 
 # ---- helpers ----------------------------------------------------------------
-has_multi_include() { grep -qE '^#\s*include\s*[<"][^>"\n]+\.rook' "$1"; }
 
 # returns 0 if emit+C generation succeeded, 1 otherwise
 emit() { # $1=src, $2=out.c
@@ -74,19 +73,11 @@ for src in "$CORPUS"/*.rook; do
     # ---- expected-output test ------------------------------------------------
     if [ -f "$out_ref" ]; then
         if ! emit "$src" "$WORK/t.c"; then
-            if has_multi_include "$src"; then
-                KNOWN=$((KNOWN+1)); known+=("$base"); echo "  KNOWN (multi-file include) $base"
-            else
-                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
-            fi
+            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
             continue
         fi
         if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
-            if has_multi_include "$src"; then
-                KNOWN=$((KNOWN+1)); known+=("$base"); echo "  KNOWN (multi-file include) $base"
-            else
-                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
-            fi
+            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
             continue
         fi
         # optional stdin from a sibling <base>.in

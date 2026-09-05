@@ -22,7 +22,8 @@ typedef struct CG {
     int nlocals;
     int cap;
     int result_count;
-    DeferFrame defer_stack[64];
+    DeferFrame* defer_stack;
+    int defer_cap;
     int defer_depth;
     int loop_depth;
     AstType* cur_ret;   /* return type of the function currently being emitted */
@@ -832,15 +833,18 @@ static void cg_fn(CG* g, FnDef* f, int ind, AstType* receiver) {
 }
 
 static void cg_struct(CG* g, StructDef* st) {
-    sb_append(&g->sb, "typedef struct ");
-    sb_append(&g->sb, st->name);
-    if (st->nfields == 0) {
+    if (st->nfields == 0 && (!st->parent || !st->parent[0])) {
+        sb_append(&g->sb, "typedef struct ");
+        sb_append(&g->sb, st->name);
+        sb_append(&g->sb, " ");
+        sb_append(&g->sb, st->name);
         sb_append(&g->sb, ";\n");
         return;
     }
+    sb_append(&g->sb, "typedef struct ");
+    sb_append(&g->sb, st->name);
     sb_append(&g->sb, " {\n");
-    if (st->parent) {
-
+    if (st->parent && st->parent[0]) {
         cg_indent(g);
         sb_append(&g->sb, "    struct ");
         sb_append(&g->sb, st->parent);
@@ -979,11 +983,15 @@ static void cg_impl(CG* g, ImplDef* im) {
     receiver.name = tyname;
     for (int i = 0; i < im->nmethods; i++) {
         FnDef* method = im->methods[i];
-        char mangled[256];
-        snprintf(mangled, sizeof(mangled), "%s_%s", tyname, method->name);
-        FnDef copy = *method;
-        copy.name = mangled;
-        cg_fn(g, &copy, 1, &receiver);
+        size_t mlen = strlen(tyname) + strlen(method->name) + 2;
+        char* mangled = malloc(mlen);
+        if (mangled) {
+            snprintf(mangled, mlen, "%s_%s", tyname, method->name);
+            FnDef copy = *method;
+            copy.name = mangled;
+            cg_fn(g, &copy, 1, &receiver);
+            free(mangled);
+        }
         /* cg_fn registers `self` and params as locals; clear them so the
            next method starts fresh (and so the freed `tyname` is not reused). */
         cg_clear_locals(g);
@@ -995,6 +1003,12 @@ static void cg_stmt(CG* g, Stmt* s) {
     if (!s) return;
     switch (s->kind) {
     case S_BLOCK: {
+        if (g->defer_depth >= g->defer_cap) {
+            int new_cap = g->defer_cap ? g->defer_cap * 2 : 16;
+            g->defer_stack = realloc(g->defer_stack, (size_t)new_cap * sizeof(DeferFrame));
+            memset(&g->defer_stack[g->defer_cap], 0, (size_t)(new_cap - g->defer_cap) * sizeof(DeferFrame));
+            g->defer_cap = new_cap;
+        }
         DeferFrame* f = &g->defer_stack[g->defer_depth++];
         f->count = 0; f->cap = 0; f->stmts = NULL; f->loop_depth = g->loop_depth;
         sb_append(&g->sb, "{\n");
@@ -1102,19 +1116,6 @@ static void cg_stmt(CG* g, Stmt* s) {
             cg_indent(g);
             sb_append(&g->sb, "}\n");
             free(tmp);
-        } else {
-            sb_append(&g->sb, "for (");
-            sb_append(&g->sb, s->var);
-            sb_append(&g->sb, " in ");
-            cg_expr(g, s->iter);
-            sb_append(&g->sb, ") {\n");
-            g->ind++;
-            g->loop_depth++;
-            cg_stmt(g, s->body);
-            g->loop_depth--;
-            g->ind--;
-            cg_indent(g);
-            sb_append(&g->sb, "}\n");
         }
         break;
     case S_SWITCH:
@@ -1358,11 +1359,15 @@ static void cg_program(CG* g, Program* prog) {
             receiver.name = tyname;
             for (int j = 0; j < it->im->nmethods; j++) {
                 FnDef* m = it->im->methods[j];
-                char mangled[256];
-                snprintf(mangled, sizeof(mangled), "%s_%s", tyname, m->name);
-                FnDef copy = *m;
-                copy.name = mangled;
-                cg_fn_prototype(g, &copy, &receiver);
+                size_t mlen = strlen(tyname) + strlen(m->name) + 2;
+                char* mangled = malloc(mlen);
+                if (mangled) {
+                    snprintf(mangled, mlen, "%s_%s", tyname, m->name);
+                    FnDef copy = *m;
+                    copy.name = mangled;
+                    cg_fn_prototype(g, &copy, &receiver);
+                    free(mangled);
+                }
             }
             free(tyname);
         }
@@ -1488,7 +1493,8 @@ char* codegen_program(Sema* sema, Program* prog, int* out_len, int bounds_check)
     for (int i = 0; i < g.nlocals; i++) free(g.local_names[i]);
     free(g.local_names);
     free(g.local_types);
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < g.defer_cap; i++)
         if (g.defer_stack[i].stmts) free(g.defer_stack[i].stmts);
+    free(g.defer_stack);
     return out;
 }

@@ -22,7 +22,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.3.0"
+#define ROKADE_VERSION "0.4.0"
 #endif
 
 #ifdef _WIN32
@@ -73,10 +73,20 @@ static int rokade_get_install_root(char* buf, size_t cap) {
     }
 #endif
 
-    /* 4. Target user install path on Linux */
-    const char* default_linux = "/home/bknsehan/bin/Rook";
-    if (access(default_linux, R_OK) == 0) {
-        snprintf(buf, cap, "%s", default_linux);
+    /* 4. $HOME/bin/Rook (common user install location) */
+    const char* home = getenv("HOME");
+    if (home && home[0]) {
+        snprintf(buf, cap, "%s/bin/Rook", home);
+        if (access(buf, R_OK) == 0) return 0;
+
+        /* 5. $HOME/.local/share/rook (XDG data dir) */
+        snprintf(buf, cap, "%s/.local/share/rook", home);
+        if (access(buf, R_OK) == 0) return 0;
+    }
+
+    /* 6. System-wide install */
+    if (access("/usr/local/lib/rook", R_OK) == 0) {
+        snprintf(buf, cap, "/usr/local/lib/rook");
         return 0;
     }
 
@@ -336,9 +346,11 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
     int stamp = (depth == 0 && current_file && current_file[0]);
 
     while (p < end) {
-        /* Find #include at start of line */
-        if (*p == '#') {
-            const char* nl = memchr(p + 1, '\n', end - p - 1);
+        /* Find #include at start of line (allowing leading whitespace) */
+        const char* hash = p;
+        while (hash < end && (*hash == ' ' || *hash == '\t')) hash++;
+        if (hash < end && *hash == '#') {
+            const char* nl = memchr(hash + 1, '\n', end - hash - 1);
             int line_len = nl ? (int)(nl - p + 1) : (int)(end - p);
             char line[4096];
             int copy_len = line_len < (int)sizeof(line) ? line_len : (int)sizeof(line) - 1;
@@ -584,8 +596,10 @@ static char** scan_includes(const char* src, int src_len, const char* basedir, s
     const char* end = work + work_len;
 
     while (p < end) {
-        if (*p == '#') {
-            const char* nl = memchr(p + 1, '\n', end - p - 1);
+        const char* hash = p;
+        while (hash < end && (*hash == ' ' || *hash == '\t')) hash++;
+        if (hash < end && *hash == '#') {
+            const char* nl = memchr(hash + 1, '\n', end - hash - 1);
             int line_len = nl ? (int)(nl - p + 1) : (int)(end - p);
             char line[4096];
             int copy_len = line_len < (int)sizeof(line) ? line_len : (int)sizeof(line) - 1;
@@ -868,10 +882,8 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
                     }
                 }
             }
-            if (pathbuf[0] && cfg->n_dependencies < 32) {
-                snprintf(cfg->dependencies[cfg->n_dependencies].name, sizeof(cfg->dependencies[0].name), "%s", key);
-                snprintf(cfg->dependencies[cfg->n_dependencies].path, sizeof(cfg->dependencies[0].path), "%s", pathbuf);
-                cfg->n_dependencies++;
+            if (pathbuf[0]) {
+                project_config_add_dependency(cfg, key, pathbuf);
             }
         }
         return 0;
@@ -1033,6 +1045,20 @@ static void resolve_pkg_config(ProjectConfig* cfg) {
     if (cfg->n_pkg_config == 0) return;
     for (size_t i = 0; i < cfg->n_pkg_config; i++) {
         const char* pkg = cfg->pkg_config[i];
+
+        /* Validate package name: only allow [a-zA-Z0-9_\-+.] to prevent shell injection. */
+        int valid = 1;
+        for (const char* p = pkg; *p; p++) {
+            if (!isalnum((unsigned char)*p) && *p != '_' && *p != '-' && *p != '+' && *p != '.') {
+                valid = 0;
+                break;
+            }
+        }
+        if (!valid || !pkg[0]) {
+            fprintf(stderr, "warning: skipping invalid pkg-config name '%s'\n", pkg);
+            continue;
+        }
+
         char cmd[1024];
 
         /* Include dirs */
@@ -1193,6 +1219,10 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                 /* Note: dep_cfg.build_kind / build_target are ignored when loaded as dependency.
                    The main project treats this dependency as part of its own compilation. */
 
+                /* Recurse first so transitive dependencies (A->B->C) are fully resolved in dep_cfg
+                   before we merge them up into the parent cfg. */
+                resolve_project_dependencies(resolved_dir, &dep_cfg, depth + 1);
+
                 for (size_t k = 0; k < dep_cfg.n_pkg_config; k++) {
                     project_config_add_pkg_config(cfg, dep_cfg.pkg_config[k]);
                 }
@@ -1202,14 +1232,22 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                 for (size_t k = 0; k < dep_cfg.n_include_dirs; k++) {
                     project_config_add_include_dir(cfg, dep_cfg.include_dirs[k]);
                 }
+                /* Merge cflags: only append tokens not already present to avoid duplication. */
                 if (dep_cfg.cflags[0]) {
-                    size_t curlen = strlen(cfg->cflags);
-                    size_t dlen = strlen(dep_cfg.cflags);
-                    if (curlen + dlen + 2 < sizeof(cfg->cflags)) {
-                        snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", dep_cfg.cflags);
+                    char tmp[sizeof(dep_cfg.cflags)];
+                    snprintf(tmp, sizeof(tmp), "%s", dep_cfg.cflags);
+                    char* tok = strtok(tmp, " \t");
+                    while (tok) {
+                        if (!strstr(cfg->cflags, tok)) {
+                            size_t curlen = strlen(cfg->cflags);
+                            size_t tlen = strlen(tok);
+                            if (curlen + tlen + 2 < sizeof(cfg->cflags)) {
+                                snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", tok);
+                            }
+                        }
+                        tok = strtok(NULL, " \t");
                     }
                 }
-                resolve_project_dependencies(resolved_dir, &dep_cfg, depth + 1);
                 project_config_free(&dep_cfg);
             }
         }
@@ -1396,17 +1434,25 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     snprintf(gen_dir, sizeof(gen_dir), "%s/build/generated", proj_path);
     mkdir_p(gen_dir);
 
-    char* c_file_paths[128];
+    char** c_file_paths = NULL;
+    size_t c_file_paths_cap = 0;
     size_t n_src = 0;
     struct dirent* entry;
 
     /* Pre-scan: collect filenames and find which .rook files are included. */
-    char* all_files[128];
+    char** all_files = NULL;
+    size_t all_files_cap = 0;
     size_t n_all = 0;
     while ((entry = readdir(d)) != NULL) {
-        if (n_all >= 128) break;
         size_t mlen = strlen(entry->d_name);
         if (mlen < 5 || strcmp(entry->d_name + mlen - 5, ".rook") != 0) continue;
+        if (n_all >= all_files_cap) {
+            size_t new_cap = all_files_cap == 0 ? 64 : all_files_cap * 2;
+            char** tmp = realloc(all_files, new_cap * sizeof(char*));
+            if (!tmp) break;
+            all_files = tmp;
+            all_files_cap = new_cap;
+        }
         all_files[n_all++] = strdup(entry->d_name);
     }
     int* is_included = calloc(n_all, sizeof(int));
@@ -1438,7 +1484,6 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
     while ((entry = readdir(d)) != NULL) {
         size_t mlen = strlen(entry->d_name);
-        if (n_src >= 128) break;
         if (mlen < 5 || strcmp(entry->d_name + mlen - 5, ".rook") != 0) continue;
 
         int skip = 0;
@@ -1535,11 +1580,23 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         if (inc_list) free(inc_list);
         program_free(p);
 
+        /* Grow c_file_paths if needed */
+        if (n_src >= c_file_paths_cap) {
+            size_t new_cap = c_file_paths_cap == 0 ? 64 : c_file_paths_cap * 2;
+            char** tmp = realloc(c_file_paths, new_cap * sizeof(char*));
+            if (!tmp) {
+                fprintf(stderr, "error: out of memory growing c_file_paths\n");
+                break;
+            }
+            c_file_paths = tmp;
+            c_file_paths_cap = new_cap;
+        }
         c_file_paths[n_src++] = strdup(c_path);
     }
     closedir(d);
     free(is_included);
     for (size_t i = 0; i < n_all; i++) free(all_files[i]);
+    free(all_files);
 
     if (n_src == 0) {
         fprintf(stderr, "error: no .rook files found in %s\n", src_dir);
@@ -1642,7 +1699,13 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 continue;
             }
 
-            char* obj_file_paths[128];
+            char** obj_file_paths = malloc(n_src * sizeof(char*));
+            if (!obj_file_paths) {
+                fprintf(stderr, "error: out of memory allocating obj_file_paths\n");
+                toolchain_free(&tc);
+                any_err = 1;
+                continue;
+            }
             int compile_failed = 0;
             for (size_t i = 0; i < n_src; i++) {
                 char obj_path[8192];
@@ -1676,6 +1739,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 }
             }
             if (compile_failed) {
+                free(obj_file_paths);
                 toolchain_free(&tc);
                 any_err = 1;
                 continue;
@@ -1702,6 +1766,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             int link_ret = toolchain_link_target(&spec, &tc, target_bin, (const char**)obj_file_paths, n_src, libs, cfg.n_libraries, NULL);
 
             for (size_t i = 0; i < n_src; i++) free(obj_file_paths[i]);
+            free(obj_file_paths);
             toolchain_free(&tc);
 
             if (link_ret != 0) {
@@ -1715,6 +1780,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     }
 
     for (size_t i = 0; i < n_src; i++) free(c_file_paths[i]);
+    free(c_file_paths);
     if (inc_dirs) free(inc_dirs);
     if (libs) free(libs);
     project_config_free(&cfg);
