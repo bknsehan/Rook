@@ -1513,6 +1513,7 @@ rokade build --all
     <tr><td><code>rokade --emit-llvm &lt;file.rook&gt;</code></td><td>Emits LLVM Intermediate Representation (LLVM IR).</td></tr>
     <tr><td><code>rokade --emit-obj &lt;file.rook&gt;</code></td><td>Compiles directly to native object file (<code>.o</code>) via LLVM.</td></tr>
     <tr><td><code>rokade --ast &lt;file.rook&gt;</code></td><td>Prints AST for debugging.</td></tr>
+    <tr><td><code>rokade fmt [--check|--write] &lt;path&gt;</code></td><td>Formats Rook source files in-place with AST equality verification.</td></tr>
     <tr><td><code>rokade --check &lt;file.rook&gt;</code></td><td>Performs parser verification.</td></tr>
     <tr><td><code>rokade --check-dir &lt;dir&gt;</code></td><td>Validates all <code>.rook</code> files within a directory.</td></tr>
     <tr><td><code>rokade --diagnostics &lt;file.rook&gt;</code></td><td>Emits JSON diagnostics for editor integration.</td></tr>
