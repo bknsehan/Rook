@@ -61,9 +61,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     --nav-active-text: #1d4ed8;
     
     /* Callout Colors */
-    --note-bg: #eff6ff;
-    --note-border: #3b82f6;
-    --note-title: #1e40af;
+    --note-bg: #f8fafc;
+    --note-border: #2563eb;
+    --note-title: #2563eb;
     --tip-bg: #ecfdf5;
     --tip-border: #10b981;
     --tip-title: #065f46;
@@ -456,6 +456,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     border-radius: 8px;
     padding: 18px 20px;
     margin: 20px 0 24px;
+    border: 1px solid var(--border);
     border-left: 4px solid transparent;
   }
 
@@ -636,14 +637,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <!-- VIEW 1: LANGUAGE GUIDE -->
   <div id="view-guide" class="view-container">
     <header class="hero" id="top-guide">
-      <div class="badges">
-        <span class="badge highlight">Rokade v0.4.2</span>
-        <span class="badge">Zero Runtime Overhead</span>
-        <span class="badge">Header-Less C Dialect</span>
-        <span class="badge">Zero-Shell Execution</span>
-        <span class="badge">Experimental LLVM Backend</span>
-        <span class="badge">Completely Offline</span>
-      </div>
       <h1>The Rook Language Guide</h1>
       <p class="hero-tagline">
         A technical specification and comprehensive reference manual for <strong>Rook</strong>: a modern systems language with 1:1 C ABI compatibility, memory-safe defaults, zero-overhead single inheritance, and dual C/LLVM compilation backends.
@@ -659,19 +652,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <!-- VIEW 2: BEGINNER COURSE -->
   <div id="view-beginner" class="view-container" style="display:none;">
     <header class="hero" id="top-beginner">
-      <div class="badges">
-        <span class="badge pedagogy">Beginner Foundations</span>
-        <span class="badge">High School Graduate Level</span>
-        <span class="badge">Zero Coding Background Needed</span>
-        <span class="badge">12 Complete Modules</span>
-        <span class="badge">Purely Educational</span>
-      </div>
       <h1>Programming Foundations: From Scratch</h1>
       <p class="hero-tagline">
         A friendly, thorough, and step-by-step educational course designed for students and newcomers learning computer programming from the ground up. Master computational thinking, memory, data structures, and problem solving in plain English.
       </p>
       <div class="hero-meta">
-        Audience: High school graduates &amp; beginners &nbsp;|&nbsp; Approach: Real-world analogies &amp; clean concepts &nbsp;|&nbsp; Fully self-contained.
+        Audience: New enthusiast learners &nbsp;|&nbsp; Approach: Real-world analogies &amp; clean concepts &nbsp;|&nbsp; Fully self-contained.
       </div>
     </header>
 

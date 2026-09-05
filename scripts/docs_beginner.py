@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_beginner.py
-Comprehensive "Programming Foundations" educational course for high-school graduates
+Comprehensive "Programming Foundations" educational course for new enthusiast learners
 learning computer programming from scratch.
 """
 
@@ -15,10 +15,10 @@ def get_beginner_modules(make_code_box, make_callout):
     # Module B1: How Computers Actually Work (The Mental Model)
     # ============================================================
     m1 = """
-<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this—just a few simple mental models.</p>
+<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this,just a few simple mental models.</p>
 
 <h3>1.1 The Physical Triumvirate: CPU, RAM, and Storage</h3>
-<p>Every computer—from the phone in your pocket to massive supercomputers in data centers—relies on three core physical components working in harmony:</p>
+<p>Every computer,from the phone in your pocket to massive supercomputers in data centers,relies on three core physical components working in harmony:</p>
 
 <div class="arch-diagram">
   <div class="arch-box"><strong>The Storage (SSD / Hard Drive)</strong><br>Permanent Library<br>Large, durable, but slow</div>
@@ -31,7 +31,7 @@ def get_beginner_modules(make_code_box, make_callout):
 <ul>
   <li><strong>The Storage (SSD or Hard Drive):</strong> Think of this as a permanent bookshelf or filing cabinet. When you turn your computer off, everything stored here remains safe. Your operating system, games, and code files live here. However, storage is relatively slow for the CPU to interact with directly.</li>
   <li><strong>RAM (Random Access Memory):</strong> Think of this as your active kitchen countertop or desk scratchpad. When you launch an application or compile code, the program is copied from storage into RAM. The CPU can read and write data in RAM in nanoseconds. However, RAM is <em>volatile</em>: when you shut down the computer, everything on the countertop is wiped clean.</li>
-  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction—billions of times per second.</li>
+  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction,billions of times per second.</li>
 </ul>
 
 <h3>1.2 Bits and Bytes: The Alphabet of Hardware</h3>
@@ -58,15 +58,59 @@ def get_beginner_modules(make_code_box, make_callout):
   <li><strong>The compiler inspects your code:</strong> It checks for grammar errors, verifies data types, and ensures safety rules are respected.</li>
   <li><strong>The compiler emits machine code:</strong> It translates your human instructions into raw binary instructions that your CPU can execute directly at maximum speed.</li>
 </ol>
+<h3>1.4 High-Level vs. Low-Level Languages</h3>
+<p>Not all programming languages speak at the same altitude. We broadly divide them into two categories:</p>
+<ul>
+  <li><strong>Low-Level Languages</strong> sit very close to the hardware. They give you direct control over memory, CPU registers, and individual bytes. The closer you are to the machine, the faster your code can run, but the more details you have to manage yourself. Examples include Assembly and C.</li>
+  <li><strong>High-Level Languages</strong> sit further from the hardware and handle many details for you automatically, such as memory management, type conversions, and common data structures. They let you think in human-friendly concepts (lists, objects, events) rather than memory addresses. Examples include Python, JavaScript, and Ruby.</li>
+</ul>
+<p>Rook occupies the low-to-middle ground: it gives you C-level control when you need it, but removes common sources of mistakes that low-level C programs suffer from, such as implicit type coercions and uninitialized memory.</p>
+
+<h3>1.5 Compiled, Interpreted, and Transpiled Languages</h3>
+<p>There is more than one way to turn source code into something a computer can run. The three most common approaches are:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Approach</th><th>What it does</th><th>When it happens</th><th>Examples</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Compiled</strong></td>
+      <td>A compiler reads your source code once, checks it for errors, and produces a native binary file (an <code>.exe</code> on Windows, or no extension on Linux/macOS). That binary runs directly on the CPU with no extra tools needed.</td>
+      <td>Once, before you run the program</td>
+      <td>C, C++, Rook, Rust, Go</td>
+    </tr>
+    <tr>
+      <td><strong>Interpreted</strong></td>
+      <td>An interpreter reads your source code line by line and executes each instruction on the spot. There is no separate compile step, but an interpreter must be installed on every machine that runs your code.</td>
+      <td>Every time the program runs</td>
+      <td>Python, Ruby, Bash</td>
+    </tr>
+    <tr>
+      <td><strong>Transpiled</strong></td>
+      <td>A transpiler converts source code in one language into equivalent source code in another language, which is then compiled or interpreted normally. The output is human-readable code, not machine code.</td>
+      <td>Once, producing another source file</td>
+      <td>TypeScript (to JS), CoffeeScript (to JS), Sass (to CSS)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+""" + make_callout("note", "Where does Rook fit?", """
+Rook is a <strong>compiled language</strong>. The <code>rokade</code> compiler reads your <code>.rook</code> files, checks them thoroughly for errors, and produces either a native binary (via a C backend) or LLVM IR (via the LLVM backend). The result runs directly on the CPU without any runtime interpreter.
+""") + """
 """ + make_callout("tip", "Key Takeaways of Module 1", """
 <ul>
-  <li>The CPU is the brain/calculator; RAM is the fast temporary workspace; Storage is the permanent library.</li>
+  <li>The CPU is the brain/calculator, RAM is the fast temporary workspace, and Storage is the permanent library.</li>
   <li>All computer data ultimately consists of bits (0s and 1s) and bytes (groups of 8 bits).</li>
-  <li>Source code is what humans write; machine code is what the CPU executes.</li>
-  <li>A compiler is the bridge that translates your human logic into blazing-fast machine instructions.</li>
+  <li>Source code is what humans write, machine code is what the CPU executes.</li>
+  <li>A compiler translates your source code into a fast native binary once, before the program runs.</li>
+  <li>Low-level languages give hardware control, high-level languages abstract the details away. Rook sits in between.</li>
+  <li>Compiled languages produce binaries, interpreted languages use a runtime, transpiled languages convert to another source language.</li>
 </ul>
 """)
     add_mod("b1-how-computers-work", "Module 1: How Computers Actually Work", m1)
+
 
     # ============================================================
     # Module B2: Your Very First Program & The Journey of Code
@@ -96,7 +140,7 @@ int main() {
   <code>printf</code> stands for <em>Print Formatted</em>. It takes the text inside the quotation marks and displays it on your terminal screen. Notice the funny characters <code>\\n</code> at the end: this is an <em>escape sequence</em> that tells the computer to press the "Enter" key and move to a fresh new line.</li>
 
   <li><strong>The Semicolon <code>;</code></strong><br>
-  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation; the compiler won't know where one thought ends and the next begins.</li>
+  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation, the compiler won't know where one thought ends and the next begins.</li>
 
   <li><strong><code>return 0;</code></strong><br>
   This is your program telling the operating system: "I have finished all my work, and everything went successfully without any errors!" In computing convention, a return code of <code>0</code> signifies success, while non-zero numbers (like 1, -1, or 404) signify various error codes.</li>
@@ -126,7 +170,7 @@ int main() {
     # Module B3: Storing Information: Variables and Data Types
     # ============================================================
     m3 = """
-<p>Programs are not static text; they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
+<p>Programs are not static text, they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
 
 <h3>3.1 The Labeled Storage Box Analogy</h3>
 <p>Imagine your computer's RAM as a vast warehouse. A <strong>variable</strong> is like a sturdy cardboard box with a name tag written on the outside:</p>
@@ -251,7 +295,7 @@ int main() {
 <h3>4.2 Comparison Operators (Asking Questions)</h3>
 <p>Computers make decisions by testing whether something is true or false:</p>
 <ul>
-  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value; double <code>==</code> compares values).</li>
+  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value, double <code>==</code> compares values).</li>
   <li><code>!=</code> (Is NOT Equal To?): <code>x != 5</code> (True if x is anything other than 5).</li>
   <li><code>&gt;</code> and <code>&lt;</code> (Greater than / Less than): <code>score &gt; 100</code></li>
   <li><code>&gt;=</code> and <code>&lt;=</code> (Greater than or equal / Less than or equal): <code>age &gt;= 18</code></li>
@@ -289,9 +333,9 @@ int main() {
 }
 """, "Operators in Action") + make_callout("tip", "Key Takeaways of Module 4", """
 <ul>
-  <li>Integer division discards decimals; use floats when you need fractions.</li>
+  <li>Integer division discards decimals, use floats when you need fractions.</li>
   <li>Use <code>==</code> to compare values, and <code>=</code> to assign values.</li>
-  <li><code>&&</code> means AND (both true); <code>||</code> means OR (either true); <code>!</code> means NOT (invert).</li>
+  <li><code>&&</code> means AND (both true), <code>||</code> means OR (either true), <code>!</code> means NOT (invert).</li>
 </ul>
 """)
     add_mod("b4-math-operators", "Module 4: Doing Math & Making Comparisons", m4)
@@ -300,10 +344,10 @@ int main() {
     # Module B5: Making Choices: Control Flow (if Statements)
     # ============================================================
     m5 = """
-<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in; otherwise, show an error message." We call this <strong>control flow</strong>.</p>
+<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in, otherwise, show an error message." We call this <strong>control flow</strong>.</p>
 
 <h3>5.1 The <code>if</code>, <code>else if</code>, and <code>else</code> Construct</h3>
-<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path; otherwise, it skips ahead.</p>
+<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path, otherwise, it skips ahead.</p>
 """ + make_code_box("rook", """
 #include <stdio.h>
 
@@ -422,12 +466,12 @@ int main() {
 #include <stdio.h>
 
 // A function that takes two integers, adds them, and returns the result
-fn add(a: int, b: int) -> int {
+int add(int a, int b) {
     return a + b;
 }
 
 // A function that doesn't return anything (void)
-fn greet(name: const char*) {
+void greet(const char* name) {
     printf("Welcome to Rook, %s!\\n", name);
 }
 
@@ -447,7 +491,7 @@ int main() {
 """ + make_callout("tip", "Key Takeaways of Module 7", """
 <ul>
   <li>Functions break large programs into small, readable, testable, and reusable blocks.</li>
-  <li>Parameters are inputs passed into the function; the <code>return</code> statement sends an output back.</li>
+  <li>Parameters are inputs passed into the function, and the <code>return</code> statement sends an output back.</li>
   <li>Functions with no return value use <code>void</code>.</li>
   <li>Local variables only exist inside their own function, preventing unintended side effects.</li>
 </ul>
@@ -551,7 +595,7 @@ int main() {
 <p>A <strong>null pointer</strong> is a slip of paper with address <code>0</code> (nowhere). If you try to dereference a null pointer (knocking on a door at an address that does not exist), the operating system immediately protects itself by terminating your program with a <em>segmentation fault</em> (crash). Always make sure a pointer points to valid memory before dereferencing it.</p>
 """ + make_callout("tip", "Key Takeaways of Module 9", """
 <ul>
-  <li>A variable holds data; a pointer holds the memory address where data lives.</li>
+  <li>A variable holds data, while a pointer holds the memory address where data lives.</li>
   <li><code>&x</code> gets the address of <code>x</code>.</li>
   <li><code>*ptr</code> accesses or modifies the value at the address stored in <code>ptr</code>.</li>
   <li>Pointers allow functions to modify caller data and pass large structures with zero copy overhead.</li>
@@ -624,7 +668,7 @@ int main() {
     # Module B11: Building Real Projects: Organizing Multiple Files
     # ============================================================
     m11 = """
-<p>When you build real-world software—like a game engine, a web server, or a desktop app—putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
+<p>When you build real-world software,like a game engine, a web server, or a desktop app,putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
 
 <h3>11.1 Project Structure</h3>
 <p>When you scaffold a new project with <code>rokade new my_project</code>, Rokade generates a clean, standardized layout:</p>
@@ -641,7 +685,7 @@ my_project/
 <p>In standard C, connecting two files requires creating and synchronizing <code>.h</code> header files with header guards. In Rook, you simply use the <code>#comprise</code> directive:</p>
 """ + make_code_box("rook", """
 // src/math_utils.rook
-fn square(x: int) -> int {
+int square(int x) {
     return x * x;
 }
 
@@ -669,7 +713,7 @@ int main() {
     # Module B12: How to Think Like a Programmer & Debugging
     # ============================================================
     m12 = """
-<p>Programming is not about memorizing syntax rules; it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
+<p>Programming is not about memorizing syntax rules, it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
 
 <h3>12.1 Problem Decomposition: Breaking Big Problems into Tiny Steps</h3>
 <p>When faced with a complex task (like "build a chess game"), the task feels overwhelming. The secret of programming is <strong>decomposition</strong>:</p>
@@ -681,7 +725,7 @@ int main() {
 </ol>
 
 <h3>12.2 Reading Compiler Errors Without Fear</h3>
-<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you; it is a helpful assistant pointing out where something doesn't make sense:</p>
+<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you, it is a helpful assistant pointing out where something doesn't make sense:</p>
 <ol>
   <li><strong>Look for the file and line number:</strong> It will look like <code>src/main.rook:14:5: error</code>. This tells you exactly where the problem occurred (line 14, column 5).</li>
   <li><strong>Read the error description:</strong> Usually it's something simple, like a missing semicolon <code>;</code>, an undefined variable name, or passing the wrong type of argument.</li>
@@ -706,18 +750,171 @@ int calculate_discount(int price, int customer_years) {
 <p>By watching the printed output, you can see exactly where the computer's logic diverged from what you intended.</p>
 
 <h3>12.4 Welcoming Mistakes on Your Journey</h3>
-<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming—it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
+<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming,it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
 """ + make_callout("tip", "Key Takeaways of Module 12", """
 <ul>
   <li>Break big problems down into small, easily solvable steps.</li>
-  <li>Read compiler errors from top to bottom; fix the first error first.</li>
+  <li>Read compiler errors from top to bottom, fix the first error first.</li>
   <li>Use print debugging to inspect variables when programs don't behave as expected.</li>
-  <li>Bugs are normal and natural—treat every error as a fun puzzle to solve.</li>
+  <li>Bugs are normal and natural, treat every error as a fun puzzle to solve.</li>
 </ul>
 """)
     add_mod("b12-debugging-thinking", "Module 12: How to Think Like a Programmer", m12)
 
+    # ============================================================
+    # Module B13: Objects and Methods (object / impl)
+    # ============================================================
+    m13 = """
+<p>As programs grow larger, you often need to bundle data <em>and</em> the operations on that data together. Rook provides two keywords for this: <code>object</code> (to define the data) and <code>impl</code> (to attach methods to it). This idea, sometimes called <strong>object-oriented programming</strong>, exists in many languages under names like <em>class</em> (Java, Python, C++), <em>struct + impl</em> (Rust), or <em>interface</em> (Go). Not every language has it, but understanding the concept helps you read and write almost any modern codebase.</p>
+
+<h3>13.1 Defining an Object</h3>
+<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You declare the fields in the <code>object</code> block:</p>
+""" + make_code_box("rook", """
+#include <stdio.h>
+
+object Animal {
+    name: const char*
+    legs: int
+}
+""", "Defining an Object") + """
+<h3>13.2 Attaching Methods with impl</h3>
+<p>An <code>impl</code> block attaches functions (called <strong>methods</strong>) to the object. Each method receives a pointer to the object as its first argument, named <code>self</code> by convention:</p>
+""" + make_code_box("rook", """
+#include <stdio.h>
+
+object Animal {
+    name: const char*
+    legs: int
+}
+
+impl Animal {
+    void speak(Animal* self) {
+        printf("%s\\n", self.name);
+    }
+    int legs_count(Animal* self) {
+        return self.legs;
+    }
+}
+
+int main() {
+    Animal dog;
+    dog.name = "Rex";
+    dog.legs = 4;
+
+    // Call methods using the dot operator
+    dog.speak();
+    printf("Legs: %d\\n", dog.legs_count());
+    return 0;
+}
+""", "Object with Methods") + """
+<h3>13.3 Inheritance</h3>
+<p>One object can extend another using <code>:</code>. The child object gains all the fields and methods of the parent, and can add more of its own:</p>
+""" + make_code_box("rook", """
+object Cat : Animal {
+    lives: int
+}
+
+impl Cat {
+    void meow(Cat* self) {
+        self.speak();   // inherited from Animal
+    }
+}
+
+int main() {
+    Cat c;
+    c.name = "Tom";
+    c.legs = 4;
+    c.lives = 9;
+    c.speak();
+    c.meow();
+    printf("Lives left: %d\\n", c.lives);
+    return 0;
+}
+""", "Inheritance in Rook") + make_callout("note", "Not all languages have this", """
+Object-oriented features like <code>object</code>, <code>impl</code>, and inheritance are powerful tools for organizing large programs. They exist in C++, Java, Python, and Rust (among others), each with different syntax. Some languages (like C and Go) deliberately leave them out and use different organizational patterns instead. Knowing both styles makes you a more flexible programmer.
+""") + make_callout("tip", "Key Takeaways of Module 13", """
+<ul>
+  <li><code>object</code> defines a custom data type with named fields.</li>
+  <li><code>impl</code> attaches methods to an object, each receiving a <code>self</code> pointer to the instance.</li>
+  <li>Call methods using the dot operator: <code>dog.speak()</code>.</li>
+  <li>Use <code>object Child : Parent</code> to inherit all parent fields and methods.</li>
+  <li>Object-oriented concepts exist in many languages under different names.</li>
+</ul>
+""")
+    add_mod("b13-objects-impl", "Module 13: Objects and Methods", m13)
+
+    # ============================================================
+    # Module B14: Pattern Matching with match
+    # ============================================================
+    m14 = """
+<p>Rook provides a <code>match</code> expression that lets you compare a value against several patterns and run different code for each one. It is similar to a <code>switch</code> statement in C or Java, but more expressive: it can destructure data structures and match on their inner fields in one step. Pattern matching is a feature in Rust, Swift, Haskell, and many functional languages. Not all languages have it, but it is increasingly common in modern language design.</p>
+
+<h3>14.1 Basic match on a Value</h3>
+<p>The simplest use of <code>match</code> is choosing between integer or enum values:</p>
+""" + make_code_box("rook", """
+#include <stdio.h>
+
+int main() {
+    int code = 2;
+
+    match (code) {
+        1 => printf("One\\n"),
+        2 => printf("Two\\n"),
+        3 => printf("Three\\n"),
+        _ => printf("Something else\\n"),
+    }
+    return 0;
+}
+""", "Basic match") + """
+<p>The <code>_</code> (underscore) is the catch-all pattern, similar to <code>default:</code> in a C switch statement. It matches any value not covered by the earlier arms.</p>
+
+<h3>14.2 match on Sum Types (Tagged Unions)</h3>
+<p>Where <code>match</code> really shines is with <strong>sum types</strong> (also called tagged unions or variants). A <code>sum</code> in Rook lets a value be one of several possible shapes, and <code>match</code> lets you handle each shape differently:</p>
+""" + make_code_box("rook", """
+#include <stdio.h>
+
+sum Shape {
+    Circle { r: float; };
+    Rect   { w: float; h: float; };
+    Point;
+}
+
+impl Shape {
+    float area(Shape* self) {
+        return match (*self) {
+            Circle { r }    => 3.14159f * r * r,
+            Rect   { w, h } => w * h,
+            Point           => 0.0f,
+            _               => 0.0f,
+        };
+    }
+}
+
+int main() {
+    Shape a = Circle { r: 2.0f };
+    Shape b = Rect { w: 3.0f, h: 4.0f };
+    Shape c = Point;
+
+    printf("Circle area: %f\\n", a.area());
+    printf("Rect area:   %f\\n", b.area());
+    printf("Point area:  %f\\n", c.area());
+    return 0;
+}
+""", "match on Sum Types") + make_callout("note", "Not all languages have this", """
+Pattern matching on tagged unions is a hallmark of languages like Rust (<code>enum</code> + <code>match</code>), Swift (<code>enum</code> + <code>switch</code>), and Haskell (<code>data</code> + case expressions). Traditional C only has basic <code>switch</code> on integer values with no destructuring. If you later learn Rust or Swift, you will find these concepts map directly.
+""") + make_callout("tip", "Key Takeaways of Module 14", """
+<ul>
+  <li><code>match</code> compares a value against patterns and runs the first matching arm.</li>
+  <li><code>_</code> is the wildcard catch-all pattern, always placed last.</li>
+  <li>Sum types let a value be one of several distinct shapes, and <code>match</code> handles each shape cleanly.</li>
+  <li>Pattern matching is more expressive than a plain <code>switch</code> because it can unpack inner fields in the same step.</li>
+  <li>This concept exists in Rust, Swift, Haskell, and many modern languages, each with slightly different syntax.</li>
+</ul>
+""")
+    add_mod("b14-match-patterns", "Module 14: Pattern Matching", m14)
+
     return modules
+
 
 if __name__ == "__main__":
     def dummy_box(lang, code, title=""): return f"[BOX {lang} {title}]"

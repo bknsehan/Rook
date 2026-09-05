@@ -33,7 +33,11 @@ if(ROKADE_ENABLE_LLVM)
   find_package(LLVM CONFIG)
   if(LLVM_FOUND)
     message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-    target_compile_definitions(rokade PRIVATE ROKADE_HAS_LLVM=1 ROKADE_LLVM_VERSION="${LLVM_PACKAGE_VERSION}")
+    target_compile_definitions(rokade PRIVATE
+      ROKADE_HAS_LLVM=1
+      ROKADE_LLVM_VERSION="${LLVM_PACKAGE_VERSION}"
+      ROKADE_LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR}
+    )
     target_include_directories(rokade PRIVATE ${LLVM_INCLUDE_DIRS})
     find_library(LLVM_LIB NAMES LLVM libLLVM HINTS ${LLVM_LIBRARY_DIRS})
     if(LLVM_LIB)

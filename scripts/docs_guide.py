@@ -12,41 +12,53 @@ def get_guide_chapters(make_code_box, make_callout):
         chapters.append((cid, title, content))
 
     # ==========================================
-    # Chapter 1: The Rook Philosophy & Credits
+    # Chapter 1: The Rook Philosophy & Prior Art
     # ==========================================
     ch1 = """
-<p>The systems programming landscape is one of the most foundational and demanding areas of software engineering. For over fifty years, <strong>C</strong> has been the bedrock of computing: operating systems, kernel drivers, real-time engines, audio processors, language runtimes, and embedded microcontrollers are almost universally exposed through the C Application Binary Interface (ABI). If software must interface directly with hardware, kernels, or existing shared libraries, C is the inescapable lingua franca.</p>
+<p>The systems programming landscape demands both high performance and extreme reliability. For over fifty years, <strong>C</strong> has been the bedrock of computing, serving as the universal language for operating systems, hardware drivers, embedded microcontrollers, and real-time engines. Almost every software system exposes or consumes the C Application Binary Interface (ABI).</p>
 
-<p>Yet programming directly in standard C carries well-known ergonomic and reliability challenges that demand intense vigilance from developers:</p>
+<p>However, programming in traditional C presents well-documented ergonomic and safety hurdles:</p>
 <ul>
-  <li><strong>Header Synchronization Overhead:</strong> Manually synchronizing declarations in <code>.h</code> header files with definitions in <code>.c</code> files slows development and creates fragile dependencies across large codebases.</li>
-  <li><strong>Uninitialized Memory &amp; Undefined Behavior:</strong> In standard C, uninitialized local variables contain unpredictable stack garbage, accidental assignment inside conditional statements (<code>if (x = 5)</code>) silently corrupts state, and unchecked pointer arithmetic introduces exploitable security vulnerabilities.</li>
-  <li><strong>Boilerplate for Basic Encapsulation:</strong> C lacks native mechanisms for method dispatch, single inheritance, and tagged unions. Emulating these patterns requires nested structs, manual pointer casts, and fragile naming conventions.</li>
+  <li><strong>Header Synchronization:</strong> Manually keeping <code>.h</code> header files and <code>.c</code> source files in sync creates unnecessary maintenance overhead and causes subtle linker mismatches.</li>
+  <li><strong>Uninitialized Memory and Bug-Prone Defaults:</strong> Uninitialized variables contain arbitrary stack garbage, assignments inside conditional statements (<code>if (x = 5)</code>) silently introduce logic errors, and unchecked pointer operations can trigger undefined behavior.</li>
+  <li><strong>Manual Encapsulation Boilerplate:</strong> Standard C lacks native syntax for method calls, inheritance, and tagged unions, requiring repetitive struct nesting and error-prone void pointer casting.</li>
 </ul>
 
-<h3>Standing on the Shoulders of Giants: Prior Art &amp; Credits</h3>
-<p>Modern software engineering has been profoundly enriched by exceptional programming languages, each advancing the art of systems development in monumental ways:</p>
+<h3>Language Context, Trade-Offs, and Prior Art</h3>
+<p>Modern languages have approached these systems engineering challenges from different angles. Rook respects the solutions pioneered across the industry while making deliberate trade-offs tailored to its focus:</p>
 <ul>
-  <li><strong>C (Dennis Ritchie &amp; Bell Labs):</strong> The foundation upon which modern computing was built. C's elegance, hardware transparency, and universal ABI remain unparalleled. Rook owes its entire existence and memory model to the foundational genius of C.</li>
-  <li><strong>C++ (Bjarne Stroustrup):</strong> Pioneered modern systems abstractions, introducing Resource Acquisition Is Initialization (RAII), zero-overhead object modeling, and powerful generic programming that continue to power high-performance game engines, web browsers, and scientific computing worldwide.</li>
-  <li><strong>Rust (Graydon Hoare &amp; The Rust Foundation):</strong> Achieved a historic breakthrough in software reliability by proving that compile-time borrow checking, affine types, and fearless concurrency can eliminate entire categories of memory safety bugs without needing a garbage collector.</li>
-  <li><strong>Zig (Andrew Kelley) &amp; Odin (Ginger Bill):</strong> Invaluable inspirations in pragmatic systems programming, proving that systems development can be clean, joyful, and devoid of hidden control flow, championing explicit memory allocation, modern compilation toolchains, and refreshing syntactic clarity.</li>
-  <li><strong>Go (Robert Griesemer, Rob Pike, Ken Thompson):</strong> Demonstrated the profound engineering value of simplicity, fast compilation speeds, clean standard tooling, and pragmatic language design that prioritizes human readability.</li>
+  <li><strong>C:</strong> Delivers unbeatable ABI ubiquity, hardware transparency, and zero runtime cost. However, it suffers from preprocessor hazards, header duplication, and lack of built-in encapsulation. <em>Rook preserves 100% C ABI compatibility and zero runtime overhead, while eliminating headers via <code>#comprise</code>, enforcing safe variable initialization, and offering clean single inheritance and sum types.</em></li>
+  <li><strong>C++:</strong> Provides powerful abstractions, generic programming, and extensive standard libraries. However, it introduces immense language complexity, slow build times, and non-trivial ABI name mangling that complicates C interoperability. <em>Rook keeps the simplicity and transparent compilation model of C, providing lightweight object methods and <code>defer</code> without template overhead or mangled symbols.</em></li>
+  <li><strong>Rust:</strong> Sets the gold standard for compile-time safety and concurrency via its borrow checker. However, it carries a steep learning curve, strict lifetime annotations, and significant friction when interacting heavily with untyped C memory layouts. <em>Rook prioritizes familiar, lightweight C-style development with pragmatic compile-time guards, letting developers work directly with native C pointers without borrow-checker friction.</em></li>
+  <li><strong>Zig &amp; Odin:</strong> Excel at clean systems ergonomics, explicit memory management, and modern compiler tooling. However, their standalone toolchains and independent ABIs require dedicated bindings to integrate into existing C builds. <em>Rook stays directly inside the C compilation pipeline by transpiling cleanly to standard C, allowing single <code>.rook</code> files to drop into any existing C Makefile or CMake project seamlessly.</em></li>
+  <li><strong>Go:</strong> Popularized productive syntax, fast compilation, and simple concurrency. However, its garbage collection runtime and memory overhead make it unsuitable for bare-metal targets, kernel drivers, and low-latency audio or game engines. <em>Rook operates with zero garbage collection, deterministic memory layouts, and immediate hardware execution.</em></li>
 </ul>
 
-<h3>The Modest Scope of Rook</h3>
-<p>Rook does <strong>not</strong> seek to replace or compete with these monumental languages. Rook has a very narrow, humble mission:</p>
-""" + make_callout("spec", "The Rook Thesis", """
-<strong>For developers who specifically want or need to work within the C ecosystem</strong>, Rook provides a lightweight, header-less C dialect that transpiles directly to clean, standard C99/C11/C23 code. It adds a small set of practical guardrails—guaranteed zero-initialization, single-file module imports, zero-overhead single inheritance, first-class algebraic sum types, and deterministic <code>defer</code> cleanup—without introducing a heavy runtime, garbage collection, or breaking 1:1 C ABI interoperability.
-""") + """
-<h3>Target Use Cases</h3>
+<h3>Rook's Core Strengths</h3>
 <ul>
-  <li><strong>Systems &amp; Embedded Tools:</strong> Compilers, command-line utilities, daemons, and embedded firmware where runtime overhead, garbage collection pauses, and hidden allocations are unacceptable.</li>
-  <li><strong>Game Engines &amp; Graphics:</strong> Native integration with C libraries like Raylib, SDL2, OpenGL, or Vulkan without FFI overhead.</li>
-  <li><strong>Modernizing Legacy C Codebases:</strong> Replace brittle C files with modular <code>.rook</code> units that seamlessly link with existing C object files and Makefiles.</li>
+  <li><strong>Zero-Overhead 1:1 C ABI Parity:</strong> Every Rook struct, primitive, and function maps directly to native C, enabling direct calls to libraries like SDL, Raylib, SQLite, or Vulkan without FFI wrappers.</li>
+  <li><strong>Modular Header-Free Imports:</strong> Single-file modules imported with <code>#comprise</code>, eliminating the need for separate <code>.h</code> files and include guards.</li>
+  <li><strong>Safer Defaults by Design:</strong> Guaranteed zero-initialization for all variables, compile-time bans on assignment in conditions, optional runtime bounds checks (<code>-b</code>), and deterministic <code>defer</code> resource cleanup.</li>
+  <li><strong>Lightweight Abstractions:</strong> Single inheritance (<code>object Child : Parent</code>), method syntax with <code>impl</code>, and first-class sum types with pattern matching (<code>match</code>).</li>
+</ul>
+
+<h3>What Rook Is Not: Honest Boundaries</h3>
+<p>To remain fast, lightweight, and completely compatible with standard C, Rook intentionally makes specific trade-offs:</p>
+<ul>
+  <li><strong>No Formal Borrow Checker:</strong> Rook does not mathematically prove memory lifetimes at compile time like Rust. You manage memory with pointers, allocators, and arenas.</li>
+  <li><strong>No Garbage Collection:</strong> Rook does not automatically collect unreferenced memory. If you require automatic memory management without tracking lifecycles, a managed language like Go or Python is more suitable.</li>
+  <li><strong>Early Ecosystem:</strong> Rook's library ecosystem is young compared to long-standing languages, though its direct C interoperability provides immediate access to existing C libraries.</li>
+  <li><strong>LLVM Backend Status:</strong> Rokade includes both a C transpiler backend and an LLVM backend. The C backend is stable and production-ready. The LLVM backend is experimental, actively evolving, and not yet as mature as the primary C backend.</li>
+</ul>
+
+<h3>Primary Use Cases</h3>
+<ul>
+  <li><strong>Systems and Embedded Tools:</strong> Compilers, command-line utilities, daemons, and microcontrollers where runtime overhead and garbage collection are unacceptable.</li>
+  <li><strong>Game Engines and Graphics:</strong> Low-latency audio, physics, and graphics programming with Raylib, SDL2, OpenGL, or Vulkan.</li>
+  <li><strong>Gradual Modernization of Legacy C:</strong> Upgrading brittle C modules to clean, type-safe <code>.rook</code> units without rewriting the surrounding C codebase or build infrastructure.</li>
 </ul>
 """
-    add_ch("philosophy", "1. The Rook Philosophy & Credits", ch1)
+    add_ch("philosophy", "1. The Rook Philosophy & Prior Art", ch1)
 
     # ==========================================
     # Chapter 2: Architecture & Compilation Model
@@ -82,7 +94,7 @@ def get_guide_chapters(make_code_box, make_callout):
     <tr>
       <td><strong>LLVM Backend</strong></td>
       <td><span class="badge" style="background:#fef3c7; border-color:#f59e0b; color:#b45309;">Experimental (WIP)</span></td>
-      <td>Leverages LLVM libraries to emit object files (<code>.o</code>) directly and provide in-memory JIT execution (<code>rokade --jit</code>). Supports unsigned math, pointer arithmetic, sum types, and bounds checking. <strong>Currently experimental and actively evolving; not yet as mature, robust, or battle-tested as the C backend.</strong></td>
+      <td>Leverages LLVM libraries to emit object files (<code>.o</code>) directly and provide in-memory JIT execution (<code>rokade --jit</code>). Supports unsigned math, pointer arithmetic, sum types, and bounds checking. <strong>Currently experimental and actively evolving, not yet as mature, robust, or battle-tested as the C backend.</strong></td>
     </tr>
   </tbody>
 </table>
@@ -120,7 +132,7 @@ Because Rokade's primary backend generates clean C in <code>build/generated/main
 <p>For systems engineers and C programmers evaluating Rook, this chapter provides a direct, comprehensive comparison between standard C and Rook across eight essential architectural and day-to-day programming patterns. Rook is designed to feel immediately natural to C developers while eliminating common failure modes at compile time.</p>
 
 <h3>3.1 Modular Code vs. Header Synchronization</h3>
-<p>In standard C, sharing code between multiple files requires manually maintaining separate header declarations (<code>.h</code>) with preprocessor include guards, and source definitions (<code>.c</code>). Rook uses single-file modules imported with <code>#comprise</code>; the compiler extracts declarations and prevents symbol collisions automatically.</p>
+<p>In standard C, sharing code between multiple files requires manually maintaining separate header declarations (<code>.h</code>) with preprocessor include guards, and source definitions (<code>.c</code>). Rook uses single-file modules imported with <code>#comprise</code>, and the compiler extracts declarations and prevents symbol collisions automatically.</p>
 
 <div class="table-container">
 <table>
@@ -135,12 +147,12 @@ Because Rokade's primary backend generates clean C in <code>build/generated/main
     </tr>
     <tr>
       <td><strong>Import Semantics</strong></td>
-      <td><code>#include "math.h"</code> textually pastes header contents; requires <code>#ifndef</code> guard macros.</td>
+      <td><code>#include "math.h"</code> textually pastes header contents and requires <code>#ifndef</code> guard macros.</td>
       <td><code>#comprise math</code> parses module AST once and deduplicates symbols cleanly.</td>
     </tr>
     <tr>
       <td><strong>Signature Drift</strong></td>
-      <td>Changing a function signature requires editing both <code>.h</code> and <code>.c</code>; mismatches cause linker errors.</td>
+      <td>Changing a function signature requires editing both <code>.h</code> and <code>.c</code>, and mismatches cause linker errors.</td>
       <td>Single source of truth permanently eliminates declaration/definition drift.</td>
     </tr>
   </tbody>
@@ -158,7 +170,7 @@ int add(int a, int b);
 int add(int a, int b) { return a + b; }
 """, "Standard C: Header + Implementation") + make_code_box("rook", """
 // src/math.rook
-fn add(a: int, b: int) -> int {
+int add(int a, int b) {
     return a + b;
 }
 
@@ -198,8 +210,20 @@ int main() {
   </tbody>
 </table>
 </div>
-
-<h3>3.3 Accidental Assignment in Conditional Expressions</h3>
+""" + make_code_box("c", """
+// Standard C: Undefined Behavior
+int health; // Contains garbage stack data (e.g. -1074823904)
+if (health > 0) { // Unpredictable branch!
+    take_action();
+}
+""", "Standard C (Dangerous Stack Garbage)") + make_code_box("rook", """
+// Rook: Deterministic 0 initialization
+int health; // Guaranteed to be 0
+if (health > 0) { // Deterministic: branch is never taken
+    take_action();
+}
+""", "Rook (Guaranteed Zero-Init)") + """
+<h3>3.3 Compile-Time Ban on Assignment in Conditions</h3>
 <p>In standard C, mistakenly typing a single equals sign (<code>=</code>) instead of a double equals sign (<code>==</code>) inside an <code>if</code> condition silently overwrites the variable and evaluates the assigned value as a truth condition. Rook detects assignments inside conditionals at compile time and immediately halts compilation with an actionable diagnostic.</p>
 """ + make_code_box("c", """
 // Standard C: Compiles silently with a warning (or none), mutating state!
@@ -217,7 +241,7 @@ if (status == 0) {
 }
 """, "Rook (Compile-Time Enforcement)") + """
 <h3>3.4 Encapsulation &amp; Single Inheritance</h3>
-<p>Standard C has no native concept of methods or object inheritance; programmers must manually nest structs and cast pointers, losing type safety. Rook introduces the <code>object</code> keyword and <code>impl</code> blocks, producing <strong>zero runtime overhead</strong> with 1:1 C struct compatibility.</p>
+<p>Standard C has no native concept of methods or object inheritance, so programmers must manually nest structs and cast pointers, losing type safety. Rook introduces the <code>object</code> keyword and <code>impl</code> blocks, producing <strong>zero runtime overhead</strong> with 1:1 C struct compatibility.</p>
 """ + make_code_box("c", """
 // Standard C: Manual struct nesting & pointer casts
 typedef struct { float x, y; } Point;
@@ -239,7 +263,7 @@ object Circle : Point {
 }
 
 impl Point {
-    fn move(self, dx: float, dy: float) {
+    void move(Point* self, float dx, float dy) {
         self.x += dx;
         self.y += dy;
     }
@@ -1227,7 +1251,7 @@ int calculate_hash(const char* str) {
     ch18 = f"""
 <p>Rook includes a lightweight, modular standard library located in the <code>std/</code> directory. Standard library modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or all at once via <code>#comprise &lt;std&gt;</code>.</p>
 
-<h3>18.1 std/io — Fast Console I/O</h3>
+<h3>18.1 std/io: Fast Console I/O</h3>
 <p>Import with <code>#comprise &lt;std/io&gt;</code></p>
 {make_code_box("rook", """
 println("Standard output with newline");
@@ -1235,7 +1259,7 @@ print("Standard output without newline");
 eprintln("Standard error log");
 """, "std/io Example")}
 
-<h3>18.2 std/str — Non-Owning String Slice (Str)</h3>
+<h3>18.2 std/str: Non-Owning String Slice (Str)</h3>
 <p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a lightweight struct containing a pointer and a length (<code>const char* data; size_t len;</code>). It provides zero-allocation string slicing and inspections:</p>
 <div class="table-container">
 <table>
@@ -1258,7 +1282,7 @@ eprintln("Standard error log");
 </table>
 </div>
 
-<h3>18.3 std/vec — Dynamic Vector &amp; StringBuilder</h3>
+<h3>18.3 std/vec: Dynamic Vector &amp; StringBuilder</h3>
 <p>Import with <code>#comprise &lt;std/vec&gt;</code></p>
 {make_code_box("rook", """
 // Dynamic Vector of pointers
@@ -1279,7 +1303,7 @@ sb.append_cstr(" ms\\n");
 printf("%s", sb.to_cstr());
 """, "std/vec Example")}
 
-<h3>18.4 std/mem — Bump Arena Allocator</h3>
+<h3>18.4 std/mem: Bump Arena Allocator</h3>
 <p>Import with <code>#comprise &lt;std/mem&gt;</code>. The <code>Arena</code> allocator allocates memory sequentially from a fixed contiguous block, allowing hundreds of small allocations to be freed instantly with a single call:</p>
 {make_code_box("rook", """
 Arena arena = arena_new(65536); // 64 KB memory pool
@@ -1292,7 +1316,7 @@ void* block2 = arena.alloc(512);
 arena.reset(); // Instantly clears all allocations
 """, "std/mem Arena Allocator")}
 
-<h3>18.5 std/result — Result and Option Types</h3>
+<h3>18.5 std/result: Result and Option Types</h3>
 <p>Import with <code>#comprise &lt;std/result&gt;</code>. Provides algebraic return types for explicit error handling:</p>
 {make_code_box("rook", """
 Result r = result_ok(payload);
@@ -1375,7 +1399,7 @@ if (opt.is_some()) {
       <td><strong>Comma Operator in Expressions</strong></td>
       <td>Permits sequential evaluation (<code>a, b</code>).</td>
       <td><strong>Banned</strong> in expression contexts</td>
-      <td>Obscures control flow and hides side effects; commas are strictly reserved for argument separators.</td>
+      <td>Obscures control flow and hides side effects, so commas are strictly reserved for argument separators.</td>
     </tr>
     <tr>
       <td><strong>Include Jail Violation</strong></td>
@@ -1524,7 +1548,7 @@ rokade build --all
 <ul>
   <li>All compiler commands, flags, and library parameters are passed as structured argument vectors (<code>char* argv[]</code>) directly to POSIX <code>fork()</code> and <code>execv()</code>.</li>
   <li>Shell metacharacters (such as semicolons, pipes, or command substitutions in <code>cflags</code>) are treated as literal strings and cannot execute arbitrary shell code.</li>
-  <li>Compilation and linker return codes are strictly verified; any non-zero exit code immediately aborts the build process with informative error output.</li>
+  <li>Compilation and linker return codes are strictly verified, and any non-zero exit code immediately aborts the build process with informative error output.</li>
 </ul>
 """
     add_ch("cli", "21. Compiler CLI & Architecture Reference", ch21)

@@ -20,6 +20,29 @@
 #include <llvm-c/IRReader.h>
 #include <llvm-c/Linker.h>
 
+/* LLVMParseIRInContext2 was added in LLVM 20. On older versions fall back to the
+   deprecated LLVMParseIRInContext, which consumes the memory buffer.
+   The compat macro normalises the call and ROKADE_LLVM_OWNS_MEMBUF tells
+   callers whether they should call LLVMDisposeMemoryBuffer after the parse. */
+#ifndef ROKADE_LLVM_VERSION_MAJOR
+#  if defined(LLVM_VERSION_MAJOR)
+#    define ROKADE_LLVM_VERSION_MAJOR LLVM_VERSION_MAJOR
+#  elif __has_include(<llvm/Config/llvm-config.h>)
+#    include <llvm/Config/llvm-config.h>
+#    define ROKADE_LLVM_VERSION_MAJOR LLVM_VERSION_MAJOR
+#  else
+#    define ROKADE_LLVM_VERSION_MAJOR 0
+#  endif
+#endif
+
+#if ROKADE_LLVM_VERSION_MAJOR >= 20
+#  define ROKADE_LLVM_PARSE_IR(ctx, buf, modp, errp) LLVMParseIRInContext2((ctx), (buf), (modp), (errp))
+#  define ROKADE_LLVM_OWNS_MEMBUF 0  /* buffer NOT consumed – caller must dispose */
+#else
+#  define ROKADE_LLVM_PARSE_IR(ctx, buf, modp, errp) LLVMParseIRInContext((ctx), (buf), (modp), (errp))
+#  define ROKADE_LLVM_OWNS_MEMBUF 1  /* buffer consumed by the call – do NOT dispose */
+#endif
+
 typedef struct DeferFrame {
     Stmt* stmts[32];
     int count;
@@ -2238,7 +2261,7 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
             LLVMMemoryBufferRef mem = LLVMCreateMemoryBufferWithMemoryRange(ll_content, (size_t)lsz, "raw_c.ll", 0);
             LLVMModuleRef raw_mod = NULL;
             char* parse_err = NULL;
-            if (LLVMParseIRInContext2(g->ctx, mem, &raw_mod, &parse_err) == 0 && raw_mod) {
+            if (ROKADE_LLVM_PARSE_IR(g->ctx, mem, &raw_mod, &parse_err) == 0 && raw_mod) {
                 /* Promote any static/internal linkage to external so LLVMLinkModules2 links them */
                 for (LLVMValueRef fn = LLVMGetFirstFunction(raw_mod); fn; fn = LLVMGetNextFunction(fn)) {
                     if (LLVMGetLinkage(fn) == LLVMInternalLinkage) {
@@ -2253,7 +2276,9 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
                 LLVMLinkModules2(g->module, raw_mod);
             }
             if (parse_err) LLVMDisposeMessage(parse_err);
+#if !ROKADE_LLVM_OWNS_MEMBUF
             LLVMDisposeMemoryBuffer(mem);
+#endif
             free(ll_content);
         }
     }
@@ -2501,14 +2526,18 @@ int llvm_backend_compile_ll_to_obj_target(const char* ll_path, const char* obj_p
 
     LLVMModuleRef module = NULL;
     char* parse_err = NULL;
-    if (LLVMParseIRInContext2(ctx, mem_buf, &module, &parse_err) != 0) {
+    if (ROKADE_LLVM_PARSE_IR(ctx, mem_buf, &module, &parse_err) != 0) {
         fprintf(stderr, "rokade [llvm error]: failed to parse LLVM IR in '%s': %s\n", ll_path, parse_err ? parse_err : "unknown");
         if (parse_err) LLVMDisposeMessage(parse_err);
+#if !ROKADE_LLVM_OWNS_MEMBUF
         LLVMDisposeMemoryBuffer(mem_buf);
+#endif
         LLVMContextDispose(ctx);
         return 1;
     }
+#if !ROKADE_LLVM_OWNS_MEMBUF
     LLVMDisposeMemoryBuffer(mem_buf);
+#endif
 
     int rc = emit_module_to_obj(module, obj_path, opt_level, target_triple);
     LLVMDisposeModule(module);

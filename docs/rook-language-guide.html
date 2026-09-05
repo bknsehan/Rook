@@ -26,9 +26,9 @@
     --nav-active-text: #1d4ed8;
     
     /* Callout Colors */
-    --note-bg: #eff6ff;
-    --note-border: #3b82f6;
-    --note-title: #1e40af;
+    --note-bg: #f8fafc;
+    --note-border: #2563eb;
+    --note-title: #2563eb;
     --tip-bg: #ecfdf5;
     --tip-border: #10b981;
     --tip-title: #065f46;
@@ -421,6 +421,7 @@
     border-radius: 8px;
     padding: 18px 20px;
     margin: 20px 0 24px;
+    border: 1px solid var(--border);
     border-left: 4px solid transparent;
   }
 
@@ -589,7 +590,7 @@
   </div>
 
   <nav class="nav-list" id="nav-guide">
-    <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Credits</a>
+    <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Prior Art</a>
     <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & Compilation Model</a>
     <a href="#c-comparison" class="nav-item nav-guide-item" data-id="c-comparison">3. Direct Comparison: Standard C vs. Rook</a>
     <a href="#mental-model" class="nav-item nav-guide-item" data-id="mental-model">4. Mental Model & Memory Semantics</a>
@@ -625,6 +626,8 @@
     <a href="#b10-arrays" class="nav-item nav-beginner-item" data-id="b10-arrays">Module 10: Working with Lists: Arrays</a>
     <a href="#b11-multi-file" class="nav-item nav-beginner-item" data-id="b11-multi-file">Module 11: Building Real Projects</a>
     <a href="#b12-debugging-thinking" class="nav-item nav-beginner-item" data-id="b12-debugging-thinking">Module 12: How to Think Like a Programmer</a>
+    <a href="#b13-objects-impl" class="nav-item nav-beginner-item" data-id="b13-objects-impl">Module 13: Objects and Methods</a>
+    <a href="#b14-match-patterns" class="nav-item nav-beginner-item" data-id="b14-match-patterns">Module 14: Pattern Matching</a>
   </nav>
 </aside>
 
@@ -632,14 +635,6 @@
   <!-- VIEW 1: LANGUAGE GUIDE -->
   <div id="view-guide" class="view-container">
     <header class="hero" id="top-guide">
-      <div class="badges">
-        <span class="badge highlight">Rokade v0.4.2</span>
-        <span class="badge">Zero Runtime Overhead</span>
-        <span class="badge">Header-Less C Dialect</span>
-        <span class="badge">Zero-Shell Execution</span>
-        <span class="badge">Experimental LLVM Backend</span>
-        <span class="badge">Completely Offline</span>
-      </div>
       <h1>The Rook Language Guide</h1>
       <p class="hero-tagline">
         A technical specification and comprehensive reference manual for <strong>Rook</strong>: a modern systems language with 1:1 C ABI compatibility, memory-safe defaults, zero-overhead single inheritance, and dual C/LLVM compilation backends.
@@ -652,40 +647,52 @@
     
 <section class="chapter" id="philosophy">
   <div class="chapter-header">
-    <h2 class="chapter-title">1. The Rook Philosophy & Credits</h2>
+    <h2 class="chapter-title">1. The Rook Philosophy & Prior Art</h2>
     <a href="#top-guide" class="back-to-top">↑ Top</a>
   </div>
   <div class="chapter-body">
     
-<p>The systems programming landscape is one of the most foundational and demanding areas of software engineering. For over fifty years, <strong>C</strong> has been the bedrock of computing: operating systems, kernel drivers, real-time engines, audio processors, language runtimes, and embedded microcontrollers are almost universally exposed through the C Application Binary Interface (ABI). If software must interface directly with hardware, kernels, or existing shared libraries, C is the inescapable lingua franca.</p>
+<p>The systems programming landscape demands both high performance and extreme reliability. For over fifty years, <strong>C</strong> has been the bedrock of computing, serving as the universal language for operating systems, hardware drivers, embedded microcontrollers, and real-time engines. Almost every software system exposes or consumes the C Application Binary Interface (ABI).</p>
 
-<p>Yet programming directly in standard C carries well-known ergonomic and reliability challenges that demand intense vigilance from developers:</p>
+<p>However, programming in traditional C presents well-documented ergonomic and safety hurdles:</p>
 <ul>
-  <li><strong>Header Synchronization Overhead:</strong> Manually synchronizing declarations in <code>.h</code> header files with definitions in <code>.c</code> files slows development and creates fragile dependencies across large codebases.</li>
-  <li><strong>Uninitialized Memory &amp; Undefined Behavior:</strong> In standard C, uninitialized local variables contain unpredictable stack garbage, accidental assignment inside conditional statements (<code>if (x = 5)</code>) silently corrupts state, and unchecked pointer arithmetic introduces exploitable security vulnerabilities.</li>
-  <li><strong>Boilerplate for Basic Encapsulation:</strong> C lacks native mechanisms for method dispatch, single inheritance, and tagged unions. Emulating these patterns requires nested structs, manual pointer casts, and fragile naming conventions.</li>
+  <li><strong>Header Synchronization:</strong> Manually keeping <code>.h</code> header files and <code>.c</code> source files in sync creates unnecessary maintenance overhead and causes subtle linker mismatches.</li>
+  <li><strong>Uninitialized Memory and Bug-Prone Defaults:</strong> Uninitialized variables contain arbitrary stack garbage, assignments inside conditional statements (<code>if (x = 5)</code>) silently introduce logic errors, and unchecked pointer operations can trigger undefined behavior.</li>
+  <li><strong>Manual Encapsulation Boilerplate:</strong> Standard C lacks native syntax for method calls, inheritance, and tagged unions, requiring repetitive struct nesting and error-prone void pointer casting.</li>
 </ul>
 
-<h3>Standing on the Shoulders of Giants: Prior Art &amp; Credits</h3>
-<p>Modern software engineering has been profoundly enriched by exceptional programming languages, each advancing the art of systems development in monumental ways:</p>
+<h3>Language Context, Trade-Offs, and Prior Art</h3>
+<p>Modern languages have approached these systems engineering challenges from different angles. Rook respects the solutions pioneered across the industry while making deliberate trade-offs tailored to its focus:</p>
 <ul>
-  <li><strong>C (Dennis Ritchie &amp; Bell Labs):</strong> The foundation upon which modern computing was built. C's elegance, hardware transparency, and universal ABI remain unparalleled. Rook owes its entire existence and memory model to the foundational genius of C.</li>
-  <li><strong>C++ (Bjarne Stroustrup):</strong> Pioneered modern systems abstractions, introducing Resource Acquisition Is Initialization (RAII), zero-overhead object modeling, and powerful generic programming that continue to power high-performance game engines, web browsers, and scientific computing worldwide.</li>
-  <li><strong>Rust (Graydon Hoare &amp; The Rust Foundation):</strong> Achieved a historic breakthrough in software reliability by proving that compile-time borrow checking, affine types, and fearless concurrency can eliminate entire categories of memory safety bugs without needing a garbage collector.</li>
-  <li><strong>Zig (Andrew Kelley) &amp; Odin (Ginger Bill):</strong> Invaluable inspirations in pragmatic systems programming, proving that systems development can be clean, joyful, and devoid of hidden control flow, championing explicit memory allocation, modern compilation toolchains, and refreshing syntactic clarity.</li>
-  <li><strong>Go (Robert Griesemer, Rob Pike, Ken Thompson):</strong> Demonstrated the profound engineering value of simplicity, fast compilation speeds, clean standard tooling, and pragmatic language design that prioritizes human readability.</li>
+  <li><strong>C:</strong> Delivers unbeatable ABI ubiquity, hardware transparency, and zero runtime cost. However, it suffers from preprocessor hazards, header duplication, and lack of built-in encapsulation. <em>Rook preserves 100% C ABI compatibility and zero runtime overhead, while eliminating headers via <code>#comprise</code>, enforcing safe variable initialization, and offering clean single inheritance and sum types.</em></li>
+  <li><strong>C++:</strong> Provides powerful abstractions, generic programming, and extensive standard libraries. However, it introduces immense language complexity, slow build times, and non-trivial ABI name mangling that complicates C interoperability. <em>Rook keeps the simplicity and transparent compilation model of C, providing lightweight object methods and <code>defer</code> without template overhead or mangled symbols.</em></li>
+  <li><strong>Rust:</strong> Sets the gold standard for compile-time safety and concurrency via its borrow checker. However, it carries a steep learning curve, strict lifetime annotations, and significant friction when interacting heavily with untyped C memory layouts. <em>Rook prioritizes familiar, lightweight C-style development with pragmatic compile-time guards, letting developers work directly with native C pointers without borrow-checker friction.</em></li>
+  <li><strong>Zig &amp; Odin:</strong> Excel at clean systems ergonomics, explicit memory management, and modern compiler tooling. However, their standalone toolchains and independent ABIs require dedicated bindings to integrate into existing C builds. <em>Rook stays directly inside the C compilation pipeline by transpiling cleanly to standard C, allowing single <code>.rook</code> files to drop into any existing C Makefile or CMake project seamlessly.</em></li>
+  <li><strong>Go:</strong> Popularized productive syntax, fast compilation, and simple concurrency. However, its garbage collection runtime and memory overhead make it unsuitable for bare-metal targets, kernel drivers, and low-latency audio or game engines. <em>Rook operates with zero garbage collection, deterministic memory layouts, and immediate hardware execution.</em></li>
 </ul>
 
-<h3>The Modest Scope of Rook</h3>
-<p>Rook does <strong>not</strong> seek to replace or compete with these monumental languages. Rook has a very narrow, humble mission:</p>
-<div class="callout callout-spec"><div class="callout-title">The Rook Thesis</div><div class="callout-body">
-<strong>For developers who specifically want or need to work within the C ecosystem</strong>, Rook provides a lightweight, header-less C dialect that transpiles directly to clean, standard C99/C11/C23 code. It adds a small set of practical guardrails—guaranteed zero-initialization, single-file module imports, zero-overhead single inheritance, first-class algebraic sum types, and deterministic <code>defer</code> cleanup—without introducing a heavy runtime, garbage collection, or breaking 1:1 C ABI interoperability.
-</div></div>
-<h3>Target Use Cases</h3>
+<h3>Rook's Core Strengths</h3>
 <ul>
-  <li><strong>Systems &amp; Embedded Tools:</strong> Compilers, command-line utilities, daemons, and embedded firmware where runtime overhead, garbage collection pauses, and hidden allocations are unacceptable.</li>
-  <li><strong>Game Engines &amp; Graphics:</strong> Native integration with C libraries like Raylib, SDL2, OpenGL, or Vulkan without FFI overhead.</li>
-  <li><strong>Modernizing Legacy C Codebases:</strong> Replace brittle C files with modular <code>.rook</code> units that seamlessly link with existing C object files and Makefiles.</li>
+  <li><strong>Zero-Overhead 1:1 C ABI Parity:</strong> Every Rook struct, primitive, and function maps directly to native C, enabling direct calls to libraries like SDL, Raylib, SQLite, or Vulkan without FFI wrappers.</li>
+  <li><strong>Modular Header-Free Imports:</strong> Single-file modules imported with <code>#comprise</code>, eliminating the need for separate <code>.h</code> files and include guards.</li>
+  <li><strong>Safer Defaults by Design:</strong> Guaranteed zero-initialization for all variables, compile-time bans on assignment in conditions, optional runtime bounds checks (<code>-b</code>), and deterministic <code>defer</code> resource cleanup.</li>
+  <li><strong>Lightweight Abstractions:</strong> Single inheritance (<code>object Child : Parent</code>), method syntax with <code>impl</code>, and first-class sum types with pattern matching (<code>match</code>).</li>
+</ul>
+
+<h3>What Rook Is Not: Honest Boundaries</h3>
+<p>To remain fast, lightweight, and completely compatible with standard C, Rook intentionally makes specific trade-offs:</p>
+<ul>
+  <li><strong>No Formal Borrow Checker:</strong> Rook does not mathematically prove memory lifetimes at compile time like Rust. You manage memory with pointers, allocators, and arenas.</li>
+  <li><strong>No Garbage Collection:</strong> Rook does not automatically collect unreferenced memory. If you require automatic memory management without tracking lifecycles, a managed language like Go or Python is more suitable.</li>
+  <li><strong>Early Ecosystem:</strong> Rook's library ecosystem is young compared to long-standing languages, though its direct C interoperability provides immediate access to existing C libraries.</li>
+  <li><strong>LLVM Backend Status:</strong> Rokade includes both a C transpiler backend and an LLVM backend. The C backend is stable and production-ready. The LLVM backend is experimental, actively evolving, and not yet as mature as the primary C backend.</li>
+</ul>
+
+<h3>Primary Use Cases</h3>
+<ul>
+  <li><strong>Systems and Embedded Tools:</strong> Compilers, command-line utilities, daemons, and microcontrollers where runtime overhead and garbage collection are unacceptable.</li>
+  <li><strong>Game Engines and Graphics:</strong> Low-latency audio, physics, and graphics programming with Raylib, SDL2, OpenGL, or Vulkan.</li>
+  <li><strong>Gradual Modernization of Legacy C:</strong> Upgrading brittle C modules to clean, type-safe <code>.rook</code> units without rewriting the surrounding C codebase or build infrastructure.</li>
 </ul>
 
   </div>
@@ -729,7 +736,7 @@
     <tr>
       <td><strong>LLVM Backend</strong></td>
       <td><span class="badge" style="background:#fef3c7; border-color:#f59e0b; color:#b45309;">Experimental (WIP)</span></td>
-      <td>Leverages LLVM libraries to emit object files (<code>.o</code>) directly and provide in-memory JIT execution (<code>rokade --jit</code>). Supports unsigned math, pointer arithmetic, sum types, and bounds checking. <strong>Currently experimental and actively evolving; not yet as mature, robust, or battle-tested as the C backend.</strong></td>
+      <td>Leverages LLVM libraries to emit object files (<code>.o</code>) directly and provide in-memory JIT execution (<code>rokade --jit</code>). Supports unsigned math, pointer arithmetic, sum types, and bounds checking. <strong>Currently experimental and actively evolving, not yet as mature, robust, or battle-tested as the C backend.</strong></td>
     </tr>
   </tbody>
 </table>
@@ -772,7 +779,7 @@ Because Rokade's primary backend generates clean C in <code>build/generated/main
 <p>For systems engineers and C programmers evaluating Rook, this chapter provides a direct, comprehensive comparison between standard C and Rook across eight essential architectural and day-to-day programming patterns. Rook is designed to feel immediately natural to C developers while eliminating common failure modes at compile time.</p>
 
 <h3>3.1 Modular Code vs. Header Synchronization</h3>
-<p>In standard C, sharing code between multiple files requires manually maintaining separate header declarations (<code>.h</code>) with preprocessor include guards, and source definitions (<code>.c</code>). Rook uses single-file modules imported with <code>#comprise</code>; the compiler extracts declarations and prevents symbol collisions automatically.</p>
+<p>In standard C, sharing code between multiple files requires manually maintaining separate header declarations (<code>.h</code>) with preprocessor include guards, and source definitions (<code>.c</code>). Rook uses single-file modules imported with <code>#comprise</code>, and the compiler extracts declarations and prevents symbol collisions automatically.</p>
 
 <div class="table-container">
 <table>
@@ -787,12 +794,12 @@ Because Rokade's primary backend generates clean C in <code>build/generated/main
     </tr>
     <tr>
       <td><strong>Import Semantics</strong></td>
-      <td><code>#include "math.h"</code> textually pastes header contents; requires <code>#ifndef</code> guard macros.</td>
+      <td><code>#include "math.h"</code> textually pastes header contents and requires <code>#ifndef</code> guard macros.</td>
       <td><code>#comprise math</code> parses module AST once and deduplicates symbols cleanly.</td>
     </tr>
     <tr>
       <td><strong>Signature Drift</strong></td>
-      <td>Changing a function signature requires editing both <code>.h</code> and <code>.c</code>; mismatches cause linker errors.</td>
+      <td>Changing a function signature requires editing both <code>.h</code> and <code>.c</code>, and mismatches cause linker errors.</td>
       <td>Single source of truth permanently eliminates declaration/definition drift.</td>
     </tr>
   </tbody>
@@ -807,7 +814,7 @@ int add(int a, int b);
 // math.c
 #include "math.h"
 int add(int a, int b) { return a + b; }</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Clean Modular Import</span></div><pre><code class="language-rook">// src/math.rook
-fn add(a: int, b: int) -&gt; int {
+int add(int a, int b) {
     return a + b;
 }
 
@@ -847,8 +854,16 @@ int main() {
   </tbody>
 </table>
 </div>
-
-<h3>3.3 Accidental Assignment in Conditional Expressions</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Dangerous Stack Garbage)</span></div><pre><code class="language-c">// Standard C: Undefined Behavior
+int health; // Contains garbage stack data (e.g. -1074823904)
+if (health &gt; 0) { // Unpredictable branch!
+    take_action();
+}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook (Guaranteed Zero-Init)</span></div><pre><code class="language-rook">// Rook: Deterministic 0 initialization
+int health; // Guaranteed to be 0
+if (health &gt; 0) { // Deterministic: branch is never taken
+    take_action();
+}</code></pre></div>
+<h3>3.3 Compile-Time Ban on Assignment in Conditions</h3>
 <p>In standard C, mistakenly typing a single equals sign (<code>=</code>) instead of a double equals sign (<code>==</code>) inside an <code>if</code> condition silently overwrites the variable and evaluates the assigned value as a truth condition. Rook detects assignments inside conditionals at compile time and immediately halts compilation with an actionable diagnostic.</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Dangerous Silent Mutation)</span></div><pre><code class="language-c">// Standard C: Compiles silently with a warning (or none), mutating state!
 if (status = 0) { // Bug: status is set to 0, block never executes
@@ -862,7 +877,7 @@ if (status == 0) {
     handle_success();
 }</code></pre></div>
 <h3>3.4 Encapsulation &amp; Single Inheritance</h3>
-<p>Standard C has no native concept of methods or object inheritance; programmers must manually nest structs and cast pointers, losing type safety. Rook introduces the <code>object</code> keyword and <code>impl</code> blocks, producing <strong>zero runtime overhead</strong> with 1:1 C struct compatibility.</p>
+<p>Standard C has no native concept of methods or object inheritance, so programmers must manually nest structs and cast pointers, losing type safety. Rook introduces the <code>object</code> keyword and <code>impl</code> blocks, producing <strong>zero runtime overhead</strong> with 1:1 C struct compatibility.</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Emulated Inheritance</span></div><pre><code class="language-c">// Standard C: Manual struct nesting &amp; pointer casts
 typedef struct { float x, y; } Point;
 typedef struct { Point base; float radius; } Circle;
@@ -881,7 +896,7 @@ object Circle : Point {
 }
 
 impl Point {
-    fn move(self, dx: float, dy: float) {
+    void move(Point* self, float dx, float dy) {
         self.x += dx;
         self.y += dy;
     }
@@ -1850,13 +1865,13 @@ int calculate_hash(const char* str) {
     
 <p>Rook includes a lightweight, modular standard library located in the <code>std/</code> directory. Standard library modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or all at once via <code>#comprise &lt;std&gt;</code>.</p>
 
-<h3>18.1 std/io — Fast Console I/O</h3>
+<h3>18.1 std/io: Fast Console I/O</h3>
 <p>Import with <code>#comprise &lt;std/io&gt;</code></p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/io Example</span></div><pre><code class="language-rook">println("Standard output with newline");
 print("Standard output without newline");
 eprintln("Standard error log");</code></pre></div>
 
-<h3>18.2 std/str — Non-Owning String Slice (Str)</h3>
+<h3>18.2 std/str: Non-Owning String Slice (Str)</h3>
 <p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a lightweight struct containing a pointer and a length (<code>const char* data; size_t len;</code>). It provides zero-allocation string slicing and inspections:</p>
 <div class="table-container">
 <table>
@@ -1879,7 +1894,7 @@ eprintln("Standard error log");</code></pre></div>
 </table>
 </div>
 
-<h3>18.3 std/vec — Dynamic Vector &amp; StringBuilder</h3>
+<h3>18.3 std/vec: Dynamic Vector &amp; StringBuilder</h3>
 <p>Import with <code>#comprise &lt;std/vec&gt;</code></p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/vec Example</span></div><pre><code class="language-rook">// Dynamic Vector of pointers
 Vec v = vec_new(8);
@@ -1898,7 +1913,7 @@ sb.append_int(42);
 sb.append_cstr(" ms\n");
 printf("%s", sb.to_cstr());</code></pre></div>
 
-<h3>18.4 std/mem — Bump Arena Allocator</h3>
+<h3>18.4 std/mem: Bump Arena Allocator</h3>
 <p>Import with <code>#comprise &lt;std/mem&gt;</code>. The <code>Arena</code> allocator allocates memory sequentially from a fixed contiguous block, allowing hundreds of small allocations to be freed instantly with a single call:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/mem Arena Allocator</span></div><pre><code class="language-rook">Arena arena = arena_new(65536); // 64 KB memory pool
 defer arena.destroy();
@@ -1909,7 +1924,7 @@ void* block2 = arena.alloc(512);
 
 arena.reset(); // Instantly clears all allocations</code></pre></div>
 
-<h3>18.5 std/result — Result and Option Types</h3>
+<h3>18.5 std/result: Result and Option Types</h3>
 <p>Import with <code>#comprise &lt;std/result&gt;</code>. Provides algebraic return types for explicit error handling:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">std/result Example</span></div><pre><code class="language-rook">Result r = result_ok(payload);
 if (r.is_ok()) {
@@ -1995,7 +2010,7 @@ if (opt.is_some()) {
       <td><strong>Comma Operator in Expressions</strong></td>
       <td>Permits sequential evaluation (<code>a, b</code>).</td>
       <td><strong>Banned</strong> in expression contexts</td>
-      <td>Obscures control flow and hides side effects; commas are strictly reserved for argument separators.</td>
+      <td>Obscures control flow and hides side effects, so commas are strictly reserved for argument separators.</td>
     </tr>
     <tr>
       <td><strong>Include Jail Violation</strong></td>
@@ -2148,7 +2163,7 @@ rokade build --all</code></pre></div>
 <ul>
   <li>All compiler commands, flags, and library parameters are passed as structured argument vectors (<code>char* argv[]</code>) directly to POSIX <code>fork()</code> and <code>execv()</code>.</li>
   <li>Shell metacharacters (such as semicolons, pipes, or command substitutions in <code>cflags</code>) are treated as literal strings and cannot execute arbitrary shell code.</li>
-  <li>Compilation and linker return codes are strictly verified; any non-zero exit code immediately aborts the build process with informative error output.</li>
+  <li>Compilation and linker return codes are strictly verified, and any non-zero exit code immediately aborts the build process with informative error output.</li>
 </ul>
 
   </div>
@@ -2159,19 +2174,12 @@ rokade build --all</code></pre></div>
   <!-- VIEW 2: BEGINNER COURSE -->
   <div id="view-beginner" class="view-container" style="display:none;">
     <header class="hero" id="top-beginner">
-      <div class="badges">
-        <span class="badge pedagogy">Beginner Foundations</span>
-        <span class="badge">High School Graduate Level</span>
-        <span class="badge">Zero Coding Background Needed</span>
-        <span class="badge">12 Complete Modules</span>
-        <span class="badge">Purely Educational</span>
-      </div>
       <h1>Programming Foundations: From Scratch</h1>
       <p class="hero-tagline">
         A friendly, thorough, and step-by-step educational course designed for students and newcomers learning computer programming from the ground up. Master computational thinking, memory, data structures, and problem solving in plain English.
       </p>
       <div class="hero-meta">
-        Audience: High school graduates &amp; beginners &nbsp;|&nbsp; Approach: Real-world analogies &amp; clean concepts &nbsp;|&nbsp; Fully self-contained.
+        Audience: New enthusiast learners &nbsp;|&nbsp; Approach: Real-world analogies &amp; clean concepts &nbsp;|&nbsp; Fully self-contained.
       </div>
     </header>
 
@@ -2183,10 +2191,10 @@ rokade build --all</code></pre></div>
   </div>
   <div class="chapter-body">
     
-<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this—just a few simple mental models.</p>
+<p>Welcome to programming! Before writing a single line of code, it helps immensely to have a clear picture of what a computer actually is and how it follows instructions. You don't need an engineering degree to understand this,just a few simple mental models.</p>
 
 <h3>1.1 The Physical Triumvirate: CPU, RAM, and Storage</h3>
-<p>Every computer—from the phone in your pocket to massive supercomputers in data centers—relies on three core physical components working in harmony:</p>
+<p>Every computer,from the phone in your pocket to massive supercomputers in data centers,relies on three core physical components working in harmony:</p>
 
 <div class="arch-diagram">
   <div class="arch-box"><strong>The Storage (SSD / Hard Drive)</strong><br>Permanent Library<br>Large, durable, but slow</div>
@@ -2199,7 +2207,7 @@ rokade build --all</code></pre></div>
 <ul>
   <li><strong>The Storage (SSD or Hard Drive):</strong> Think of this as a permanent bookshelf or filing cabinet. When you turn your computer off, everything stored here remains safe. Your operating system, games, and code files live here. However, storage is relatively slow for the CPU to interact with directly.</li>
   <li><strong>RAM (Random Access Memory):</strong> Think of this as your active kitchen countertop or desk scratchpad. When you launch an application or compile code, the program is copied from storage into RAM. The CPU can read and write data in RAM in nanoseconds. However, RAM is <em>volatile</em>: when you shut down the computer, everything on the countertop is wiped clean.</li>
-  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction—billions of times per second.</li>
+  <li><strong>The CPU (Central Processing Unit):</strong> Think of this as a hyper-fast, literal-minded calculator or chef. The CPU does not "think" or understand human nuance. It simply fetches an instruction from RAM, executes it (like adding two numbers or checking if a number is zero), and moves to the next instruction,billions of times per second.</li>
 </ul>
 
 <h3>1.2 Bits and Bytes: The Alphabet of Hardware</h3>
@@ -2226,12 +2234,55 @@ rokade build --all</code></pre></div>
   <li><strong>The compiler inspects your code:</strong> It checks for grammar errors, verifies data types, and ensures safety rules are respected.</li>
   <li><strong>The compiler emits machine code:</strong> It translates your human instructions into raw binary instructions that your CPU can execute directly at maximum speed.</li>
 </ol>
+<h3>1.4 High-Level vs. Low-Level Languages</h3>
+<p>Not all programming languages speak at the same altitude. We broadly divide them into two categories:</p>
+<ul>
+  <li><strong>Low-Level Languages</strong> sit very close to the hardware. They give you direct control over memory, CPU registers, and individual bytes. The closer you are to the machine, the faster your code can run, but the more details you have to manage yourself. Examples include Assembly and C.</li>
+  <li><strong>High-Level Languages</strong> sit further from the hardware and handle many details for you automatically, such as memory management, type conversions, and common data structures. They let you think in human-friendly concepts (lists, objects, events) rather than memory addresses. Examples include Python, JavaScript, and Ruby.</li>
+</ul>
+<p>Rook occupies the low-to-middle ground: it gives you C-level control when you need it, but removes common sources of mistakes that low-level C programs suffer from, such as implicit type coercions and uninitialized memory.</p>
+
+<h3>1.5 Compiled, Interpreted, and Transpiled Languages</h3>
+<p>There is more than one way to turn source code into something a computer can run. The three most common approaches are:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Approach</th><th>What it does</th><th>When it happens</th><th>Examples</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Compiled</strong></td>
+      <td>A compiler reads your source code once, checks it for errors, and produces a native binary file (an <code>.exe</code> on Windows, or no extension on Linux/macOS). That binary runs directly on the CPU with no extra tools needed.</td>
+      <td>Once, before you run the program</td>
+      <td>C, C++, Rook, Rust, Go</td>
+    </tr>
+    <tr>
+      <td><strong>Interpreted</strong></td>
+      <td>An interpreter reads your source code line by line and executes each instruction on the spot. There is no separate compile step, but an interpreter must be installed on every machine that runs your code.</td>
+      <td>Every time the program runs</td>
+      <td>Python, Ruby, Bash</td>
+    </tr>
+    <tr>
+      <td><strong>Transpiled</strong></td>
+      <td>A transpiler converts source code in one language into equivalent source code in another language, which is then compiled or interpreted normally. The output is human-readable code, not machine code.</td>
+      <td>Once, producing another source file</td>
+      <td>TypeScript (to JS), CoffeeScript (to JS), Sass (to CSS)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout-note"><div class="callout-title">Where does Rook fit?</div><div class="callout-body">
+Rook is a <strong>compiled language</strong>. The <code>rokade</code> compiler reads your <code>.rook</code> files, checks them thoroughly for errors, and produces either a native binary (via a C backend) or LLVM IR (via the LLVM backend). The result runs directly on the CPU without any runtime interpreter.
+</div></div>
 <div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 1</div><div class="callout-body">
 <ul>
-  <li>The CPU is the brain/calculator; RAM is the fast temporary workspace; Storage is the permanent library.</li>
+  <li>The CPU is the brain/calculator, RAM is the fast temporary workspace, and Storage is the permanent library.</li>
   <li>All computer data ultimately consists of bits (0s and 1s) and bytes (groups of 8 bits).</li>
-  <li>Source code is what humans write; machine code is what the CPU executes.</li>
-  <li>A compiler is the bridge that translates your human logic into blazing-fast machine instructions.</li>
+  <li>Source code is what humans write, machine code is what the CPU executes.</li>
+  <li>A compiler translates your source code into a fast native binary once, before the program runs.</li>
+  <li>Low-level languages give hardware control, high-level languages abstract the details away. Rook sits in between.</li>
+  <li>Compiled languages produce binaries, interpreted languages use a runtime, transpiled languages convert to another source language.</li>
 </ul>
 </div></div>
   </div>
@@ -2267,7 +2318,7 @@ int main() {
   <code>printf</code> stands for <em>Print Formatted</em>. It takes the text inside the quotation marks and displays it on your terminal screen. Notice the funny characters <code>\n</code> at the end: this is an <em>escape sequence</em> that tells the computer to press the "Enter" key and move to a fresh new line.</li>
 
   <li><strong>The Semicolon <code>;</code></strong><br>
-  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation; the compiler won't know where one thought ends and the next begins.</li>
+  In English, every complete sentence ends with a period. In programming, every complete instruction (statement) ends with a semicolon. Forgetting a semicolon is like writing a run-on sentence without punctuation, the compiler won't know where one thought ends and the next begins.</li>
 
   <li><strong><code>return 0;</code></strong><br>
   This is your program telling the operating system: "I have finished all my work, and everything went successfully without any errors!" In computing convention, a return code of <code>0</code> signifies success, while non-zero numbers (like 1, -1, or 404) signify various error codes.</li>
@@ -2302,7 +2353,7 @@ int main() {
   </div>
   <div class="chapter-body">
     
-<p>Programs are not static text; they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
+<p>Programs are not static text, they exist to process information. To do that, a program needs a way to remember numbers, words, and choices. We store information using <strong>variables</strong>.</p>
 
 <h3>3.1 The Labeled Storage Box Analogy</h3>
 <p>Imagine your computer's RAM as a vast warehouse. A <strong>variable</strong> is like a sturdy cardboard box with a name tag written on the outside:</p>
@@ -2430,7 +2481,7 @@ int main() {
 <h3>4.2 Comparison Operators (Asking Questions)</h3>
 <p>Computers make decisions by testing whether something is true or false:</p>
 <ul>
-  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value; double <code>==</code> compares values).</li>
+  <li><code>==</code> (Is Equal To?): <code>x == 5</code> (Notice the double equals! Single <code>=</code> assigns a value, double <code>==</code> compares values).</li>
   <li><code>!=</code> (Is NOT Equal To?): <code>x != 5</code> (True if x is anything other than 5).</li>
   <li><code>&gt;</code> and <code>&lt;</code> (Greater than / Less than): <code>score &gt; 100</code></li>
   <li><code>&gt;=</code> and <code>&lt;=</code> (Greater than or equal / Less than or equal): <code>age &gt;= 18</code></li>
@@ -2466,9 +2517,9 @@ int main() {
     return 0;
 }</code></pre></div><div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 4</div><div class="callout-body">
 <ul>
-  <li>Integer division discards decimals; use floats when you need fractions.</li>
+  <li>Integer division discards decimals, use floats when you need fractions.</li>
   <li>Use <code>==</code> to compare values, and <code>=</code> to assign values.</li>
-  <li><code>&&</code> means AND (both true); <code>||</code> means OR (either true); <code>!</code> means NOT (invert).</li>
+  <li><code>&&</code> means AND (both true), <code>||</code> means OR (either true), <code>!</code> means NOT (invert).</li>
 </ul>
 </div></div>
   </div>
@@ -2482,10 +2533,10 @@ int main() {
   </div>
   <div class="chapter-body">
     
-<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in; otherwise, show an error message." We call this <strong>control flow</strong>.</p>
+<p>If code only executed straight down from top to bottom, programs would be completely inflexible. To build intelligent software, we need the computer to make decisions: "If the password is correct, log the user in, otherwise, show an error message." We call this <strong>control flow</strong>.</p>
 
 <h3>5.1 The <code>if</code>, <code>else if</code>, and <code>else</code> Construct</h3>
-<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path; otherwise, it skips ahead.</p>
+<p>Think of an <code>if</code> statement as a fork in the road. The computer evaluates a condition inside parentheses: if the condition is <code>true</code>, it takes the first path, otherwise, it skips ahead.</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Grade Evaluation Branching</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 int main() {
@@ -2607,12 +2658,12 @@ int main() {
 <div class="code-block"><div class="code-header"><span class="code-lang">Creating and Calling Functions</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 // A function that takes two integers, adds them, and returns the result
-fn add(a: int, b: int) -&gt; int {
+int add(int a, int b) {
     return a + b;
 }
 
 // A function that doesn't return anything (void)
-fn greet(name: const char*) {
+void greet(const char* name) {
     printf("Welcome to Rook, %s!\n", name);
 }
 
@@ -2631,7 +2682,7 @@ int main() {
 <div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 7</div><div class="callout-body">
 <ul>
   <li>Functions break large programs into small, readable, testable, and reusable blocks.</li>
-  <li>Parameters are inputs passed into the function; the <code>return</code> statement sends an output back.</li>
+  <li>Parameters are inputs passed into the function, and the <code>return</code> statement sends an output back.</li>
   <li>Functions with no return value use <code>void</code>.</li>
   <li>Local variables only exist inside their own function, preventing unintended side effects.</li>
 </ul>
@@ -2741,7 +2792,7 @@ int main() {
 <p>A <strong>null pointer</strong> is a slip of paper with address <code>0</code> (nowhere). If you try to dereference a null pointer (knocking on a door at an address that does not exist), the operating system immediately protects itself by terminating your program with a <em>segmentation fault</em> (crash). Always make sure a pointer points to valid memory before dereferencing it.</p>
 <div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 9</div><div class="callout-body">
 <ul>
-  <li>A variable holds data; a pointer holds the memory address where data lives.</li>
+  <li>A variable holds data, while a pointer holds the memory address where data lives.</li>
   <li><code>&x</code> gets the address of <code>x</code>.</li>
   <li><code>*ptr</code> accesses or modifies the value at the address stored in <code>ptr</code>.</li>
   <li>Pointers allow functions to modify caller data and pass large structures with zero copy overhead.</li>
@@ -2822,7 +2873,7 @@ int main() {
   </div>
   <div class="chapter-body">
     
-<p>When you build real-world software—like a game engine, a web server, or a desktop app—putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
+<p>When you build real-world software,like a game engine, a web server, or a desktop app,putting thousands of lines of code into a single file becomes impossible to navigate. Professional software is organized across multiple files and modules.</p>
 
 <h3>11.1 Project Structure</h3>
 <p>When you scaffold a new project with <code>rokade new my_project</code>, Rokade generates a clean, standardized layout:</p>
@@ -2836,7 +2887,7 @@ int main() {
 <h3>11.2 Connecting Files with <code>#comprise</code></h3>
 <p>In standard C, connecting two files requires creating and synchronizing <code>.h</code> header files with header guards. In Rook, you simply use the <code>#comprise</code> directive:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Modular Multi-File Code</span></div><pre><code class="language-rook">// src/math_utils.rook
-fn square(x: int) -&gt; int {
+int square(int x) {
     return x * x;
 }
 
@@ -2868,7 +2919,7 @@ int main() {
   </div>
   <div class="chapter-body">
     
-<p>Programming is not about memorizing syntax rules; it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
+<p>Programming is not about memorizing syntax rules, it is about <strong>problem solving and computational thinking</strong>. When beginners run into errors or bugs, they often feel frustrated. But in reality, debugging is 80% of what professional software engineers do every day!</p>
 
 <h3>12.1 Problem Decomposition: Breaking Big Problems into Tiny Steps</h3>
 <p>When faced with a complex task (like "build a chess game"), the task feels overwhelming. The secret of programming is <strong>decomposition</strong>:</p>
@@ -2880,7 +2931,7 @@ int main() {
 </ol>
 
 <h3>12.2 Reading Compiler Errors Without Fear</h3>
-<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you; it is a helpful assistant pointing out where something doesn't make sense:</p>
+<p>When the compiler prints a scary red error message, do not panic! The compiler is not angry with you, it is a helpful assistant pointing out where something doesn't make sense:</p>
 <ol>
   <li><strong>Look for the file and line number:</strong> It will look like <code>src/main.rook:14:5: error</code>. This tells you exactly where the problem occurred (line 14, column 5).</li>
   <li><strong>Read the error description:</strong> Usually it's something simple, like a missing semicolon <code>;</code>, an undefined variable name, or passing the wrong type of argument.</li>
@@ -2903,13 +2954,165 @@ int main() {
 <p>By watching the printed output, you can see exactly where the computer's logic diverged from what you intended.</p>
 
 <h3>12.4 Welcoming Mistakes on Your Journey</h3>
-<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming—it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
+<p>Every senior engineer, language designer, and technology creator spent thousands of hours making typos, forgetting semicolons, causing segmentation faults, and troubleshooting compiler errors. Making mistakes is not a sign that you aren't suited for programming,it is the universal mechanism by which every programmer learns. Welcome the challenges, be curious, and have fun building!</p>
 <div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 12</div><div class="callout-body">
 <ul>
   <li>Break big problems down into small, easily solvable steps.</li>
-  <li>Read compiler errors from top to bottom; fix the first error first.</li>
+  <li>Read compiler errors from top to bottom, fix the first error first.</li>
   <li>Use print debugging to inspect variables when programs don't behave as expected.</li>
-  <li>Bugs are normal and natural—treat every error as a fun puzzle to solve.</li>
+  <li>Bugs are normal and natural, treat every error as a fun puzzle to solve.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b13-objects-impl">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 13: Objects and Methods</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>As programs grow larger, you often need to bundle data <em>and</em> the operations on that data together. Rook provides two keywords for this: <code>object</code> (to define the data) and <code>impl</code> (to attach methods to it). This idea, sometimes called <strong>object-oriented programming</strong>, exists in many languages under names like <em>class</em> (Java, Python, C++), <em>struct + impl</em> (Rust), or <em>interface</em> (Go). Not every language has it, but understanding the concept helps you read and write almost any modern codebase.</p>
+
+<h3>13.1 Defining an Object</h3>
+<p>An <code>object</code> in Rook is like a <code>struct</code>, but designed to hold both fields and behaviour. You declare the fields in the <code>object</code> block:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Defining an Object</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+object Animal {
+    name: const char*
+    legs: int
+}</code></pre></div>
+<h3>13.2 Attaching Methods with impl</h3>
+<p>An <code>impl</code> block attaches functions (called <strong>methods</strong>) to the object. Each method receives a pointer to the object as its first argument, named <code>self</code> by convention:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Object with Methods</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+object Animal {
+    name: const char*
+    legs: int
+}
+
+impl Animal {
+    void speak(Animal* self) {
+        printf("%s\n", self.name);
+    }
+    int legs_count(Animal* self) {
+        return self.legs;
+    }
+}
+
+int main() {
+    Animal dog;
+    dog.name = "Rex";
+    dog.legs = 4;
+
+    // Call methods using the dot operator
+    dog.speak();
+    printf("Legs: %d\n", dog.legs_count());
+    return 0;
+}</code></pre></div>
+<h3>13.3 Inheritance</h3>
+<p>One object can extend another using <code>:</code>. The child object gains all the fields and methods of the parent, and can add more of its own:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Inheritance in Rook</span></div><pre><code class="language-rook">object Cat : Animal {
+    lives: int
+}
+
+impl Cat {
+    void meow(Cat* self) {
+        self.speak();   // inherited from Animal
+    }
+}
+
+int main() {
+    Cat c;
+    c.name = "Tom";
+    c.legs = 4;
+    c.lives = 9;
+    c.speak();
+    c.meow();
+    printf("Lives left: %d\n", c.lives);
+    return 0;
+}</code></pre></div><div class="callout callout-note"><div class="callout-title">Not all languages have this</div><div class="callout-body">
+Object-oriented features like <code>object</code>, <code>impl</code>, and inheritance are powerful tools for organizing large programs. They exist in C++, Java, Python, and Rust (among others), each with different syntax. Some languages (like C and Go) deliberately leave them out and use different organizational patterns instead. Knowing both styles makes you a more flexible programmer.
+</div></div><div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 13</div><div class="callout-body">
+<ul>
+  <li><code>object</code> defines a custom data type with named fields.</li>
+  <li><code>impl</code> attaches methods to an object, each receiving a <code>self</code> pointer to the instance.</li>
+  <li>Call methods using the dot operator: <code>dog.speak()</code>.</li>
+  <li>Use <code>object Child : Parent</code> to inherit all parent fields and methods.</li>
+  <li>Object-oriented concepts exist in many languages under different names.</li>
+</ul>
+</div></div>
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b14-match-patterns">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module 14: Pattern Matching</h2>
+    <a href="#top-beginner" class="back-to-top">↑ Top</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Rook provides a <code>match</code> expression that lets you compare a value against several patterns and run different code for each one. It is similar to a <code>switch</code> statement in C or Java, but more expressive: it can destructure data structures and match on their inner fields in one step. Pattern matching is a feature in Rust, Swift, Haskell, and many functional languages. Not all languages have it, but it is increasingly common in modern language design.</p>
+
+<h3>14.1 Basic match on a Value</h3>
+<p>The simplest use of <code>match</code> is choosing between integer or enum values:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Basic match</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+int main() {
+    int code = 2;
+
+    match (code) {
+        1 =&gt; printf("One\n"),
+        2 =&gt; printf("Two\n"),
+        3 =&gt; printf("Three\n"),
+        _ =&gt; printf("Something else\n"),
+    }
+    return 0;
+}</code></pre></div>
+<p>The <code>_</code> (underscore) is the catch-all pattern, similar to <code>default:</code> in a C switch statement. It matches any value not covered by the earlier arms.</p>
+
+<h3>14.2 match on Sum Types (Tagged Unions)</h3>
+<p>Where <code>match</code> really shines is with <strong>sum types</strong> (also called tagged unions or variants). A <code>sum</code> in Rook lets a value be one of several possible shapes, and <code>match</code> lets you handle each shape differently:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">match on Sum Types</span></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+
+sum Shape {
+    Circle { r: float; };
+    Rect   { w: float; h: float; };
+    Point;
+}
+
+impl Shape {
+    float area(Shape* self) {
+        return match (*self) {
+            Circle { r }    =&gt; 3.14159f * r * r,
+            Rect   { w, h } =&gt; w * h,
+            Point           =&gt; 0.0f,
+            _               =&gt; 0.0f,
+        };
+    }
+}
+
+int main() {
+    Shape a = Circle { r: 2.0f };
+    Shape b = Rect { w: 3.0f, h: 4.0f };
+    Shape c = Point;
+
+    printf("Circle area: %f\n", a.area());
+    printf("Rect area:   %f\n", b.area());
+    printf("Point area:  %f\n", c.area());
+    return 0;
+}</code></pre></div><div class="callout callout-note"><div class="callout-title">Not all languages have this</div><div class="callout-body">
+Pattern matching on tagged unions is a hallmark of languages like Rust (<code>enum</code> + <code>match</code>), Swift (<code>enum</code> + <code>switch</code>), and Haskell (<code>data</code> + case expressions). Traditional C only has basic <code>switch</code> on integer values with no destructuring. If you later learn Rust or Swift, you will find these concepts map directly.
+</div></div><div class="callout callout-tip"><div class="callout-title">Key Takeaways of Module 14</div><div class="callout-body">
+<ul>
+  <li><code>match</code> compares a value against patterns and runs the first matching arm.</li>
+  <li><code>_</code> is the wildcard catch-all pattern, always placed last.</li>
+  <li>Sum types let a value be one of several distinct shapes, and <code>match</code> handles each shape cleanly.</li>
+  <li>Pattern matching is more expressive than a plain <code>switch</code> because it can unpack inner fields in the same step.</li>
+  <li>This concept exists in Rust, Swift, Haskell, and many modern languages, each with slightly different syntax.</li>
 </ul>
 </div></div>
   </div>
