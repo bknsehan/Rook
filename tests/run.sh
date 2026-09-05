@@ -43,11 +43,17 @@ if [ ! -f "$CORPUS/basic.rook" ]; then
 fi
 if ! command -v "$ROKADE_CC" >/dev/null; then echo "C compiler '$ROKADE_CC' not found"; exit 1; fi
 
+BACKEND="${BACKEND:-c}"
+
 # ---- helpers ----------------------------------------------------------------
 
-# returns 0 if emit+C generation succeeded, 1 otherwise
-emit() { # $1=src, $2=out.c
-    "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
+# returns 0 if emit succeeded, 1 otherwise
+emit() { # $1=src, $2=out_file
+    if [ "$BACKEND" = "llvm" ]; then
+        "$ROKADE" --emit-llvm "$1" >"$2" 2>"$WORK/emit.log"
+    else
+        "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
+    fi
 }
 
 # ---- counters ----------------------------------------------------------------
@@ -72,13 +78,24 @@ for src in "$CORPUS"/*.rook; do
     out_ref="$CORPUS/$base.out"
     # ---- expected-output test ------------------------------------------------
     if [ -f "$out_ref" ]; then
-        if ! emit "$src" "$WORK/t.c"; then
-            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
-            continue
-        fi
-        if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
-            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
-            continue
+        if [ "$BACKEND" = "llvm" ]; then
+            if ! emit "$src" "$WORK/t.ll"; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-llvm) $base"
+                continue
+            fi
+            if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm >/dev/null 2>&1; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (clang) $base"
+                continue
+            fi
+        else
+            if ! emit "$src" "$WORK/t.c"; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
+                continue
+            fi
+            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
+                continue
+            fi
         fi
         # optional stdin from a sibling <base>.in
         if [ -f "$CORPUS/$base.in" ]; then

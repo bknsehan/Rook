@@ -36,8 +36,14 @@ static void cg_stmt(CG* g, Stmt* s);
 static void cg_add_defer(CG* g, Stmt* d) {
     DeferFrame* f = &g->defer_stack[g->defer_depth - 1];
     if (f->count >= f->cap) {
-        f->cap = f->cap ? f->cap * 2 : 4;
-        f->stmts = realloc(f->stmts, (size_t)f->cap * sizeof(Stmt*));
+        int new_cap = f->cap ? f->cap * 2 : 4;
+        Stmt** ns = realloc(f->stmts, (size_t)new_cap * sizeof(Stmt*));
+        if (!ns) {
+            fprintf(stderr, "error: out of memory allocating defer frame\n");
+            exit(1);
+        }
+        f->stmts = ns;
+        f->cap = new_cap;
     }
     f->stmts[f->count++] = d;
 }
@@ -266,10 +272,35 @@ static AstType* infer_let_type(CG* g, Expr* init) {
             return t;
         }
     }
-    if (init->kind == E_LITERAL && init->str[0] == '\"') {
+    if (init->kind == E_LITERAL && init->str) {
+        if (init->str[0] == '\"') {
+            AstType* t = ast_type_new();
+            t->name = strdup("char");
+            t->ptrs = 1;
+            return t;
+        }
+        if (init->str[0] == '\'') {
+            AstType* t = ast_type_new();
+            t->name = strdup("char");
+            return t;
+        }
+        if (strchr(init->str, '.') != NULL) {
+            AstType* t = ast_type_new();
+            t->name = strdup("double");
+            return t;
+        }
+        if (strchr(init->str, 'u') != NULL || strchr(init->str, 'U') != NULL) {
+            AstType* t = ast_type_new();
+            t->name = strdup("unsigned int");
+            return t;
+        }
+        if (strchr(init->str, 'l') != NULL || strchr(init->str, 'L') != NULL) {
+            AstType* t = ast_type_new();
+            t->name = strdup("long");
+            return t;
+        }
         AstType* t = ast_type_new();
-        t->name = strdup("char");
-        t->ptrs = 1;
+        t->name = strdup("int");
         return t;
     }
     return NULL;
@@ -479,17 +510,14 @@ static void cg_expr(CG* g, Expr* x) {
         break;
     case E_INDEX:
         if (g->bounds_check) {
-            sb_append(&g->sb, "(rk_bounds(");
+            cg_expr(g, x->a);
+            sb_append(&g->sb, "[rk_bounds(");
             cg_expr(g, x->b);
             sb_append(&g->sb, ", sizeof(");
             cg_expr(g, x->a);
-            sb_append(&g->sb, ")/sizeof(");
+            sb_append(&g->sb, ")/sizeof((");
             cg_expr(g, x->a);
-            sb_append(&g->sb, "[0])), ");
-            cg_expr(g, x->a);
-            sb_append(&g->sb, "[");
-            cg_expr(g, x->b);
-            sb_append(&g->sb, "])");
+            sb_append(&g->sb, ")[0]))]");
         } else {
             cg_expr(g, x->a);
             sb_append(&g->sb, "[");
@@ -534,10 +562,16 @@ static void cg_expr(CG* g, Expr* x) {
         cg_expr(g, x->a);
         break;
     case E_COMPOUND:
+        if (x->type) {
+            sb_append(&g->sb, "(");
+            cg_type(g, x->type);
+            sb_append(&g->sb, ")");
+        }
         sb_append(&g->sb, "{");
         for (int i = 0; i < x->ncitems; i++) {
             if (i) sb_append(&g->sb, ", ");
             if (x->citems[i].name) {
+                sb_append(&g->sb, ".");
                 sb_append(&g->sb, x->citems[i].name);
                 sb_append(&g->sb, " = ");
             }
@@ -738,12 +772,13 @@ static void cg_decl(CG* g, Decl* d) {
             sb_append(&g->sb, " ");
         } else {
             AstType* inferred = infer_let_type(g, d->init);
-        if (inferred) {
-            cg_type(g, inferred);
-            sb_append(&g->sb, " ");
-        } else {
-            sb_append(&g->sb, "auto ");
-        }
+            if (inferred) {
+                cg_type(g, inferred);
+                sb_append(&g->sb, " ");
+                ast_type_free(inferred);
+            } else {
+                sb_append(&g->sb, "__auto_type ");
+            }
         }
         sb_append(&g->sb, d->name);
     } else if (d->style == DECL_TYPED) {
@@ -1025,6 +1060,12 @@ static void cg_stmt(CG* g, Stmt* s) {
                 cg_stmt(g, s->stmts[i]);
         }
         cg_emit_defers(g, f);
+        if (f->stmts) {
+            free(f->stmts);
+            f->stmts = NULL;
+        }
+        f->count = 0;
+        f->cap = 0;
         g->ind--;
         cg_indent(g);
         sb_append(&g->sb, "}\n");
@@ -1037,6 +1078,9 @@ static void cg_stmt(CG* g, Stmt* s) {
         break;
     case S_DECL:
         if (s->decl && s->decl->name) {
+            if (!s->decl->type && s->decl->init) {
+                s->decl->type = infer_let_type(g, s->decl->init);
+            }
             AstType* t = s->decl->type ? cg_clone_type(s->decl->type) : NULL;
             cg_add_local(g, s->decl->name, t);
         }
@@ -1096,7 +1140,26 @@ static void cg_stmt(CG* g, Stmt* s) {
             Expr* arr = s->iter;
             char* tmp = malloc(64);
             snprintf(tmp, 64, "__arr%d", g->result_count++);
-            sb_append(&g->sb, "int ");
+            AstType* elem_t = NULL;
+            int free_elem_t = 0;
+            if (arr->nitems > 0 && arr->items[0]) {
+                if (arr->items[0]->type) {
+                    elem_t = arr->items[0]->type;
+                } else {
+                    elem_t = infer_let_type(g, arr->items[0]);
+                    if (elem_t) free_elem_t = 1;
+                }
+            }
+            if (elem_t) {
+                cg_type(g, elem_t);
+                sb_append(&g->sb, " ");
+            } else if (arr->nitems > 0 && arr->items[0]) {
+                sb_append(&g->sb, "__typeof__(");
+                cg_expr(g, arr->items[0]);
+                sb_append(&g->sb, ") ");
+            } else {
+                sb_append(&g->sb, "int ");
+            }
             sb_append(&g->sb, tmp);
             sb_append(&g->sb, "[] = ");
             cg_expr(g, arr);
@@ -1109,11 +1172,17 @@ static void cg_stmt(CG* g, Stmt* s) {
             sb_append(&g->sb, "; __i++) {\n");
             g->ind++;
             cg_indent(g);
-            sb_append(&g->sb, "auto ");
+            if (elem_t) {
+                cg_type(g, elem_t);
+                sb_append(&g->sb, " ");
+            } else {
+                sb_append(&g->sb, "__auto_type ");
+            }
             sb_append(&g->sb, s->var);
             sb_append(&g->sb, " = ");
             sb_append(&g->sb, tmp);
             sb_append(&g->sb, "[__i];\n");
+            if (free_elem_t && elem_t) ast_type_free(elem_t);
             g->loop_depth++;
             cg_stmt(g, s->body);
             g->loop_depth--;
@@ -1315,6 +1384,8 @@ static void cg_program(CG* g, Program* prog) {
 
     if (g->bounds_check) {
         sb_append(&g->sb,
+                  "#include <stdio.h>\n"
+                  "#include <stdlib.h>\n"
                   "static _Noreturn void rk_bounds_fail(void){\n"
                   "    fprintf(stderr, \"Rook: index out of bounds\\n\");\n"
                   "    abort();\n"
@@ -1495,7 +1566,10 @@ char* codegen_program(Sema* sema, Program* prog, int* out_len, int bounds_check)
     if (out_len) *out_len = g.sb.len;
     char* out = sb_strdup(&g.sb);
     sb_free(&g.sb);
-    for (int i = 0; i < g.nlocals; i++) free(g.local_names[i]);
+    for (int i = 0; i < g.nlocals; i++) {
+        free(g.local_names[i]);
+        if (g.local_types[i]) ast_type_free(g.local_types[i]);
+    }
     free(g.local_names);
     free(g.local_types);
     for (int i = 0; i < g.defer_cap; i++)

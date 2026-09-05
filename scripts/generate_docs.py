@@ -2,7 +2,7 @@
 """
 generate_docs.py
 Generates the comprehensive, modern, distraction-free Rook Documentation & Beginner Course
-(docs/rook-language-guide.html) for Rook & Rokade v0.4.2a.
+(docs/rook-language-guide.html) for Rook & Rokade v0.5.0.
 """
 
 import os
@@ -49,7 +49,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rook Documentation &amp; Programming Foundations (v0.4.2a)</title>
+<title>Rook Documentation &amp; Programming Foundations (v0.5.0)</title>
 <style>
   :root {
     --bg: #ffffff;
@@ -663,7 +663,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="sidebar-header">
     <div class="sidebar-title">
       <span>Rook Documentation</span>
-      <span class="sidebar-badge">v0.4.2a</span>
+      <span class="sidebar-badge">v0.5.0</span>
     </div>
     <div class="sidebar-sub">Systems Programming &amp; Foundations</div>
   </div>
@@ -731,7 +731,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; text-align: center;">
-    <p>Rook Language Guide and Programming Foundations &bull; Version 0.4.2a &bull; Offline documentation</p>
+    <p>Rook Language Guide and Programming Foundations &bull; Version 0.5.0 &bull; Offline documentation</p>
   </footer>
 </main>
 
@@ -1046,7 +1046,7 @@ def generate_html():
     return html
 
 def main():
-    print(f"Generating documentation for Rook & Rokade v0.4.2a at {OUTPUT_FILE}...")
+    print(f"Generating documentation for Rook & Rokade v0.5.0 at {OUTPUT_FILE}...")
     html_content = generate_html()
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html_content)

@@ -26,7 +26,7 @@ static void mark_header_imported(const char* header) {
     }
 }
 
-static void clean_c_type_str(char* buf) {
+static void clean_c_type_str(char* buf, size_t buf_sz) {
     /* Remove redundant spaces, e.g. "char *" -> "char*" */
     char tmp[256];
     size_t j = 0;
@@ -36,7 +36,7 @@ static void clean_c_type_str(char* buf) {
         tmp[j++] = buf[i];
     }
     tmp[j] = '\0';
-    snprintf(buf, 256, "%s", tmp);
+    snprintf(buf, buf_sz, "%s", tmp);
 }
 
 static AstType* parse_c_type_to_ast(const char* raw) {
@@ -127,7 +127,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
 
             char ret_buf[128];
             snprintf(ret_buf, sizeof(ret_buf), "%s", ret_cstr ? ret_cstr : "void");
-            clean_c_type_str(ret_buf);
+            clean_c_type_str(ret_buf, sizeof(ret_buf));
 
             int num_args = clang_Cursor_getNumArguments(cursor);
             char params_buf[512] = "";
@@ -139,7 +139,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
 
                 char single_param[128];
                 snprintf(single_param, sizeof(single_param), "%s", at_str ? at_str : "int");
-                clean_c_type_str(single_param);
+                clean_c_type_str(single_param, sizeof(single_param));
 
                 if (i > 0) strncat(params_buf, "\x1f", sizeof(params_buf) - strlen(params_buf) - 1);
                 strncat(params_buf, single_param, sizeof(params_buf) - strlen(params_buf) - 1);
@@ -278,7 +278,6 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
 int c_import_header(Sema* sema, const char* header, int is_system, const char** inc_dirs, size_t n_inc) {
     if (!sema || !header || !header[0]) return 0;
     if (is_header_imported(header)) return 1;
-    mark_header_imported(header);
 
     char code[1024];
     if (is_system) {
@@ -286,7 +285,9 @@ int c_import_header(Sema* sema, const char* header, int is_system, const char** 
     } else {
         snprintf(code, sizeof(code), "#include \"%s\"\n", header);
     }
-    return c_import_code(sema, code, inc_dirs, n_inc);
+    int ok = c_import_code(sema, code, inc_dirs, n_inc);
+    if (ok) mark_header_imported(header);
+    return ok;
 }
 
 int c_import_program_raw(Sema* sema, Program* prog, const char** inc_dirs, size_t n_inc) {

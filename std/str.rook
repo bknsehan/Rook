@@ -140,7 +140,11 @@ impl Str {
         while (i < self.len) {
             char c = self.data[i];
             if (c < '0' || c > '9') break;
-            result = result * 10 + (c - '0');
+            int digit = c - '0';
+            if (result > (2147483647 - digit) / 10) {
+                return sign == 1 ? 2147483647 : -2147483647 - 1;
+            }
+            result = result * 10 + digit;
             i = i + 1;
         }
         return result * sign;

@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.4.2a"
+#define ROKADE_VERSION "0.5.0"
 #endif
 
 #ifdef _WIN32
@@ -1654,6 +1654,15 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         }
         char* c_code = be->emit_program(sema, p, &clen, 0);
         backend_destroy(be);
+        if (!c_code) {
+            fprintf(stderr, "error: backend code emission failed for %s\n", entry->d_name);
+            free(expanded);
+            free(toks);
+            sema_free(sema);
+            if (inc_list) free(inc_list);
+            program_free(p);
+            continue;
+        }
 
         char c_path[4096];
         const char* ext = (strcmp(active_backend, "llvm") == 0) ? "ll" : "c";
@@ -1712,10 +1721,14 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     size_t n_targets_to_build = 0;
     if (cli_target && cli_target[0]) {
         targets_to_build[n_targets_to_build++] = cli_target;
-    } else if ((build_all || cfg.n_configured_targets > 0) && cfg.n_configured_targets > 0) {
+    } else if (cfg.n_configured_targets > 0) {
         for (size_t i = 0; i < cfg.n_configured_targets; i++) {
             targets_to_build[n_targets_to_build++] = cfg.configured_targets[i];
         }
+    } else if (build_all) {
+        targets_to_build[n_targets_to_build++] = "linux";
+        targets_to_build[n_targets_to_build++] = "windows";
+        targets_to_build[n_targets_to_build++] = "macos";
     } else {
         targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target : "linux";
     }
@@ -1989,7 +2002,13 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
         return run_single_file_jit(main_path);
     }
 
-    int ret = do_build(proj_path, "linux", cli_backend, 0);
+    ProjectConfig probe_cfg;
+    const char* run_target = "linux";
+    if (read_project_config(proj_path ? proj_path : ".", &probe_cfg)) {
+        if (probe_cfg.build_target[0]) run_target = probe_cfg.build_target;
+        project_config_free(&probe_cfg);
+    }
+    int ret = do_build(proj_path, run_target, cli_backend, 0);
     if (ret != 0) return ret;
 
     ProjectConfig cfg;
@@ -2442,9 +2461,9 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
             }
 
             if (access(inref, F_OK) == 0)
-                snprintf(cmd, sizeof cmd, "\"%s\" < \"%s\" > \"%s\" 2>/dev/null", exe_path, inref, got_path);
+                snprintf(cmd, sizeof cmd, "'%s' < '%s' > '%s' 2>/dev/null", exe_path, inref, got_path);
             else
-                snprintf(cmd, sizeof cmd, "\"%s\" < /dev/null > \"%s\" 2>/dev/null", exe_path, got_path);
+                snprintf(cmd, sizeof cmd, "'%s' < /dev/null > '%s' 2>/dev/null", exe_path, got_path);
             if (system(cmd) != 0) { fail++; if (!quiet) printf("  FAIL (run) %s\n", base); continue; }
 
             int glen = 0, elen = 0;
@@ -2479,7 +2498,8 @@ static int cmd_test(const char* dir, const char* backend) {
     printf("SKIP         : %d\n", skip);
     printf("---------------------------\n");
     if (r) return 1;
-    return pass == 0 ? 1 : 0;
+    if (pass == 0 && skip == 0) return 1;
+    return 0;
 }
 
 static int check_file(const char* path, int verbose) {
@@ -2548,11 +2568,12 @@ static int check_file(const char* path, int verbose) {
     return ok ? 0 : 1;
 }
 
-static int check_dir(const char* dir) {
+static int check_dir_internal(const char* dir, int* out_total, int* out_failed) {
     int total = 0, failed = 0;
     DIR* d = opendir(dir);
     if (!d) {
         printf("FAIL %s (cannot open dir)\n", dir);
+        if (out_failed) *out_failed += 1;
         return 1;
     }
     struct dirent* ent;
@@ -2563,9 +2584,7 @@ static int check_dir(const char* dir) {
         struct stat st;
         if (stat(path, &st) != 0) continue;
         if (S_ISDIR(st.st_mode)) {
-            int r = check_dir(path);
-            total += r;
-            failed += r;
+            check_dir_internal(path, &total, &failed);
             continue;
         }
         if (!util_endswith(ent->d_name, ".rook")) continue;
@@ -2578,7 +2597,13 @@ static int check_dir(const char* dir) {
     } else {
         printf("%-70s %d files, %d FAILED\n", dir, total, failed);
     }
+    if (out_total) *out_total += total;
+    if (out_failed) *out_failed += failed;
     return failed;
+}
+
+static int check_dir(const char* dir) {
+    return check_dir_internal(dir, NULL, NULL);
 }
 
 /* ── --diagnostics JSON helpers ─────────────────────────── */
@@ -2696,15 +2721,16 @@ extract_message:;
 
 /* Write `path` as a file:/// URI into buf. */
 static void path_to_uri(const char* path, char* buf, size_t cap) {
+    if (!path || !buf || cap == 0) return;
     const char* prefix = "file://";
     if (path[0] == '/') {
-        snprintf(buf, cap, "%s%.4080s", prefix, path);   /* -> file:///abs/... */
+        snprintf(buf, cap, "%s%s", prefix, path);   /* -> file:///abs/... */
     } else {
         char abs[4096];
         if (realpath(path, abs))
-            snprintf(buf, cap, "%s%.4080s", prefix, abs);
+            snprintf(buf, cap, "%s%s", prefix, abs);
         else
-            snprintf(buf, cap, "%s%.4080s", prefix, path);
+            snprintf(buf, cap, "%s%s", prefix, path);
     }
 }
 

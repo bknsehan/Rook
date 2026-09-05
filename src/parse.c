@@ -146,6 +146,17 @@ static int is_qual_word(Token* t) {
            is_kw(t, "short") || is_kw(t, "long") || is_kw(t, "struct") || is_kw(t, "enum");
 }
 
+static int is_type_word(Token* t) {
+    if (!t || t->kind != TK_IDENT) return 0;
+    return is_kw(t, "int") || is_kw(t, "char") || is_kw(t, "float") ||
+           is_kw(t, "double") || is_kw(t, "void") || is_kw(t, "short") ||
+           is_kw(t, "long") || is_kw(t, "size_t") || is_kw(t, "ssize_t") ||
+           is_kw(t, "uint8_t") || is_kw(t, "uint16_t") || is_kw(t, "uint32_t") ||
+           is_kw(t, "uint64_t") || is_kw(t, "int8_t") || is_kw(t, "int16_t") ||
+           is_kw(t, "int32_t") || is_kw(t, "int64_t") || is_kw(t, "uintptr_t") ||
+           is_kw(t, "intptr_t") || is_kw(t, "bool");
+}
+
 static AstType* parse_type(Parser* p) {
     AstType* t = ast_type_new();
     Token* tok = cur(p);
@@ -165,6 +176,15 @@ static AstType* parse_type(Parser* p) {
         return NULL;
     }
     while (is_qual_word(tok)) {
+        /* If tok is unsigned/signed/short/long, it only acts as a qualifier if
+           followed by another type word or qualifier. Otherwise it is the type itself. */
+        if (is_kw(tok, "unsigned") || is_kw(tok, "signed") ||
+            is_kw(tok, "short") || is_kw(tok, "long")) {
+            Token* next = peek(p, 1);
+            if (!is_type_word(next) && !is_kw(next, "unsigned") && !is_kw(next, "signed")) {
+                break;
+            }
+        }
         int len = t->qual ? (int)strlen(t->qual) : 0;
         t->qual = realloc(t->qual, len + tok->len + 2);
         if (!t->qual) exit(1);
@@ -515,6 +535,7 @@ static Expr* parse_primary(Parser* p) {
             if (probe) ast_type_free(probe);
             p->idx = save2;
             if (is_cons) {
+                free(name);
                 AstType* ty = try_parse_type(p);
                 adv(p);
                 Expr* e = e_at(ast_expr_new(E_NAMED_INIT), t);
@@ -572,7 +593,7 @@ static Expr* parse_primary(Parser* p) {
             return e;
         }
         if (tok_is(t, "(")) return parse_paren_or_cast(p);
-        error_at(p, t, "unexpected '%s' in expression", t->text);
+        error_at(p, t, "unexpected '%.*s' in expression", (int)t->len, t->text);
         return NULL;
     default:
         error_at(p, t, "unexpected token in expression");
@@ -786,7 +807,7 @@ static Stmt* parse_stmt(Parser* p) {
         if (!expect_punct(p, ";")) return NULL;
         return stmt_expr(e);
     }
-    error_at(p, t, "unexpected '%s' in statement", t->text);
+    error_at(p, t, "unexpected '%.*s' in statement", (int)t->len, t->text);
     return NULL;
 }
 

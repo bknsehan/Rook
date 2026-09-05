@@ -114,6 +114,16 @@ static void gen_add_local(LLVMGen* g, const char* name, LLVMValueRef alloca_ref,
     }
 }
 
+static void gen_pop_locals(LLVMGen* g, int target_nlocals) {
+    while (g->nlocals > target_nlocals) {
+        g->nlocals--;
+        if (g->local_names[g->nlocals]) {
+            free(g->local_names[g->nlocals]);
+            g->local_names[g->nlocals] = NULL;
+        }
+    }
+}
+
 static int gen_find_local(LLVMGen* g, const char* name) {
     for (int i = g->nlocals - 1; i >= 0; i--) {
         if (strcmp(g->local_names[i], name) == 0) return i;
@@ -217,7 +227,8 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
         return LLVMPointerTypeInContext(g->ctx, 0);
     }
     const char* n = t->name;
-    if (strcmp(n, "int") == 0 || strcmp(n, "int32_t") == 0 || strcmp(n, "uint32_t") == 0) {
+    if (strcmp(n, "int") == 0 || strcmp(n, "int32_t") == 0 || strcmp(n, "uint32_t") == 0 ||
+        strcmp(n, "unsigned") == 0 || strcmp(n, "signed") == 0) {
         return LLVMInt32TypeInContext(g->ctx);
     }
     if (strcmp(n, "long") == 0) {
@@ -226,8 +237,15 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
         }
         return LLVMInt64TypeInContext(g->ctx);
     }
-    if (strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0 ||
-        strcmp(n, "size_t") == 0 || strcmp(n, "ssize_t") == 0 || strcmp(n, "uintptr_t") == 0 || strcmp(n, "intptr_t") == 0) {
+    if (strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0) {
+        return LLVMInt64TypeInContext(g->ctx);
+    }
+    if (strcmp(n, "size_t") == 0 || strcmp(n, "ssize_t") == 0 ||
+        strcmp(n, "uintptr_t") == 0 || strcmp(n, "intptr_t") == 0 || strcmp(n, "ptrdiff_t") == 0) {
+        if (g->target_triple && (strstr(g->target_triple, "i686") || strstr(g->target_triple, "i386") ||
+                                 strstr(g->target_triple, "armv7") || strstr(g->target_triple, "wasm32"))) {
+            return LLVMInt32TypeInContext(g->ctx);
+        }
         return LLVMInt64TypeInContext(g->ctx);
     }
     if (strcmp(n, "short") == 0 || strcmp(n, "int16_t") == 0 || strcmp(n, "uint16_t") == 0) {
@@ -316,6 +334,9 @@ static LLVMValueRef cast_to_type_ext(LLVMGen* g, LLVMValueRef val, LLVMTypeRef f
         unsigned tw = LLVMGetIntTypeWidth(to);
         if (fw == tw) return val;
         if (fw < tw) {
+            if (fw == 1) {
+                return LLVMBuildZExt(g->builder, val, to, "zext");
+            }
             return is_signed ? LLVMBuildSExt(g->builder, val, to, "sext")
                              : LLVMBuildZExt(g->builder, val, to, "zext");
         }
@@ -712,10 +733,9 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         }
         char* endp = NULL;
         unsigned long long uv = strtoull(s, &endp, 0);
-        long long iv = (long long)uv;
         int is_u = (strchr(s, 'u') != NULL || strchr(s, 'U') != NULL);
         int is_l = (strchr(s, 'l') != NULL || strchr(s, 'L') != NULL);
-        if (is_l || uv > 4294967295ULL || iv < -2147483648LL) {
+        if (is_l || uv > 4294967295ULL) {
             LLVMTypeRef ty = LLVMInt64TypeInContext(g->ctx);
             LLVMValueRef i_val = LLVMConstInt(ty, uv, !is_u);
             if (out_type) *out_type = ty;
@@ -993,7 +1013,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         }
         if (strcmp(op, "!") == 0) {
             LLVMValueRef is_zero = LLVMBuildICmp(g->builder, LLVMIntEQ, val, LLVMConstNull(vt), "not");
-            if (out_type) *out_type = LLVMInt8TypeInContext(g->ctx);
+            if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx);
             return is_zero;
         }
         if (strcmp(op, "~") == 0) {
@@ -1565,6 +1585,7 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
 
     AstType* st = llvm_resolve_expr_type(g, scrut_expr);
     int free_st = 0;
+    if (st && st != scrut_expr->type) free_st = 1;
     if (!st && scrut_expr->type) st = scrut_expr->type;
 
     EnumDef* ed = (st && st->name) ? sema_lookup_enum(g->sema, st->name) : NULL;
@@ -1690,7 +1711,7 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
                     bval = cast_to_type(g, bval, bt, res_t);
                     LLVMBuildStore(g->builder, bval, res_slot);
                 }
-                g->nlocals = save_locals;
+                gen_pop_locals(g, save_locals);
                 if (!is_block_terminated(g)) LLVMBuildBr(g->builder, exit_bb);
                 LLVMPositionBuilderAtEnd(g->builder, next_bb);
             }
@@ -1747,7 +1768,7 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
         }
     }
 
-    if (free_st && st) free(st);
+    if (free_st && st) ast_type_free(st);
     LLVMPositionBuilderAtEnd(g->builder, exit_bb);
     if (res_slot) {
         if (out_type) *out_type = res_t;
@@ -1824,12 +1845,14 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
     }
 
     case S_BLOCK: {
+        int saved_locals = g->nlocals;
         gen_push_defer_frame(g);
         for (int i = 0; i < s->nstmts; i++) {
             gen_stmt(g, s->stmts[i]);
             if (is_block_terminated(g)) break;
         }
         gen_pop_defer_frame(g);
+        gen_pop_locals(g, saved_locals);
         break;
     }
 
@@ -1890,6 +1913,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
     }
 
     case S_FOR: {
+        int saved_locals = g->nlocals;
         if (s->init_decl) {
             Stmt ds = { .kind = S_DECL, .decl = s->init_decl };
             gen_stmt(g, &ds);
@@ -1932,6 +1956,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         LLVMBuildBr(g->builder, cond_bb);
 
         LLVMPositionBuilderAtEnd(g->builder, exit_bb);
+        gen_pop_locals(g, saved_locals);
         break;
     }
 
@@ -1963,7 +1988,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         break;
 
     case S_CONTINUE:
-        if (g->loop_depth > 0) {
+        if (g->loop_depth > 0 && g->loop_cond_bbs[g->loop_depth - 1]) {
             gen_flush_loop_defers(g);
             LLVMBuildBr(g->builder, g->loop_cond_bbs[g->loop_depth - 1]);
         }
@@ -1991,7 +2016,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         LLVMValueRef sw = LLVMBuildSwitch(g->builder, cond_val, default_bb, case_count);
 
         if (g->loop_depth < 32) {
-            g->loop_cond_bbs[g->loop_depth] = exit_bb;
+            g->loop_cond_bbs[g->loop_depth] = (g->loop_depth > 0) ? g->loop_cond_bbs[g->loop_depth - 1] : NULL;
             g->loop_exit_bbs[g->loop_depth] = exit_bb;
             g->loop_depth++;
         }
@@ -2028,6 +2053,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
 
     case S_FORIN: {
         if (s->iter && s->iter->kind == E_ARR_LIT) {
+            int saved_locals = g->nlocals;
             int nitems = s->iter->nitems;
             LLVMTypeRef elem_type = LLVMInt32TypeInContext(g->ctx);
             if (nitems > 0) {
@@ -2096,6 +2122,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
             LLVMBuildBr(g->builder, cond_bb);
 
             LLVMPositionBuilderAtEnd(g->builder, exit_bb);
+            gen_pop_locals(g, saved_locals);
         }
         break;
     }
@@ -2164,6 +2191,7 @@ static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name, c
             LLVMBuildUnreachable(g->builder);
         }
     }
+    gen_pop_locals(g, 0);
 }
 
 static void llvm_backend_destroy(Backend* b) {

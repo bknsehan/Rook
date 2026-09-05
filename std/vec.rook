@@ -26,6 +26,7 @@ Vec vec_new(size_t cap) {
 impl Vec {
     void push(Vec* self, void* item) {
         if (self->len >= self->cap) {
+            if (self->cap > 1073741824) return;
             size_t new_cap = self->cap * 2;
             void** new_items = realloc(self->items, new_cap * sizeof(void*));
             if (!new_items) return;
@@ -93,6 +94,7 @@ impl StringBuilder {
         if (!s) return;
         size_t slen = strlen(s);
         if (self->len + slen + 1 > self->cap) {
+            if (self->len + slen + 16 < self->len) return;
             size_t new_cap = (self->cap * 2 > self->len + slen + 16) ? (self->cap * 2) : (self->len + slen + 16);
             char* new_buf = realloc(self->buf, new_cap);
             if (!new_buf) return;

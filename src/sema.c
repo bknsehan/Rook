@@ -136,14 +136,18 @@ static void cl_load(const char* basedir, const char* override) {
                     snprintf(name_cand, sizeof(name_cand), "%.*s", (int)(tl < 127 ? tl : 127), buf + i + 1);
                 } else if (strcmp(last_key, "ret") == 0 && name_cand[0]) {
                     if (cl_count >= cl_cap) {
-                        cl_cap = cl_cap ? cl_cap * 2 : 64;
-                        cl_funcs = realloc(cl_funcs, cl_cap * sizeof(ClFunc));
+                        size_t new_cap = cl_cap ? cl_cap * 2 : 64;
+                        ClFunc* nf = realloc(cl_funcs, new_cap * sizeof(ClFunc));
+                        if (!nf) break;
+                        cl_funcs = nf;
+                        cl_cap = new_cap;
                     }
                     snprintf(cl_funcs[cl_count].name, sizeof(cl_funcs[cl_count].name), "%s", name_cand);
                     snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret),
                              "%.*s", (int)(tl < 127 ? tl : 127), buf + i + 1);
                     cl_funcs[cl_count].param_types[0] = '\0';
                     cl_funcs[cl_count].nparams = 0;
+                    cl_funcs[cl_count].is_variadic = 0;
                     cl_count++;
                 } else if (strcmp(last_key, "type") == 0 && name_cand[0]) {
                     /* Add param type to the current (last) function */
@@ -154,12 +158,17 @@ static void cl_load(const char* basedir, const char* override) {
                         if (tl == 3 && strncmp(buf + i + 1, "...", 3) == 0) {
                             cl_funcs[idx].is_variadic = 1;
                         } else {
-                            if (cl_funcs[idx].nparams > 0)
-                                strncat(cl_funcs[idx].param_types, "\x1f",
-                                        sizeof(cl_funcs[idx].param_types) -
-                                        strlen(cl_funcs[idx].param_types) - 1);
-                            strncat(cl_funcs[idx].param_types, buf + i + 1,
-                                    (int)(tl < 200 ? tl : 200));
+                            size_t cur_len = strlen(cl_funcs[idx].param_types);
+                            if (cl_funcs[idx].nparams > 0 && cur_len + 1 < sizeof(cl_funcs[idx].param_types) - 1) {
+                                cl_funcs[idx].param_types[cur_len++] = '\x1f';
+                                cl_funcs[idx].param_types[cur_len] = '\0';
+                            }
+                            size_t rem = sizeof(cl_funcs[idx].param_types) - cur_len - 1;
+                            if (rem > 0) {
+                                size_t cpy = (size_t)tl < rem ? (size_t)tl : rem;
+                                memcpy(cl_funcs[idx].param_types + cur_len, buf + i + 1, cpy);
+                                cl_funcs[idx].param_types[cur_len + cpy] = '\0';
+                            }
                             cl_funcs[idx].nparams++;
                         }
                     }
@@ -193,9 +202,11 @@ const char* sema_lookup_cfunc_param(const char* name, int pidx) {
             /* Find end of token */
             const char* start = p;
             while (*p && *p != '\x1f') p++;
-            static char param_type[256];
-            snprintf(param_type, sizeof(param_type), "%.*s", (int)(p - start), start);
-            return param_type;
+            static char param_type[4][256];
+            static int bidx = 0;
+            char* pt = param_type[(bidx++) & 3];
+            snprintf(pt, 256, "%.*s", (int)(p - start), start);
+            return pt;
         }
     }
     return NULL;
@@ -238,8 +249,11 @@ int sema_register_cfunc(const char* name, const char* ret, const char* param_typ
         }
     }
     if (cl_count >= cl_cap) {
-        cl_cap = cl_cap ? cl_cap * 2 : 64;
-        cl_funcs = realloc(cl_funcs, cl_cap * sizeof(ClFunc));
+        size_t new_cap = cl_cap ? cl_cap * 2 : 64;
+        ClFunc* nf = realloc(cl_funcs, new_cap * sizeof(ClFunc));
+        if (!nf) return 0;
+        cl_funcs = nf;
+        cl_cap = new_cap;
     }
     strncpy(cl_funcs[cl_count].name, name, 127);
     cl_funcs[cl_count].name[127] = '\0';
@@ -736,7 +750,7 @@ static int is_builtin_name(const char* name) {
 /* Common C type-words / typedefs that may appear in raw-C decls. */
 static const char* const C_TYPE_WORDS[] = {
     "int", "char", "float", "double", "long", "short", "void", "size_t",
-    "ssize_t", "FILE", "va_list", "uint8_t", "uint16_t", "uint32_t",
+    "ssize_t", "ptrdiff_t", "unsigned", "signed", "FILE", "va_list", "uint8_t", "uint16_t", "uint32_t",
     "uint64_t", "int8_t", "int16_t", "int32_t", "int64_t", "uintptr_t",
     "intptr_t", "CPoint", "bool",
     NULL
@@ -869,6 +883,7 @@ static int lev_dist(const char* a, const char* b) {
     int la = (int)strlen(a), lb = (int)strlen(b);
     if (la == 0) return lb;
     if (lb == 0) return la;
+    if (la >= 255 || lb >= 255) return 999;
     int prev[256], cur[256];
     for (int j = 0; j <= lb && j < 256; j++) prev[j] = j;
     for (int i = 1; i <= la; i++) {
@@ -2259,7 +2274,7 @@ static int ck_check_program(Checker* ck, Program* prog) {
         if (it->kind == TOP_RAW) scan_raw_region(ck, it->raw, it->raw_len);
     }
 
-    /* pass 1: register structs/impls as type names (also for self) */
+    /* pass 1: register structs/impls/enums as type names (also for self) */
     for (int i = 0; i < prog->nitems && !ck->is_err; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_STRUCT) {
@@ -2267,6 +2282,18 @@ static int ck_check_program(Checker* ck, Program* prog) {
             if (!sym) {
                 Sym* n = sym_new_struct(it->st->name, it->st);
                 scope_add(ck->scope, n);
+            }
+        } else if (it->kind == TOP_ENUM) {
+            Sym* sym = sema_lookup(ck->s, it->ed->name);
+            if (!sym) {
+                Sym* n = sym_new_type(it->ed->name, NULL);
+                n->kind = SYM_ENUM;
+                n->ed = it->ed;
+                scope_add(ck->scope, n);
+                for (int j = 0; j < it->ed->nvariants; j++) {
+                    Sym* v = sym_new_variant(it->ed->variants[j].name, it->ed, j);
+                    scope_add(ck->scope, v);
+                }
             }
         }
     }
@@ -2300,7 +2327,8 @@ int sema_check(Sema* sema, Program* prog) {
     ck.s = sema;
     ck.err = NULL;
 
-    int err = ck_check_program(&ck, sema->prog ? sema->prog : prog);
+    Program* target = prog ? prog : sema->prog;
+    int err = ck_check_program(&ck, target);
     if (err) sema->err = ck.err ? ck.err : strdup("error");
 
     raw_names_free();

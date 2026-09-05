@@ -1,0 +1,67 @@
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+}
+
+int side_effect(int* cnt) {
+    *cnt = *cnt + 1;
+    return 1;
+}
+
+int main() {
+    // 1. Side-effecting array indexing
+    int arr[3] = {10, 20, 30};
+    int cnt = 0;
+    int val = arr[side_effect(&cnt)];
+    printf("val=%d cnt=%d\n", val, cnt);
+
+    // 2. Compound literal
+    Point p = (Point){ .x = 15, .y = 25 };
+    printf("p: %d, %d\n", p.x, p.y);
+
+    // 3. Float array loop
+    double sum_f = 0.0;
+    for f in [1.5, 2.5, 3.5] {
+        sum_f += f;
+    }
+    printf("sum_f=%.1f\n", sum_f);
+
+    // 4. Fundamental types
+    long lx = 1000;
+    short sx = 20;
+    unsigned ux = 50;
+    signed int si = -5;
+    let ly: long = 2000;
+    let sy: short = 30;
+    let uy: unsigned = 75;
+    printf("types: %ld %d %u %d %ld %d %u\n", lx, (int)sx, ux, si, ly, (int)sy, uy);
+
+    // 5. Nested switch with continue
+    int loop_count = 0;
+    for (int i = 0; i < 5; i++) {
+        loop_count++;
+        switch (i) {
+            case 2:
+                continue;
+            default:
+                break;
+        }
+    }
+    printf("loop_count=%d\n", loop_count);
+
+    // 6. Block scoping
+    int total = 0;
+    {
+        int scoped_var = 10;
+        total += scoped_var;
+    }
+    {
+        int scoped_var = 20;
+        total += scoped_var;
+    }
+    printf("total=%d\n", total);
+
+    return 0;
+}

@@ -139,6 +139,20 @@ static int probe_std(const char* cc, const char* std) {
     return rc == 0;
 }
 
+/* Compare numeric version components, returning >0 if a > b, <0 if a < b, 0 if equal. */
+static int compare_versions(const char* a, const char* b) {
+    if (!a || !b) return 0;
+    while (*a || *b) {
+        while (*a && (*a < '0' || *a > '9')) a++;
+        while (*b && (*b < '0' || *b > '9')) b++;
+        if (!*a && !*b) return 0;
+        long va = strtol(a, (char**)&a, 10);
+        long vb = strtol(b, (char**)&b, 10);
+        if (va != vb) return (va > vb) ? 1 : -1;
+    }
+    return 0;
+}
+
 /* Auto-discover Android NDK root path if installed. Caller frees returned string. */
 char* toolchain_find_ndk(const char* explicit_path) {
     if (explicit_path && explicit_path[0]) {
@@ -163,21 +177,23 @@ char* toolchain_find_ndk(const char* explicit_path) {
         if (d) {
             struct dirent* de;
             char best[4096] = "";
+            char best_ver[256] = "";
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%.3800s/%s", ndk_dir, de->d_name);
+                snprintf(cand, sizeof cand, "%s/%s", ndk_dir, de->d_name);
                 char probe[4096];
-                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
-                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && (best[0] == '\0' || compare_versions(de->d_name, best_ver) > 0)) {
                     snprintf(best, sizeof best, "%s", cand);
+                    snprintf(best_ver, sizeof best_ver, "%s", de->d_name);
                 }
             }
             closedir(d);
             if (best[0]) return strdup(best);
         }
         char probe[4096];
-        snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", env_sdk);
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", env_sdk);
         if (access(probe, X_OK) == 0) return strdup(env_sdk);
     }
 
@@ -188,19 +204,21 @@ char* toolchain_find_ndk(const char* explicit_path) {
     };
     for (int i = 0; standard_paths[i]; i++) {
         char probe[4096];
-        snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", standard_paths[i]);
+        snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", standard_paths[i]);
         if (access(probe, X_OK) == 0) return strdup(standard_paths[i]);
         DIR* d = opendir(standard_paths[i]);
         if (d) {
             struct dirent* de;
             char best[4096] = "";
+            char best_ver[256] = "";
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%.3800s/%s", standard_paths[i], de->d_name);
-                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
-                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                snprintf(cand, sizeof cand, "%s/%s", standard_paths[i], de->d_name);
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && (best[0] == '\0' || compare_versions(de->d_name, best_ver) > 0)) {
                     snprintf(best, sizeof best, "%s", cand);
+                    snprintf(best_ver, sizeof best_ver, "%s", de->d_name);
                 }
             }
             closedir(d);
@@ -210,19 +228,21 @@ char* toolchain_find_ndk(const char* explicit_path) {
     const char* home = getenv("HOME");
     if (home) {
         char user_sdk_ndk[4096];
-        snprintf(user_sdk_ndk, sizeof user_sdk_ndk, "%.3800s/Android/Sdk/ndk", home);
+        snprintf(user_sdk_ndk, sizeof user_sdk_ndk, "%s/Android/Sdk/ndk", home);
         DIR* d = opendir(user_sdk_ndk);
         if (d) {
             struct dirent* de;
             char best[4096] = "";
+            char best_ver[256] = "";
             while ((de = readdir(d)) != NULL) {
                 if (de->d_name[0] == '.') continue;
                 char cand[4096];
-                snprintf(cand, sizeof cand, "%.3800s/%s", user_sdk_ndk, de->d_name);
+                snprintf(cand, sizeof cand, "%s/%s", user_sdk_ndk, de->d_name);
                 char probe[4096];
-                snprintf(probe, sizeof probe, "%.3800s/toolchains/llvm/prebuilt", cand);
-                if (access(probe, X_OK) == 0 && strcmp(cand, best) > 0) {
+                snprintf(probe, sizeof probe, "%s/toolchains/llvm/prebuilt", cand);
+                if (access(probe, X_OK) == 0 && (best[0] == '\0' || compare_versions(de->d_name, best_ver) > 0)) {
                     snprintf(best, sizeof best, "%s", cand);
+                    snprintf(best_ver, sizeof best_ver, "%s", de->d_name);
                 }
             }
             closedir(d);
