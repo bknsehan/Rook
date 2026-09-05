@@ -135,6 +135,24 @@ static char* resolve_include_path(const char* incpath, const char* basedir,
         if (access(candidate, R_OK) == 0) return strdup(candidate);
         snprintf(candidate, sizeof(candidate), "%s/%s/src/lib.rook", basedir, modname);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/%s/lib.rook", basedir, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/src/%s.rook", basedir, modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/src/lib.rook", basedir, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/lib.rook", basedir, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/vendor/%s/%s.rook", basedir, modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/src/%s.rook", basedir, modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/src/lib.rook", basedir, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/lib.rook", basedir, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/../vendor/%s/%s.rook", basedir, modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
     }
     for (size_t i = 0; i < n_inc; i++) {
         snprintf(candidate, sizeof(candidate), "%s/%s", inc_dirs[i], incpath);
@@ -148,12 +166,30 @@ static char* resolve_include_path(const char* incpath, const char* basedir,
 
         snprintf(candidate, sizeof(candidate), "%s/src/%s", inc_dirs[i], incpath);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/src/lib.rook", inc_dirs[i]);
+
+        /* Check <inc_dir>/<modname>/src/lib.rook, src/<modname>.rook, lib.rook */
+        snprintf(candidate, sizeof(candidate), "%s/%s/src/lib.rook", inc_dirs[i], modname);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/src/main.rook", inc_dirs[i]);
+        snprintf(candidate, sizeof(candidate), "%s/%s/src/%s.rook", inc_dirs[i], modname, modname);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
-        snprintf(candidate, sizeof(candidate), "%s/lib.rook", inc_dirs[i]);
+        snprintf(candidate, sizeof(candidate), "%s/%s/lib.rook", inc_dirs[i], modname);
         if (access(candidate, R_OK) == 0) return strdup(candidate);
+        snprintf(candidate, sizeof(candidate), "%s/%s/%s.rook", inc_dirs[i], modname, modname);
+        if (access(candidate, R_OK) == 0) return strdup(candidate);
+
+        /* If inc_dirs[i] basename matches modname, check its entrypoints */
+        const char* slash = strrchr(inc_dirs[i], '/');
+        const char* dir_base = slash ? slash + 1 : inc_dirs[i];
+        if (strcmp(dir_base, modname) == 0) {
+            snprintf(candidate, sizeof(candidate), "%s/src/lib.rook", inc_dirs[i]);
+            if (access(candidate, R_OK) == 0) return strdup(candidate);
+            snprintf(candidate, sizeof(candidate), "%s/src/%s.rook", inc_dirs[i], modname);
+            if (access(candidate, R_OK) == 0) return strdup(candidate);
+            snprintf(candidate, sizeof(candidate), "%s/src/main.rook", inc_dirs[i]);
+            if (access(candidate, R_OK) == 0) return strdup(candidate);
+            snprintf(candidate, sizeof(candidate), "%s/lib.rook", inc_dirs[i]);
+            if (access(candidate, R_OK) == 0) return strdup(candidate);
+        }
     }
     snprintf(candidate, sizeof(candidate), "%s", incpath);
     if (access(candidate, R_OK) == 0) return strdup(candidate);
@@ -470,7 +506,7 @@ static void usage(void) {
     printf("                              locate the symbol at 0-based (line,col) and print its\n");
     printf("                              definition as one JSON LSP Location (or `null`)\n");
     printf("  rokade --symbols <file>    list top-level definitions as JSON (for LSP outline)\n");
-    printf("  rokade new <name>         create a new Rook project\n");
+    printf("  rokade new [--lib] <name> create a new Rook project or library\n");
     printf("  rokade build [path] [--backend=c|llvm] [--target=t] [--all]  build a Rook project\n");
     printf("  rokade run [path] [--backend=c|llvm] [--jit]  build and run a Rook project or script\n");
     printf("  rokade config             show effective configuration\n");
@@ -486,7 +522,7 @@ static void usage(void) {
 static const char* help_detail(const char* cmd) {
     if (!cmd) return NULL;
     if (strcmp(cmd, "new") == 0)
-        return "rokade new <name>\n  Create a new Rook project directory <name>/ with a\n  rokade.toml and a src/main.rook. Build/run with 'rokade build'.";
+        return "rokade new [--lib] <name>\n  Create a new Rook project directory <name>/ with a\n  rokade.toml and src/main.rook (or src/lib.rook with --lib).\n  Also initializes a vendor/ directory for dependencies. Build with 'rokade build'.";
     if (strcmp(cmd, "build") == 0)
         return "rokade build [path] [--backend=<c|llvm>] [--target=<os>] [--all]\n  Build a Rook project (reads rokade.toml). Supports C and LLVM native backends.";
     if (strcmp(cmd, "run") == 0)
@@ -642,9 +678,10 @@ typedef struct {
     TargetConfig target_configs[16];
     size_t n_target_configs;
 
-    /* Rook package dependencies */
-    Dependency dependencies[32];
+    /* Dynamic Rook package dependencies */
+    Dependency* dependencies;
     size_t n_dependencies;
+    size_t cap_dependencies;
 
     /* Dynamic pkg-config packages */
     char** pkg_config;
@@ -707,6 +744,31 @@ static void project_config_add_pkg_config(ProjectConfig* cfg, const char* pkg) {
     cfg->pkg_config[cfg->n_pkg_config++] = strdup(pkg);
 }
 
+static void project_config_add_dependency(ProjectConfig* cfg, const char* name, const char* path) {
+    if (!cfg || !name || !name[0]) return;
+    for (size_t i = 0; i < cfg->n_dependencies; i++) {
+        if (strcmp(cfg->dependencies[i].name, name) == 0) {
+            if (path && path[0]) {
+                snprintf(cfg->dependencies[i].path, sizeof(cfg->dependencies[i].path), "%s", path);
+            }
+            return;
+        }
+    }
+    if (cfg->n_dependencies >= cfg->cap_dependencies) {
+        size_t ncap = cfg->cap_dependencies ? cfg->cap_dependencies * 2 : 8;
+        Dependency* narr = (Dependency*)realloc(cfg->dependencies, ncap * sizeof(Dependency));
+        if (!narr) return;
+        cfg->dependencies = narr;
+        cfg->cap_dependencies = ncap;
+    }
+    Dependency* dep = &cfg->dependencies[cfg->n_dependencies++];
+    memset(dep, 0, sizeof(*dep));
+    snprintf(dep->name, sizeof(dep->name), "%s", name);
+    if (path && path[0]) {
+        snprintf(dep->path, sizeof(dep->path), "%s", path);
+    }
+}
+
 static void project_config_free(ProjectConfig* cfg) {
     if (!cfg) return;
     for (size_t i = 0; i < cfg->n_libraries; i++) {
@@ -732,6 +794,11 @@ static void project_config_free(ProjectConfig* cfg) {
     cfg->pkg_config = NULL;
     cfg->n_pkg_config = 0;
     cfg->cap_pkg_config = 0;
+
+    free(cfg->dependencies);
+    cfg->dependencies = NULL;
+    cfg->n_dependencies = 0;
+    cfg->cap_dependencies = 0;
 }
 
 static TargetConfig* get_or_create_target_config(ProjectConfig* cfg, const char* target_os) {
@@ -855,6 +922,8 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
                 project_config_add_include_dir(cfg, valbuf);
             } else if (strcmp(key, "pkg-config") == 0 || strcmp(key, "pkg_config") == 0) {
                 project_config_add_pkg_config(cfg, valbuf);
+            } else if (strcmp(key, "dependencies") == 0) {
+                project_config_add_dependency(cfg, valbuf, "");
             } else if (strcmp(key, "targets") == 0) {
                 if (cfg->n_configured_targets < 16) {
                     snprintf(cfg->configured_targets[cfg->n_configured_targets++], 64, "%s", valbuf);
@@ -886,16 +955,45 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
     if (strcmp(cur_sec, "package") == 0 || cur_sec[0] == '\0') {
         if (strcmp(key, "name") == 0) snprintf(cfg->name, sizeof(cfg->name), "%s", valbuf);
         else if (strcmp(key, "version") == 0) snprintf(cfg->version, sizeof(cfg->version), "%s", valbuf);
-    }
-    if (strcmp(cur_sec, "dependencies") == 0) {
-        if (cfg->n_dependencies < 32) {
-            snprintf(cfg->dependencies[cfg->n_dependencies].name, sizeof(cfg->dependencies[0].name), "%s", key);
-            snprintf(cfg->dependencies[cfg->n_dependencies].path, sizeof(cfg->dependencies[0].path), "%s", valbuf);
-            cfg->n_dependencies++;
+        else if (strcmp(key, "kind") == 0) {
+            if (strcmp(valbuf, "lib") == 0 || strcmp(valbuf, "library") == 0) {
+                snprintf(cfg->build_kind, sizeof(cfg->build_kind), "static-lib");
+            } else {
+                snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
+            }
         }
     }
+    if (strcmp(cur_sec, "dependencies") == 0) {
+        char dep_path[4096] = "";
+        /* Support inline table: engine = { path = "vendor/engine" } */
+        if (valbuf[0] == '{') {
+            const char* ppath = strstr(valbuf, "path");
+            if (ppath) {
+                const char* q1 = strchr(ppath, '"');
+                if (q1) {
+                    const char* q2 = strchr(q1 + 1, '"');
+                    if (q2) {
+                        size_t plen = (size_t)(q2 - q1 - 1);
+                        if (plen < sizeof(dep_path)) {
+                            memcpy(dep_path, q1 + 1, plen);
+                            dep_path[plen] = '\0';
+                        }
+                    }
+                }
+            }
+        } else {
+            snprintf(dep_path, sizeof(dep_path), "%s", valbuf);
+        }
+        project_config_add_dependency(cfg, key, dep_path);
+    }
     if (strcmp(cur_sec, "build") == 0 || cur_sec[0] == '\0') {
-        if (strcmp(key, "kind") == 0) snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
+        if (strcmp(key, "kind") == 0) {
+            if (strcmp(valbuf, "lib") == 0 || strcmp(valbuf, "library") == 0) {
+                snprintf(cfg->build_kind, sizeof(cfg->build_kind), "static-lib");
+            } else {
+                snprintf(cfg->build_kind, sizeof(cfg->build_kind), "%s", valbuf);
+            }
+        }
         else if (strcmp(key, "target") == 0) snprintf(cfg->build_target, sizeof(cfg->build_target), "%s", valbuf);
         else if (strcmp(key, "backend") == 0) snprintf(cfg->backend, sizeof(cfg->backend), "%s", valbuf);
         else if (strcmp(key, "c-standard") == 0 || strcmp(key, "standard") == 0) snprintf(cfg->c_standard, sizeof(cfg->c_standard), "%s", valbuf);
@@ -1029,15 +1127,41 @@ static void resolve_pkg_config(ProjectConfig* cfg) {
 static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cfg, int depth) {
     if (depth > 8) return;
 
+    /* Always add <proj_dir>/vendor to include search if it exists */
+    char vendor_dir[4096];
+    snprintf(vendor_dir, sizeof vendor_dir, "%s/vendor", proj_dir);
+    if (access(vendor_dir, R_OK) == 0) {
+        project_config_add_include_dir(cfg, vendor_dir);
+    }
+
     resolve_pkg_config(cfg);
 
     for (size_t i = 0; i < cfg->n_dependencies; i++) {
+        const char* dname = cfg->dependencies[i].name;
         const char* dpath = cfg->dependencies[i].path;
-        char resolved_dir[4096];
-        if (dpath[0] == '/') {
-            snprintf(resolved_dir, sizeof resolved_dir, "%s", dpath);
-        } else {
-            snprintf(resolved_dir, sizeof resolved_dir, "%s/%s", proj_dir, dpath);
+        char resolved_dir[4096] = "";
+
+        if (dpath && dpath[0] != '\0') {
+            if (dpath[0] == '/') {
+                snprintf(resolved_dir, sizeof resolved_dir, "%s", dpath);
+            } else {
+                snprintf(resolved_dir, sizeof resolved_dir, "%s/%s", proj_dir, dpath);
+            }
+        }
+
+        /* If no path specified or not found, auto-resolve in vendor/<name> */
+        if (resolved_dir[0] == '\0' || access(resolved_dir, R_OK) != 0) {
+            char vpath[4096];
+            snprintf(vpath, sizeof(vpath), "%s/vendor/%s", proj_dir, dname);
+            if (access(vpath, R_OK) == 0) {
+                snprintf(resolved_dir, sizeof(resolved_dir), "%s", vpath);
+            }
+        }
+
+        if (resolved_dir[0] == '\0' || access(resolved_dir, R_OK) != 0) {
+            fprintf(stderr, "warning: dependency '%s' not found at '%s' or '%s/vendor/%s'\n",
+                    dname, (dpath && dpath[0]) ? dpath : "<auto>", proj_dir, dname);
+            continue;
         }
 
         /* 1. Add <dep>/src to include_dirs */
@@ -1066,6 +1190,9 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                 }
                 fclose(df);
 
+                /* Note: dep_cfg.build_kind / build_target are ignored when loaded as dependency.
+                   The main project treats this dependency as part of its own compilation. */
+
                 for (size_t k = 0; k < dep_cfg.n_pkg_config; k++) {
                     project_config_add_pkg_config(cfg, dep_cfg.pkg_config[k]);
                 }
@@ -1074,6 +1201,13 @@ static void resolve_project_dependencies(const char* proj_dir, ProjectConfig* cf
                 }
                 for (size_t k = 0; k < dep_cfg.n_include_dirs; k++) {
                     project_config_add_include_dir(cfg, dep_cfg.include_dirs[k]);
+                }
+                if (dep_cfg.cflags[0]) {
+                    size_t curlen = strlen(cfg->cflags);
+                    size_t dlen = strlen(dep_cfg.cflags);
+                    if (curlen + dlen + 2 < sizeof(cfg->cflags)) {
+                        snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", dep_cfg.cflags);
+                    }
                 }
                 resolve_project_dependencies(resolved_dir, &dep_cfg, depth + 1);
                 project_config_free(&dep_cfg);
@@ -1103,7 +1237,7 @@ static int read_project_config(const char* proj_dir, ProjectConfig* cfg) {
 
 /* ---------- new command ---------- */
 
-static int do_new(const char* name) {
+static int do_new(const char* name, int is_lib) {
     for (const char* p = name; *p; p++) {
         if (!isalnum((unsigned char)*p) && *p != '_' && *p != '-') {
             fprintf(stderr, "error: invalid project name '%s' (use alphanumeric, _, -)\n", name);
@@ -1126,6 +1260,13 @@ static int do_new(const char* name) {
     snprintf(subdir, sizeof(subdir), "%s/src", proj_dir);
     if (mkdir(subdir, 0755) != 0) { perror("mkdir src"); return 1; }
 
+    snprintf(subdir, sizeof(subdir), "%s/vendor", proj_dir);
+    if (mkdir(subdir, 0755) != 0) { perror("mkdir vendor"); return 1; }
+    char keep_path[8192];
+    snprintf(keep_path, sizeof(keep_path), "%s/.gitkeep", subdir);
+    FILE* fk = fopen(keep_path, "w");
+    if (fk) fclose(fk);
+
     /* Write rokade.toml */
     char fpath[8192];
     snprintf(fpath, sizeof(fpath), "%s/rokade.toml", proj_dir);
@@ -1134,35 +1275,68 @@ static int do_new(const char* name) {
     fprintf(f, "[package]\n");
     fprintf(f, "name = \"%s\"\n", name);
     fprintf(f, "version = \"0.1.0\"\n");
-    fprintf(f, "\n");
-    fprintf(f, "# [build]\n");
-    fprintf(f, "# kind = \"exe\"           # default: executable\n");
-    fprintf(f, "# kind = \"static-lib\"     # static library\n");
-    fprintf(f, "# kind = \"shared-lib\"     # shared library\n");
-    fprintf(f, "# target = \"linux\"        # host build (default)\n");
-    fprintf(f, "# c-standard = 11\n");
-    fprintf(f, "# libraries = [\"m\"]\n");
-    fprintf(f, "# include-dirs = [\"../shared\"]\n");
+    if (is_lib) {
+        fprintf(f, "kind = \"lib\"\n");
+        fprintf(f, "\n");
+        fprintf(f, "[build]\n");
+        fprintf(f, "kind = \"lib\"\n");
+    } else {
+        fprintf(f, "\n");
+        fprintf(f, "# [build]\n");
+        fprintf(f, "# kind = \"exe\"           # default: executable\n");
+        fprintf(f, "# kind = \"static-lib\"     # static library\n");
+        fprintf(f, "# kind = \"shared-lib\"     # shared library\n");
+        fprintf(f, "# target = \"linux\"        # host build (default)\n");
+        fprintf(f, "# c-standard = 11\n");
+        fprintf(f, "# libraries = [\"m\"]\n");
+        fprintf(f, "# include-dirs = [\"../shared\"]\n");
+    }
+    fprintf(f, "\n# [dependencies]\n");
+    fprintf(f, "# example = \"vendor/example\"\n");
     fclose(f);
 
-    /* Write src/main.rook */
-    snprintf(fpath, sizeof(fpath), "%s/src/main.rook", proj_dir);
-    f = fopen(fpath, "w");
-    if (!f) { perror("fopen src/main.rook"); return 1; }
-    fprintf(f, "#include <stdio.h>\n");
-    fprintf(f, "\n");
-    fprintf(f, "int main() {\n");
-    fprintf(f, "    printf(\"Hello, Rook!\\n\");\n");
-    fprintf(f, "    return 0;\n");
-    fprintf(f, "}\n");
-    fclose(f);
+    if (is_lib) {
+        /* Write src/lib.rook */
+        snprintf(fpath, sizeof(fpath), "%s/src/lib.rook", proj_dir);
+        f = fopen(fpath, "w");
+        if (!f) { perror("fopen src/lib.rook"); return 1; }
+        fprintf(f, "#include <stdio.h>\n");
+        fprintf(f, "\n");
+        fprintf(f, "// Public API for %s\n", name);
+        fprintf(f, "int %s_init() {\n", name);
+        fprintf(f, "    printf(\"%s library initialized.\\n\");\n", name);
+        fprintf(f, "    return 0;\n");
+        fprintf(f, "}\n");
+        fclose(f);
 
-    printf("Created Rook project '%s'\n", name);
-    printf("  %s/\n", name);
-    printf("  ├── rokade.toml\n");
-    printf("  └── src/\n");
-    printf("      └── main.rook\n");
-    printf("\nBuild and run: cd %s && rokade build\n", name);
+        printf("Created Rook library project '%s'\n", name);
+        printf("  %s/\n", name);
+        printf("  ├── rokade.toml\n");
+        printf("  ├── src/\n");
+        printf("  │   └── lib.rook\n");
+        printf("  └── vendor/\n");
+        printf("\nBuild library: cd %s && rokade build\n", name);
+    } else {
+        /* Write src/main.rook */
+        snprintf(fpath, sizeof(fpath), "%s/src/main.rook", proj_dir);
+        f = fopen(fpath, "w");
+        if (!f) { perror("fopen src/main.rook"); return 1; }
+        fprintf(f, "#include <stdio.h>\n");
+        fprintf(f, "\n");
+        fprintf(f, "int main() {\n");
+        fprintf(f, "    printf(\"Hello, Rook!\\n\");\n");
+        fprintf(f, "    return 0;\n");
+        fprintf(f, "}\n");
+        fclose(f);
+
+        printf("Created Rook project '%s'\n", name);
+        printf("  %s/\n", name);
+        printf("  ├── rokade.toml\n");
+        printf("  ├── src/\n");
+        printf("  │   └── main.rook\n");
+        printf("  └── vendor/\n");
+        printf("\nBuild and run: cd %s && rokade build\n", name);
+    }
     return 0;
 }
 
@@ -1509,7 +1683,9 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
             char target_bin[8192];
             int is_shared = strcmp(spec.build_kind, "shared-lib") == 0;
-            int is_static = strcmp(spec.build_kind, "static-lib") == 0;
+            int is_static = strcmp(spec.build_kind, "static-lib") == 0 ||
+                            strcmp(spec.build_kind, "lib") == 0 ||
+                            strcmp(spec.build_kind, "library") == 0;
             if (is_shared) {
                 snprintf(target_bin, sizeof(target_bin), "%s/lib%s.%s",
                          target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? "dll" : "so");
@@ -1626,6 +1802,12 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
         return 1;
     }
 
+    if (strcmp(cfg.build_kind, "static-lib") == 0 || strcmp(cfg.build_kind, "lib") == 0 || strcmp(cfg.build_kind, "library") == 0) {
+        fprintf(stderr, "error: '%s' is a library project and cannot be run directly\n", cfg.name);
+        project_config_free(&cfg);
+        return 1;
+    }
+
     char exe_path[4096];
     if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/linux/%s", proj_path, cfg.name);
     else snprintf(exe_path, sizeof(exe_path), "build/linux/%s", cfg.name);
@@ -1636,7 +1818,7 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
     printf("running: %s\n", exe_path);
 
     char cmd[8192];
-    snprintf(cmd, sizeof(cmd), "%s", exe_path);
+    snprintf(cmd, sizeof(cmd), "\"%s\"", exe_path);
     project_config_free(&cfg);
     return system(cmd);
 }
@@ -2046,7 +2228,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                     fail++; if (!quiet) printf("  FAIL (emit-obj) %s\n", base); continue;
                 }
                 char link_cmd[32768];
-                snprintf(link_cmd, sizeof(link_cmd), "clang -O0 %s -o %s -lm 2>/dev/null", obj_path, exe_path);
+                snprintf(link_cmd, sizeof(link_cmd), "clang -O0 \"%s\" -o \"%s\" -lm 2>/dev/null", obj_path, exe_path);
                 if (system(link_cmd) != 0) {
                     fail++; if (!quiet) printf("  FAIL (link) %s\n", base); continue;
                 }
@@ -2066,9 +2248,9 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
             }
 
             if (access(inref, F_OK) == 0)
-                snprintf(cmd, sizeof cmd, "%s < %s > %s 2>/dev/null", exe_path, inref, got_path);
+                snprintf(cmd, sizeof cmd, "\"%s\" < \"%s\" > \"%s\" 2>/dev/null", exe_path, inref, got_path);
             else
-                snprintf(cmd, sizeof cmd, "%s < /dev/null > %s 2>/dev/null", exe_path, got_path);
+                snprintf(cmd, sizeof cmd, "\"%s\" < /dev/null > \"%s\" 2>/dev/null", exe_path, got_path);
             if (system(cmd) != 0) { fail++; if (!quiet) printf("  FAIL (run) %s\n", base); continue; }
 
             int glen = 0, elen = 0;
@@ -2087,7 +2269,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
 
     /* best-effort cleanup of the temp dir */
     char cmd[8192];
-    snprintf(cmd, sizeof cmd, "rm -rf %s", work);
+    snprintf(cmd, sizeof cmd, "rm -rf \"%s\"", work);
     system(cmd);
 
     *o_pass += pass;
@@ -2612,10 +2794,27 @@ int main(int argc, char** argv) {
     if (strcmp(argv[1], "new") == 0) {
         if (argc < 3) {
             fprintf(stderr, "error: missing project name\n");
-            printf("Usage: rokade new <project-name>\n");
+            printf("Usage: rokade new [--lib] <project-name>\n");
             return 1;
         }
-        return do_new(argv[2]);
+        int is_lib = 0;
+        const char* name = NULL;
+        for (int a = 2; a < argc; a++) {
+            if (strcmp(argv[a], "--lib") == 0) {
+                is_lib = 1;
+            } else if (!name) {
+                name = argv[a];
+            } else {
+                fprintf(stderr, "error: unexpected argument '%s'\n", argv[a]);
+                return 1;
+            }
+        }
+        if (!name) {
+            fprintf(stderr, "error: missing project name\n");
+            printf("Usage: rokade new [--lib] <project-name>\n");
+            return 1;
+        }
+        return do_new(name, is_lib);
     }
 
     if (strcmp(argv[1], "build") == 0) {

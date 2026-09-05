@@ -525,7 +525,7 @@ int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const cha
     const char* tos = (spec && spec->target_os[0]) ? spec->target_os : "linux";
 
     char cmd[32768];
-    if (strcmp(kind, "static-lib") == 0) {
+    if (strcmp(kind, "static-lib") == 0 || strcmp(kind, "lib") == 0 || strcmp(kind, "library") == 0) {
         const char* ar = tc && tc->ar_path ? tc->ar_path : "ar";
         int n = snprintf(cmd, sizeof cmd, "%s rcs \"%s\"", ar, out_bin ? out_bin : "lib.a");
         for (size_t i = 0; i < n_objs; i++) {
