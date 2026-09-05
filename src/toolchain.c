@@ -261,7 +261,7 @@ static char* toolchain_cache_path(void) {
     return p;
 }
 
-__attribute__((unused)) static void write_cache(const Toolchain* tc) {
+static void write_cache(const Toolchain* tc) {
     char* cp = toolchain_cache_path();
     if (!cp) return;
     char* dir = strdup(cp);
@@ -465,6 +465,7 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
         }
     }
 
+    write_cache(tc);
     return 0;
 }
 

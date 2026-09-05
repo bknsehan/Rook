@@ -92,7 +92,7 @@ cmake --build build -j"$(nproc 2>/dev/null || echo 4)"
 echo "Installing to ${PREFIX}..."
 mkdir -p "${PREFIX}/bin"
 mkdir -p "${PREFIX}/std"
-mkdir -p "${PREFIX}/share/rook"
+mkdir -p "${PREFIX}/share/rokade"
 mkdir -p "${PREFIX}/editors/zed"
 
 # 4. Copy executables & assets
@@ -105,14 +105,14 @@ if [ -f "build/rook-lsp" ]; then
 fi
 
 cp -rf std/* "${PREFIX}/std/"
-cp -f src/libc/commandlist.json "${PREFIX}/share/rook/commandlist.json"
+cp -f src/libc/commandlist.json "${PREFIX}/share/rokade/commandlist.json"
 cp -rf editors/zed/* "${PREFIX}/editors/zed/"
 
 echo "Installed:"
 echo "  - Compiler:        ${PREFIX}/bin/rokade"
 echo "  - Language Server: ${PREFIX}/bin/rook-lsp"
 echo "  - Standard Lib:    ${PREFIX}/std"
-echo "  - Data Files:      ${PREFIX}/share/rook/commandlist.json"
+echo "  - Data Files:      ${PREFIX}/share/rokade/commandlist.json"
 echo "  - Zed Extension:   ${PREFIX}/editors/zed"
 
 # 5. Create symlinks in PATH

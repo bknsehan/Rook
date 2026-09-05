@@ -26,6 +26,16 @@ ROKADE_CC="${ROKADE_CC:-gcc}"
 # Tell rokade where the bundled C-API commandlist (libc signatures) lives so the
 # compiler can type/arity-check C calls. May be overridden by the caller.
 export ROKADE_DATA_DIR="${ROKADE_DATA_DIR:-$ROOK_ROOT/src/libc}"
+# BACKEND selects which compiler backend to exercise (default: c).
+# The shell runner only handles the C backend; for LLVM use:
+#   rokade test --backend=llvm <corpus-dir>
+# Fail fast if callers still pass the legacy BACKEND=llvm to this script.
+BACKEND="${BACKEND:-c}"
+if [ "$BACKEND" != "c" ]; then
+    echo "tests/run.sh only supports BACKEND=c; for LLVM run: \$ROKADE test --backend=llvm \$CORPUS" >&2
+    echo "hint: ROKADE=$ROKADE \$ROKADE test --backend=$BACKEND \"\${CORPUS:-$SCRIPT_DIR/corpus}\"" >&2
+    exit 2
+fi
 # The C code rokade emits requires C23 (`auto`); default to c2x so the corpus
 # builds on both gcc and clang. Override with CSTD=gnu99 etc. if desired.
 CSTD="${CSTD:-c2x}"

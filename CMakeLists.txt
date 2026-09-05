@@ -118,7 +118,7 @@ if(ROOK_BUILD_LSP)
     VERBATIM)
 
   # Install the LSP binary alongside the compiler (only when built).
-  install(FILES ${_cargo_bin}
+  install(PROGRAMS ${_cargo_bin}
     DESTINATION bin
     OPTIONAL)
 endif()
