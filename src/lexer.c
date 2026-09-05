@@ -224,8 +224,9 @@ Token* lex_all(const char* src, int len, int* out_n) {
         } else {
             t = lex_punct(&lx);
         }
-        arr = realloc(arr, (n + 1) * sizeof *arr);
-        if (!arr) exit(1);
+        Token* tmp = realloc(arr, (n + 1) * sizeof *arr);
+        if (!tmp) { free(arr); exit(1); }
+        arr = tmp;
         arr[n++] = t;
     }
 
@@ -238,8 +239,9 @@ Token* lex_all(const char* src, int len, int* out_n) {
     eof.line = lx.line;
     eof.col = lx.col;
     eof.bol = 0;
-    arr = realloc(arr, (n + 1) * sizeof *arr);
-    if (!arr) exit(1);
+    Token* tmp_eof = realloc(arr, (n + 1) * sizeof *arr);
+    if (!tmp_eof) { free(arr); exit(1); }
+    arr = tmp_eof;
     arr[n++] = eof;
 
     if (out_n) *out_n = n;

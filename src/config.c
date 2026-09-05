@@ -278,6 +278,7 @@ static int write_key(const char* path, int ki, const char* value) {
     if (f) {
         char buf[8192];
         while (fgets(buf, sizeof buf, f)) {
+            if (n >= (int)(sizeof(lines) / sizeof(lines[0]))) break;
             size_t L = strlen(buf);
             while (L > 0 && (buf[L - 1] == '\n' || buf[L - 1] == '\r')) buf[--L] = '\0';
             if (buf[0] == '[') {
@@ -318,23 +319,23 @@ static int write_key(const char* path, int ki, const char* value) {
     char* out[4096];
     int on = 0;
     if (!sec_found) {
-        for (int i = 0; i < n; i++) out[on++] = strdup(lines[i]);
-        if (n > 0) out[on++] = strdup("");
-        out[on++] = strdup("[rokade]");
+        for (int i = 0; i < n && on < (int)(sizeof(out) / sizeof(out[0])); i++) out[on++] = strdup(lines[i]);
+        if (n > 0 && on < (int)(sizeof(out) / sizeof(out[0]))) out[on++] = strdup("");
+        if (on < (int)(sizeof(out) / sizeof(out[0]))) out[on++] = strdup("[rokade]");
         char nl[2048];
         snprintf(nl, sizeof nl, "%s = %s", KMAP[ki].name, valbuf);
-        out[on++] = strdup(nl);
+        if (on < (int)(sizeof(out) / sizeof(out[0]))) out[on++] = strdup(nl);
     } else if (!replaced) {
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < n && on < (int)(sizeof(out) / sizeof(out[0])); i++) {
             out[on++] = strdup(lines[i]);
-            if (i == sec_idx) {
+            if (i == sec_idx && on < (int)(sizeof(out) / sizeof(out[0]))) {
                 char nl[2048];
                 snprintf(nl, sizeof nl, "%s = %s", KMAP[ki].name, valbuf);
                 out[on++] = strdup(nl);
             }
         }
     } else {
-        for (int i = 0; i < n; i++) out[on++] = strdup(lines[i]);
+        for (int i = 0; i < n && on < (int)(sizeof(out) / sizeof(out[0])); i++) out[on++] = strdup(lines[i]);
     }
 
     ensure_parent_dir(path);

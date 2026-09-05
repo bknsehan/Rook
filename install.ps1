@@ -31,7 +31,7 @@ cmake --build build --config Release
 # 3. Create destination directories
 $binDir = Join-Path $Prefix "bin"
 $stdDir = Join-Path $Prefix "std"
-$shareDir = Join-Path $Prefix "share\rook"
+$shareDir = Join-Path $Prefix "share\rokade"
 $zedDir = Join-Path $Prefix "editors\zed"
 
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
