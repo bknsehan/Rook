@@ -1,0 +1,13 @@
+#comprise <std/log>
+
+int main() {
+    Logger log = log_new(log_level_info());
+    log.debug("dbg-hidden");
+    log.info("info-shown");
+    log.warn("warn-to-stderr");
+    log.error("error-to-stderr");
+    log.set_level(log_level_debug());
+    log.debug("dbg-shown");
+    printf("level=%d\n", log.get_level());
+    return 0;
+}
