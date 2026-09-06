@@ -51,6 +51,8 @@ BACKEND="${BACKEND:-c}"
 emit() { # $1=src, $2=out_file
     if [ "$BACKEND" = "llvm" ]; then
         "$ROKADE" --emit-llvm "$1" >"$2" 2>"$WORK/emit.log"
+    elif [ "$BACKEND" = "llvm2" ]; then
+        "$ROKADE" --emit-llvm2 "$1" >"$2" 2>"$WORK/emit.log"
     else
         "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
     fi
@@ -78,9 +80,9 @@ for src in "$CORPUS"/*.rook; do
     out_ref="$CORPUS/$base.out"
     # ---- expected-output test ------------------------------------------------
     if [ -f "$out_ref" ]; then
-        if [ "$BACKEND" = "llvm" ]; then
+        if [ "$BACKEND" = "llvm" ] || [ "$BACKEND" = "llvm2" ]; then
             if ! emit "$src" "$WORK/t.ll"; then
-                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-llvm) $base"
+                FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-$BACKEND) $base"
                 continue
             fi
             if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm >/dev/null 2>&1; then

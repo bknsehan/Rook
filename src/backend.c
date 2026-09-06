@@ -8,6 +8,8 @@ Backend* backend_create(const char* name) {
         return c_backend_create();
     if (name && strcmp(name, "llvm") == 0)
         return llvm_backend_create();
+    if (name && strcmp(name, "llvm2") == 0)
+        return llvm2_backend_create();
     return NULL;
 }
 

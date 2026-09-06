@@ -20,6 +20,7 @@
 #include "sema.h"
 #include "c_import.h"
 #include "llvm_backend.h"
+#include "llvm2_backend.h"
 #include "util.h"
 
 #ifndef ROKADE_VERSION
@@ -573,6 +574,7 @@ static void usage(void) {
     printf("  rokade <file>             lex/parse and emit Rook source to stdout\n");
     printf("  rokade --emit-c <file>    parse and emit C to stdout\n");
     printf("  rokade --emit-llvm <file> parse and emit LLVM IR to stdout\n");
+    printf("  rokade --emit-llvm2 <file> parse and emit LLVM2 (next-gen) IR to stdout\n");
     printf("  rokade --emit-obj <file>  parse and emit native object (.o) via LLVM\n");
     printf("  rokade --ast <file>       dump the AST\n");
     printf("  rokade --check <file>     round-trip check (parse->emit->reparse, compare ASTs)\n");
@@ -585,8 +587,8 @@ static void usage(void) {
     printf("                              definition as one JSON LSP Location (or `null`)\n");
     printf("  rokade --symbols <file>    list top-level definitions as JSON (for LSP outline)\n");
     printf("  rokade new [--lib] <name> create a new Rook project or library\n");
-    printf("  rokade build [path] [--backend=c|llvm] [--target=t] [--all]  build a Rook project\n");
-    printf("  rokade run [path] [--backend=c|llvm] [--jit]  build and run a Rook project or script\n");
+    printf("  rokade build [path] [--backend=c|llvm|llvm2] [--target=t] [--all]  build a Rook project\n");
+    printf("  rokade run [path] [--backend=c|llvm|llvm2] [--jit]  build and run a Rook project or script\n");
     printf("  rokade config             show effective configuration\n");
     printf("  rokade config get <key>   print one config value\n");
     printf("  rokade config set [--local] <key> <value>  set a config value\n");
@@ -1713,7 +1715,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         }
 
         char c_path[4096];
-        const char* ext = (strcmp(active_backend, "llvm") == 0) ? "ll" : "c";
+        const char* ext = (strcmp(active_backend, "llvm") == 0 || strcmp(active_backend, "llvm2") == 0) ? "ll" : "c";
         if (snprintf(c_path, sizeof(c_path), "%s/build/generated/%.*s.%s",
                      proj_path, (int)(mlen - 5), entry->d_name, ext) >= (int)sizeof(c_path)) {
             fprintf(stderr, "warning: generated output path too long for %s\n", entry->d_name);
@@ -1902,7 +1904,9 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                         else if (strstr(spec.cflags, "-O3")) opt_level = 3;
                         else if (strstr(spec.cflags, "-O2")) opt_level = 2;
                     }
-                    ret = llvm_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple);
+                    ret = (strcmp(active_backend, "llvm2") == 0)
+                        ? llvm2_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple)
+                        : llvm_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple);
 #else
                     ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
 #endif
@@ -1977,7 +1981,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
 /* ---------- run command ---------- */
 
-static int run_single_file_jit(const char* path) {
+static int run_single_file_jit(const char* path, const char* cli_backend) {
     int len = 0;
     char* src = util_read_file(path, &len);
     if (!src) {
@@ -2025,7 +2029,9 @@ static int run_single_file_jit(const char* path) {
         return 1;
     }
 
-    int rc = llvm_backend_jit_run(sema, p, 0, NULL);
+    int rc = (cli_backend && strcmp(cli_backend, "llvm2") == 0)
+        ? llvm2_backend_jit_run(sema, p, 0, NULL)
+        : llvm_backend_jit_run(sema, p, 0, NULL);
 
     sema_free(sema);
     free(expanded);
@@ -2038,13 +2044,13 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
     if (proj_path) {
         size_t plen = strlen(proj_path);
         if (plen >= 5 && strcmp(proj_path + plen - 5, ".rook") == 0) {
-            return run_single_file_jit(proj_path);
+            return run_single_file_jit(proj_path, cli_backend);
         }
     }
     if (use_jit) {
         char main_path[4096];
         snprintf(main_path, sizeof(main_path), "%s/src/main.rook", proj_path ? proj_path : ".");
-        return run_single_file_jit(main_path);
+        return run_single_file_jit(main_path, cli_backend);
     }
 
     ProjectConfig probe_cfg;
@@ -2445,7 +2451,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
         /* ---- expected-output test ---- */
         if (access(outref, F_OK) == 0) {
             char cmd[32768];
-            if (backend && strcmp(backend, "llvm") == 0) {
+            if (backend && (strcmp(backend, "llvm") == 0 || strcmp(backend, "llvm2") == 0)) {
 #ifdef ROKADE_HAS_LLVM
                 int slen = 0;
                 char* raw_src = util_read_file(src, &slen);
@@ -2481,7 +2487,9 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 }
                 char obj_path[4096];
                 snprintf(obj_path, sizeof(obj_path), "%s/%s.o", work, base);
-                int rc = llvm_backend_emit_obj(sema, p, obj_path, 2);
+                int rc = (strcmp(backend, "llvm2") == 0)
+                    ? llvm2_backend_emit_obj(sema, p, obj_path, 2)
+                    : llvm_backend_emit_obj(sema, p, obj_path, 2);
                 sema_free(sema); program_free(p); free(expanded); free(toks);
                 if (rc != 0) {
                     fail++; if (!quiet) printf("  FAIL (emit-obj) %s\n", base); continue;
@@ -3310,7 +3318,7 @@ int main(int argc, char** argv) {
     }
 
     /* File processing commands */
-    int mode = 0; /* 0 emit, 1 emit-c, 2 ast, 3 check, 4 checkdir, 5 diagnostics, 6 emit-llvm, 7 emit-obj */
+    int mode = 0; /* 0 emit, 1 emit-c, 2 ast, 3 check, 4 checkdir, 5 diagnostics, 6 emit-llvm, 7 emit-obj, 8 emit-llvm2 */
     int bounds_check = 0;
     const char* cli_backend = "c";
     int i = 1;
@@ -3328,7 +3336,8 @@ int main(int argc, char** argv) {
     }
     if (i < argc && strcmp(argv[i], "--emit-c") == 0) { mode = 1; cli_backend = "c"; i++; }
     else if (i < argc && strcmp(argv[i], "--emit-llvm") == 0) { mode = 6; cli_backend = "llvm"; i++; }
-    else if (i < argc && strcmp(argv[i], "--emit-obj") == 0) { mode = 7; cli_backend = "llvm"; i++; }
+    else if (i < argc && strcmp(argv[i], "--emit-llvm2") == 0) { mode = 8; cli_backend = "llvm2"; i++; }
+    else if (i < argc && strcmp(argv[i], "--emit-obj") == 0) { mode = 7; if (strcmp(cli_backend, "llvm2") != 0) cli_backend = "llvm"; i++; }
     else if (i < argc && strcmp(argv[i], "--ast") == 0) { mode = 2; i++; }
     else if (i < argc && strcmp(argv[i], "--check") == 0) { mode = 3; i++; }
     else if (i < argc && strcmp(argv[i], "--check-dir") == 0) { mode = 4; i++; }
@@ -3470,7 +3479,9 @@ int main(int argc, char** argv) {
             snprintf(out_obj, sizeof(out_obj), "%.*s.o", (int)(blen > 5 ? blen - 5 : blen), base);
         }
 
-        int rc = llvm_backend_emit_obj(sema, p, out_obj, 2);
+        int rc = (strcmp(cli_backend, "llvm2") == 0)
+            ? llvm2_backend_emit_obj(sema, p, out_obj, 2)
+            : llvm_backend_emit_obj(sema, p, out_obj, 2);
         if (rc == 0) {
             printf("emitted: %s\n", out_obj);
         }
@@ -3480,7 +3491,7 @@ int main(int argc, char** argv) {
         program_free(p);
         return rc;
     }
-    if (mode == 1 || mode == 6 || (mode == 0 && strcmp(cli_backend, "llvm") == 0)) {
+    if (mode == 1 || mode == 6 || mode == 8 || (mode == 0 && (strcmp(cli_backend, "llvm") == 0 || strcmp(cli_backend, "llvm2") == 0))) {
         Sema* sema = sema_new();
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(basedir, NULL);
@@ -3497,7 +3508,7 @@ int main(int argc, char** argv) {
             return 1;
         }
         int elen = 0;
-        const char* bname = (mode == 6) ? "llvm" : cli_backend;
+        const char* bname = (mode == 6) ? "llvm" : ((mode == 8) ? "llvm2" : cli_backend);
         Backend* be = backend_create(bname);
         if (!be) {
             fprintf(stderr, "rokade: backend '%s' not available\n", bname);

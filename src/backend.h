@@ -30,6 +30,9 @@ Backend* c_backend_create(void);
 /* Create the LLVM backend directly. */
 Backend* llvm_backend_create(void);
 
+/* Create the next-generation LLVM2 backend directly. */
+Backend* llvm2_backend_create(void);
+
 void backend_destroy(Backend* b);
 
 #endif

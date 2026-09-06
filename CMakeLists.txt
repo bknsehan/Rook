@@ -19,6 +19,7 @@ add_executable(rokade
   src/config.c
   src/toolchain.c
   src/llvm_backend.c
+  src/llvm2_backend.c
   src/c_import.c
 )
 
