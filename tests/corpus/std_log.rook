@@ -8,6 +8,13 @@ int main() {
     log.error("error-to-stderr");
     log.set_level(log_level_debug());
     log.debug("dbg-shown");
+    log.info_int("tasks", 3);
     printf("level=%d\n", log.get_level());
+
+    // Global logger
+    log_set_global_level(1);
+    log_debug("global-dbg-hidden");
+    log_info("global-info-shown");
+    log_warn("global-warn-stderr");
     return 0;
 }

@@ -805,14 +805,33 @@ static int ck_type_is_numeric(const char* name) {
            strcmp(name, "uint64_t") == 0 || strcmp(name, "int8_t") == 0 ||
            strcmp(name, "int16_t") == 0 || strcmp(name, "int32_t") == 0 ||
            strcmp(name, "int64_t") == 0 || strcmp(name, "uintptr_t") == 0 ||
-           strcmp(name, "intptr_t") == 0;
+           strcmp(name, "intptr_t") == 0 ||
+           strcmp(name, "unsigned int") == 0 || strcmp(name, "unsigned long") == 0 ||
+           strcmp(name, "unsigned short") == 0 || strcmp(name, "unsigned char") == 0 ||
+           strcmp(name, "signed char") == 0 || strcmp(name, "signed int") == 0 ||
+           strcmp(name, "signed short") == 0 || strcmp(name, "signed long") == 0 ||
+           strcmp(name, "long long") == 0 || strcmp(name, "unsigned long long") == 0 ||
+           strcmp(name, "long int") == 0 || strcmp(name, "unsigned long int") == 0 ||
+           strcmp(name, "long double") == 0;
+}
+
+static int ck_type_name_equiv(const char* a, const char* b) {
+    if (!a || !b) return 0;
+    if (strcmp(a, b) == 0) return 1;
+    if ((strcmp(a, "size_t") == 0 && (strcmp(b, "unsigned long") == 0 || strcmp(b, "unsigned long long") == 0 || strcmp(b, "uint64_t") == 0)) ||
+        (strcmp(b, "size_t") == 0 && (strcmp(a, "unsigned long") == 0 || strcmp(a, "unsigned long long") == 0 || strcmp(a, "uint64_t") == 0)))
+        return 1;
+    if ((strcmp(a, "ssize_t") == 0 && (strcmp(b, "long") == 0 || strcmp(b, "long long") == 0 || strcmp(b, "int64_t") == 0)) ||
+        (strcmp(b, "ssize_t") == 0 && (strcmp(a, "long") == 0 || strcmp(a, "long long") == 0 || strcmp(a, "int64_t") == 0)))
+        return 1;
+    return 0;
 }
 
 /* Equivalence: pointer/value distinction, const-tolerant. */
 static int ck_type_eq(AstType* a, AstType* b) {
     if (!a || !b) return 0;
     if (a->ptrs != b->ptrs) return 0;
-    if (strcmp(a->name, b->name) != 0) return 0;
+    if (!ck_type_name_equiv(a->name, b->name)) return 0;
     return 1;
 }
 

@@ -134,7 +134,8 @@ static int probe_std(const char* cc, const char* std) {
     snprintf(std_arg, sizeof(std_arg), "-std=%s", std);
     const char* exe = cc ? cc : "cc";
     const char* args[] = { exe, std_arg, "-c", "-o", DEV_NULL, path, NULL };
-    int rc = util_exec(args);
+    char discard[256];
+    int rc = util_exec_capture(args, discard, sizeof(discard));
     unlink(path);
     return rc == 0;
 }
@@ -296,6 +297,7 @@ static void write_cache(const Toolchain* tc) {
         if (tc->cc_version)         fprintf(f, "cc_version = \"%s\"\n", tc->cc_version);
         fprintf(f, "supports_c11 = %d\n", tc->supports_c11);
         fprintf(f, "supports_c17 = %d\n", tc->supports_c17);
+        fprintf(f, "supports_c23 = %d\n", tc->supports_c23);
         if (tc->ar_path)            fprintf(f, "ar_path = \"%s\"\n", tc->ar_path);
         fclose(f);
     }
@@ -313,7 +315,7 @@ static int read_cache(Toolchain* tc) {
         if (f) {
             char line[8192];
             char cc_path[4096] = "", cc_vendor[256] = "", cc_version[8192] = "", ar_path[4096] = "";
-            int c11 = 0, c17 = 0;
+            int c11 = 0, c17 = 0, c23 = 0;
             while (fgets(line, sizeof line, f)) {
                 char k[256], v[8192];
                 if (sscanf(line, "%255[^=]=%8191[^\n]", k, v) != 2) continue;
@@ -327,6 +329,7 @@ static int read_cache(Toolchain* tc) {
                 else if (strcmp(k, "ar_path")==0)    snprintf(ar_path, sizeof ar_path, "%s", v);
                 else if (strcmp(k, "supports_c11")==0) c11 = atoi(v);
                 else if (strcmp(k, "supports_c17")==0) c17 = atoi(v);
+                else if (strcmp(k, "supports_c23")==0) c23 = atoi(v);
             }
             fclose(f);
             if (cc_path[0] && access(cc_path, X_OK) == 0) {
@@ -335,6 +338,7 @@ static int read_cache(Toolchain* tc) {
                 tc->cc_version = cc_version[0] ? strdup(cc_version) : NULL;
                 tc->supports_c11 = c11;
                 tc->supports_c17 = c17;
+                tc->supports_c23 = c23;
                 tc->ar_path = ar_path[0] ? strdup(ar_path) : NULL;
                 ok = 1;
             }
@@ -465,7 +469,10 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
     if (!tc->cc_version) probe_version(tc);
     if (!tc->supports_c11) tc->supports_c11 = probe_std(tc->cc_path, "c11");
     if (!tc->supports_c17) tc->supports_c17 = probe_std(tc->cc_path, "c17");
-    if (!tc->supports_c23) tc->supports_c23 = probe_std(tc->cc_path, "c23");
+    if (!tc->supports_c23) {
+        if (probe_std(tc->cc_path, "c23")) tc->supports_c23 = 1;
+        else if (probe_std(tc->cc_path, "c2x")) tc->supports_c23 = 1;
+    }
 
     /* Archiver */
     if (!tc->ar_path) {
@@ -522,6 +529,9 @@ int toolchain_compile_exe(const char* out_exe, const char* c_file) {
     TargetSpec spec;
     memset(&spec, 0, sizeof spec);
     snprintf(spec.build_kind, sizeof spec.build_kind, "exe");
+    if (tc.supports_c23) {
+        snprintf(spec.standard, sizeof spec.standard, "c2x");
+    }
     const char* objs[1] = { c_file };
     int rc = toolchain_link_target(&spec, &tc, out_exe, objs, 1, NULL, 0, NULL);
     toolchain_free(&tc);
@@ -597,6 +607,12 @@ int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const cha
 
     const char* cc = tc && tc->cc_path ? tc->cc_path : "gcc";
     argvec_add(&av, cc);
+
+    if (spec && spec->standard[0]) {
+        char std_buf[64];
+        snprintf(std_buf, sizeof(std_buf), "-std=%s", spec->standard);
+        argvec_add(&av, std_buf);
+    }
 
     if (strcmp(kind, "shared-lib") == 0) {
         argvec_add(&av, "-shared");

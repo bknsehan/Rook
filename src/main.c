@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.5.1a"
+#define ROKADE_VERSION "0.5.2"
 #endif
 
 #ifdef _WIN32

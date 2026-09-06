@@ -1,10 +1,14 @@
 // Rook Standard Library - std/log.rook
 // Leveled logging with runtime level filter: debug/info -> stdout, warn/error -> stderr.
 
-#include <stdio.h>
+#comprise <std/io>
+#comprise <std/str>
 
-object Logger {
-    level: int
+enum LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error
 }
 
 int log_level_debug() {
@@ -21,6 +25,10 @@ int log_level_warn() {
 
 int log_level_error() {
     return 3;
+}
+
+object Logger {
+    level: int
 }
 
 Logger log_new(int level) {
@@ -63,25 +71,124 @@ impl Logger {
 
     void debug(Logger* self, const char* msg) {
         if (self->level <= 0) {
-            printf("DEBUG %s\n", msg);
+            print("DEBUG ");
+            println(msg);
         }
     }
 
     void info(Logger* self, const char* msg) {
         if (self->level <= 1) {
-            printf("INFO %s\n", msg);
+            print("INFO ");
+            println(msg);
         }
     }
 
     void warn(Logger* self, const char* msg) {
         if (self->level <= 2) {
-            fprintf(stderr, "WARN %s\n", msg);
+            eprint("WARN ");
+            eprintln(msg);
         }
     }
 
     void error(Logger* self, const char* msg) {
         if (self->level <= 3) {
-            fprintf(stderr, "ERROR %s\n", msg);
+            eprint("ERROR ");
+            eprintln(msg);
         }
+    }
+
+    void debug_int(Logger* self, const char* label, int val) {
+        if (self->level <= 0) {
+            print("DEBUG ");
+            print(label);
+            print(": ");
+            println_int(val);
+        }
+    }
+
+    void info_int(Logger* self, const char* label, int val) {
+        if (self->level <= 1) {
+            print("INFO ");
+            print(label);
+            print(": ");
+            println_int(val);
+        }
+    }
+
+    void warn_int(Logger* self, const char* label, int val) {
+        if (self->level <= 2) {
+            eprint("WARN ");
+            eprint(label);
+            eprint(": ");
+            eprintln_int(val);
+        }
+    }
+
+    void error_int(Logger* self, const char* label, int val) {
+        if (self->level <= 3) {
+            eprint("ERROR ");
+            eprint(label);
+            eprint(": ");
+            eprintln_int(val);
+        }
+    }
+
+    void debug_str(Logger* self, const char* label, Str s) {
+        if (self->level <= 0) {
+            print("DEBUG ");
+            print(label);
+            print(": ");
+            println_str(s);
+        }
+    }
+
+    void info_str(Logger* self, const char* label, Str s) {
+        if (self->level <= 1) {
+            print("INFO ");
+            print(label);
+            print(": ");
+            println_str(s);
+        }
+    }
+}
+
+// Global default logger convenience functions
+static int _global_log_level = 1;
+
+void log_set_global_level(int level) {
+    if (level < 0) level = 0;
+    if (level > 3) level = 3;
+    _global_log_level = level;
+}
+
+int log_get_global_level() {
+    return _global_log_level;
+}
+
+void log_debug(const char* msg) {
+    if (_global_log_level <= 0) {
+        print("DEBUG ");
+        println(msg);
+    }
+}
+
+void log_info(const char* msg) {
+    if (_global_log_level <= 1) {
+        print("INFO ");
+        println(msg);
+    }
+}
+
+void log_warn(const char* msg) {
+    if (_global_log_level <= 2) {
+        eprint("WARN ");
+        eprintln(msg);
+    }
+}
+
+void log_error(const char* msg) {
+    if (_global_log_level <= 3) {
+        eprint("ERROR ");
+        eprintln(msg);
     }
 }

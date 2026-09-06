@@ -230,7 +230,7 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
     char** inc_bufs = n_inc > 0 ? (char**)malloc(n_inc * sizeof(char*)) : NULL;
     int n_args = 0;
     if (args) {
-        args[n_args++] = "-std=c23";
+        args[n_args++] = "-std=c2x";
         args[n_args++] = "-w";
         args[n_args++] = "-D_GNU_SOURCE";
         args[n_args++] = "-D_DEFAULT_SOURCE";

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.5.1a).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.5.2).
 Contains Chapters 1 to 21.
 """
 
@@ -1356,10 +1356,54 @@ return t.finish(); // Prints summary and returns 0 if all passed, 1 on failure
   <li><code>path_basename(path)</code>, <code>path_dirname(path)</code>, <code>path_extension(path)</code> — Path parsing.</li>
 </ul>
 
-<h3>18.7 std/log, std/json, std/math &amp; std/os</h3>
+<h3>18.7 std/log: Leveled Structured Logging</h3>
+<p>Import with <code>#comprise &lt;std/log&gt;</code>. Routes <code>Debug</code> and <code>Info</code> to stdout, and <code>Warn</code> and <code>Error</code> to stderr with configurable log level thresholds:</p>
+{make_code_box("rook", """
+// Instance logger
+Logger log = log_new(LogLevel.Info);
+log.info("Server listening on port 8080");
+log.info_int("active_connections", 12);
+log.warn("High memory consumption detected");
+log.error("Failed to connect to upstream service");
+
+// Package-level global logger
+log_set_global_level(LogLevel.Debug);
+log_debug("Cache initialized");
+log_info("Worker ready");
+""", "std/log Usage")}
+
+<h3>18.8 std/json: High-Performance Zero-Allocation JSON</h3>
+<p>Import with <code>#comprise &lt;std/json&gt;</code>. Provides streaming zero-copy field and array getters (string, integer, float, boolean) and builders without heap parsing overhead:</p>
+{make_code_box("rook", """
+const char* json = "{\\"host\\": \\"127.0.0.1\\", \\"port\\": 5432, \\"ratio\\": 0.95, \\"nodes\\": [\\"db1\\", \\"db2\\"]}";
+
+char host[64];
+json_get_string(json, "host", host, sizeof(host));
+
+int port = 0;
+json_get_int(json, "port", &port);
+
+float ratio = 0.0f;
+json_get_float(json, "ratio", &ratio);
+
+int node_count = json_get_array_len(json, "nodes");
+char first_node[32];
+json_array_get_string(json, "nodes", 0, first_node, sizeof(first_node));
+
+// Generating JSON
+StringBuilder sb = sb_new(128);
+defer sb.destroy();
+sb.append_char('{');
+json_write_key_string(&sb, "status", "ok");
+sb.append_char(',');
+json_write_key_int(&sb, "code", 200);
+sb.append_char(',');
+json_write_key_float(&sb, "latency_ms", 1.45f);
+sb.append_char('}');
+""", "std/json Usage")}
+
+<h3>18.9 Additional Modules: std/math, std/os &amp; std/result</h3>
 <ul>
-  <li><strong>std/log:</strong> Leveled structured logger (<code>Logger.debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>, <code>log(level, msg)</code>).</li>
-  <li><strong>std/json:</strong> Lightweight zero-dependency JSON tokenizing and value inspection.</li>
   <li><strong>std/math:</strong> Vector math (<code>Vec2</code>, <code>Vec3</code>), rectangles (<code>Rect</code>), clamping, <code>lerpf</code>, <code>signi</code>, <code>signf</code>, <code>powi</code>, <code>math_round</code>, <code>math_floor</code>, <code>math_ceil</code>, <code>math_pow</code>.</li>
   <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_cwd</code>, <code>os_pid</code>, <code>os_time_sec</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
   <li><strong>std/result:</strong> Monadic types (<code>Result</code> and <code>Option</code>).</li>
@@ -1485,7 +1529,7 @@ int calculate(int x) {
 {make_code_box("toml", """
 [package]
 name = "service_engine"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Engineering Team <dev@example.com>"]
 description = "Telemetry daemon"
 

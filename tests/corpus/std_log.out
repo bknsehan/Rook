@@ -1,3 +1,5 @@
 INFO info-shown
 DEBUG dbg-shown
+INFO tasks: 3
 level=0
+INFO global-info-shown

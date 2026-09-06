@@ -23,5 +23,24 @@ int main() {
     json_write_null(&sb);
     sb.append_cstr("}");
     printf("%s\n", sb.to_cstr());
+
+    const char* doc2 = "{\"score\": 3.14, \"tags\": [\"first\", \"second\"], \"counts\": [10, 20, 30]}";
+    float sc = 0.0f;
+    bool f_sc = json_get_float(doc2, "score", &sc);
+    int tag_len = json_get_array_len(doc2, "tags");
+    char tag0[16];
+    bool f_tag0 = json_array_get_string(doc2, "tags", 0, tag0, 16);
+    int c1 = 0;
+    bool f_c1 = json_array_get_int(doc2, "counts", 1, &c1);
+    printf("float_ok=%d sc=%.2f tag_len=%d tag0=%s c1=%d\n", f_sc && f_tag0 && f_c1, (double)sc, tag_len, tag0, c1);
+
+    StringBuilder sb2 = sb_new(64);
+    defer sb2.destroy();
+    sb2.append_cstr("{");
+    json_write_key_string(&sb2, "key", "val");
+    sb2.append_cstr(",");
+    json_write_key_float(&sb2, "pi", 3.14f);
+    sb2.append_cstr("}");
+    printf("%s\n", sb2.to_cstr());
     return 0;
 }

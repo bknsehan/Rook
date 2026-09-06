@@ -1387,7 +1387,7 @@ static void cg_stmt(CG* g, Stmt* s) {
         if (cg_has_defers(g) && s->e) {
             char ret_var[32];
             snprintf(ret_var, sizeof(ret_var), "__rk_ret%d", g->result_count++);
-            sb_appendf(&g->sb, "auto %s = ", ret_var);
+            sb_appendf(&g->sb, "__auto_type %s = ", ret_var);
             cg_expr(g, s->e);
             sb_append(&g->sb, ";\n");
             cg_emit_all_defers(g);
