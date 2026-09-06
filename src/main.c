@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.5.1"
+#define ROKADE_VERSION "0.5.1a"
 #endif
 
 #ifdef _WIN32
@@ -1565,6 +1565,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     char** c_file_paths = NULL;
     size_t c_file_paths_cap = 0;
     size_t n_src = 0;
+    int had_compile_error = 0;
     struct dirent* entry;
 
     /* Pre-scan: collect filenames and find which .rook files are included. */
@@ -1646,6 +1647,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         if (!expanded) {
             fprintf(stderr, "warning: include resolution failed for %s\n", rook_path);
             if (inc_list) free(inc_list);
+            had_compile_error = 1;
             continue;
         }
         len = (int)strlen(expanded);
@@ -1661,6 +1663,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             free(toks);
             if (inc_list) free(inc_list);
             sema_free(sema);
+            had_compile_error = 1;
             continue;
         }
         sema_set_source(sema, expanded, len);
@@ -1676,6 +1679,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             free(toks);
             if (inc_list) free(inc_list);
             sema_free(sema);
+            had_compile_error = 1;
             continue;
         }
         int clen = 0;
@@ -1687,6 +1691,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             free(toks);
             if (inc_list) free(inc_list);
             sema_free(sema);
+            had_compile_error = 1;
             continue;
         }
         char* c_code = NULL;
@@ -1703,6 +1708,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             sema_free(sema);
             if (inc_list) free(inc_list);
             program_free(p);
+            had_compile_error = 1;
             continue;
         }
 
@@ -1752,8 +1758,20 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     for (size_t i = 0; i < n_all; i++) free(all_files[i]);
     free(all_files);
 
+    if (had_compile_error) {
+        for (size_t i = 0; i < n_src; i++) free(c_file_paths[i]);
+        free(c_file_paths);
+        toolchain_free(&primary_tc);
+        project_config_free(&cfg);
+        return 1;
+    }
+
     if (n_src == 0) {
-        fprintf(stderr, "error: no .rook files found in %s\n", src_dir);
+        if (n_all == 0) {
+            fprintf(stderr, "error: no .rook files found in %s\n", src_dir);
+        } else {
+            fprintf(stderr, "error: no root .rook files to compile in %s (all files are included by other modules)\n", src_dir);
+        }
         toolchain_free(&primary_tc);
         project_config_free(&cfg);
         return 1;

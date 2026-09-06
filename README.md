@@ -1,142 +1,98 @@
 # Rook (`rokade`)
 
-> **A 1:1 Transpiled Systems Language with Zero-Overhead C Interop, Headerless Modules, Clean OOP, and Compile-Time Safety.**
-
-Rook is a modern systems programming language that compiles directly into standard, human-readable C (C23 / C11). It combines the speed, control, and universal compatibility of C with modern ergonomics: single-file modules without header files, single inheritance with static dispatch, resource safety via `defer`, and compile-time elimination of C's classic undefined behaviors.
+Rook is a systems programming language that compiles to clean, standard C (C23 / C11) or native machine code via LLVM. It pairs the performance, transparent ABI, and universal interoperability of C with modern language ergonomics: headerless single-file modules, single inheritance with static dispatch, algebraic sum types with pattern matching, deterministic resource cleanup (`defer`), and compile-time prevention of common undefined behaviors.
 
 ---
 
 ## Table of Contents
 
-- [Why Rook?](#why-rook)
-- [Core Features](#core-features)
-- [Safety & Standards (What Rook Bans vs What C Accepts)](#safety--standards)
-- [What Rook Is Used For](#what-rook-is-used-for)
-- [What Rook Is NOT Used For](#what-rook-is-not-used-for)
-- [Advantages & Disadvantages](#advantages--disadvantages)
+- [Architecture & Design Principles](#architecture--design-principles)
+- [Safety & Compiler Enforcements](#safety--compiler-enforcements)
 - [Language Tour](#language-tour)
-  - [Variables & Types](#variables--types)
+  - [Variables & Type Inference](#variables--type-inference)
   - [Headerless Modules with `#comprise`](#headerless-modules-with-comprise)
   - [C Interoperability](#c-interoperability)
   - [Object-Oriented Programming (`object` / `impl`)](#object-oriented-programming-object--impl)
-  - [Resource Management with `defer`](#resource-management-with-defer)
-- [Getting Started](#getting-started)
+  - [Sum Types & Pattern Matching (`sum` / `match`)](#sum-types--pattern-matching-sum--match)
+  - [Deterministic Resource Management (`defer`)](#deterministic-resource-management-defer)
+- [Getting Started & Installation](#getting-started--installation)
   - [Prerequisites](#prerequisites)
-  - [Building Rokade](#building-rokade)
+  - [Building from Source](#building-from-source)
+  - [Automated Installer (Linux / macOS)](#automated-installer-linux--macos)
+  - [Windows Installation (PowerShell)](#windows-installation-powershell)
+  - [Environment Diagnostics (`rokade doctor`)](#environment-diagnostics-rokade-doctor)
+- [Project System & Multi-Target Builds](#project-system--multi-target-builds)
   - [Project Workflow](#project-workflow)
+  - [`rokade.toml` Configuration](#rokadetoml-configuration)
+  - [Cross-Platform Compilation](#cross-platform-compilation)
+  - [Dependencies: Source Packages & `pkg-config`](#dependencies-source-packages--pkg-config)
+- [Standard Library (`std`)](#standard-library-std)
+- [Editor Integration (Zed & LSP)](#editor-integration-zed--lsp)
 - [License](#license)
 
 ---
 
-## Why Rook?
+## Architecture & Design Principles
 
-C is the standard systems programming language, but it carries several well-known drawbacks:
-1. **Header synchronization**: Every symbol must be manually synchronized across `.h` and `.c` files.
-2. **Undefined Behavior (UB) traps**: Uninitialized stack variables, assignments disguised as conditions (`if (x = 5)`), unconstrained pointer arithmetic, and unstructured `goto`.
-3. **No native OOP**: Implementing simple object inheritance in C requires manual nested struct boilerplate, error-prone pointer casts, or custom macros.
-4. **Complex build configurations**: Writing Makefiles or CMake files just to compile a basic multi-file project.
+Rook is designed around five core systems engineering principles:
 
-**Rook addresses these issues while remaining standard C under the hood.**
-
----
-
-## Core Features
-
-- **1:1 Clean C Transpilation**: The emitted C code is transparent, legible, and directly compilable with any modern C compiler (`gcc`, `clang`, `tcc`).
-- **No Header Files**: Rook has no `.h` files. Modules are referenced using `#comprise <module>`, with automatic `#pragma once` deduplication that cleanly resolves diamond dependencies.
-- **Direct C Interoperability**: C headers (e.g. `#include <stdio.h>`) can be written directly inside Rook source files and pass straight through to the transpiled output.
-- **Zero-Cost OOP**: Clean single inheritance using `object Child : Parent` and `impl` blocks. Method calls lower to compile-time static function calls (`Parent_method(&child._base)`) with zero vtables and zero runtime overhead.
-- **Flat Designated Initializers**: Initialize inherited hierarchies with clean flat syntax:
-  ```rook
-  Dog d = Dog { name: "Rover", age: 3, breed: "Labrador" };
-  ```
-  Lowered to C subobject designated initializers:
-  ```c
-  Dog d = {._base.name = "Rover", ._base.age = 3, .breed = "Labrador"};
-  ```
-- **Native Toolchain Driver**: `rokade build` and `rokade run` detect your host C compiler (`gcc`/`clang`), compile to `.o`, and link binaries natively without shellouts to CMake.
+1. **Direct C ABI Compatibility**: Functions, structs, and primitive types in Rook map 1:1 to standard C layouts. Rook source files can directly include C headers (`#include <stdio.h>`) and link against any system C library without wrappers or binding generators.
+2. **Dual Compiler Backends**:
+   - **C Backend (Default)**: Emits readable, portable C23/C11 code to `build/generated/` and drives the host toolchain (`gcc`, `clang`, MinGW, or Android NDK).
+   - **LLVM Backend (`--backend=llvm`)**: Native LLVM code generation with JIT execution (`rokade run --jit`) and cross-compilation support via LLVM target triples.
+3. **Headerless Single-File Modules**: Rook replaces separate `.h` header files with `#comprise <module>`. Modules are parsed and compiled directly from source, with automatic deduplication resolving circular or diamond dependencies.
+4. **Zero-Overhead Abstractions**: Single inheritance (`object Child : Parent`) and method implementations (`impl`) lower directly to static function calls at compile time. There are no virtual method tables (vtables), dynamic dispatch lookups, or hidden allocations.
+5. **Deterministic Memory Model**: Memory is managed explicitly using pointers, stack allocation, or custom allocators. Scope-exit cleanup is handled deterministically via `defer`, without garbage collection pauses.
 
 ---
 
-## Safety & Standards
+## Safety & Compiler Enforcements
 
-Rook enforces strict safety inside `.rook` source files to eliminate common sources of Undefined Behavior (UB) and logic bugs:
+Rook enforces strict compiler guards within `.rook` source code to eliminate common sources of Undefined Behavior (UB) and silent logic errors:
 
-| Feature | In Standard C | In Rook (`.rook`) |
+| Language Feature | Standard C Behavior | Rook (`.rook`) Enforcement |
 | :--- | :--- | :--- |
-| **Assignment in Conditions** | `if (x = 5)` silently assigns and evaluates | **Compile Error**: `assignment used as condition; did you mean '=='?` |
-| **Pointer Syntax Format** | `int *p`, `int* p`, `*int p` (ambiguous) | **Standardized**: Postfix `Type*` (e.g. `int* p`). Prefix `*Type` is banned. |
-| **Uninitialized Stack Memory** | Indeterminate garbage memory (UB) | **Eliminated**: Uninitialized locals auto-emit `= {0}` in C. |
-| **`goto` Statements** | Permitted, bypasses scopes | **Banned**: `'goto' is not supported in Rook`. |
-| **Comma Operator Expressions** | `(a, b)` discards `a`, evaluates `b` | **Banned as Expression**: Commas only allowed as separators. |
-| **`void*` Arithmetic** | GCC extension; ISO C UB | **Compile Error**: Arithmetic on `void*` requires explicit cast to `char*` or `uint8_t*`. |
-| **Pointer Multiplication / Modulo** | Invalid or confusing semantics | **Compile Error**: Multiplication, division, modulo, and bitwise ops on pointers are rejected. |
-| **Literal Division by Zero** | Triggers runtime trap / UB | **Compile Error**: `x / 0` and `x % 0` caught at compile time. |
+| **Assignment in Conditions** | `if (x = 5)` assigns and evaluates truthiness | **Compile Error**: `assignment used as condition; did you mean '=='?` |
+| **Pointer Syntax Format** | `int *p`, `int* p`, `*int p` (ambiguous) | **Standardized**: Postfix `Type*` required (e.g. `int* p`). Prefix `*Type` rejected. |
+| **Uninitialized Stack Memory** | Contains indeterminate stack garbage (UB) | **Zero-Initialized**: Uninitialized locals default to `= {0}`. |
+| **`goto` Statements** | Permitted; bypasses scope initialization | **Banned**: `'goto' is not supported in Rook`. |
+| **Comma Operator as Expression** | `(a, b)` discards `a`, evaluates `b` | **Banned as Expression**: Commas permitted only as syntactic separators. |
+| **`void*` Pointer Arithmetic** | Permitted as compiler extension (ISO C UB) | **Compile Error**: Pointer arithmetic on `void*` requires explicit typed cast. |
+| **Pointer Arithmetic Operators** | `*`, `/`, `%`, `&`, `\|`, `^` on pointers | **Compile Error**: Multiplication, division, modulo, and bitwise ops on pointers rejected. |
+| **Literal Division by Zero** | Triggers runtime crash or hardware trap | **Compile Error**: Literal `x / 0` and `x % 0` rejected at compile time. |
 
-> **The C Interop Boundary**: All restrictions apply exclusively to Rook source code. Standard C headers (`#include <header.h>`), `[[raw]]` blocks, and external C libraries retain full, unrestricted access to standard C semantics.
-
----
-
-## What Rook Is Used For
-
-- **Systems Programming**: OS kernels, embedded firmware, device drivers, and system daemons.
-- **High-Performance Tools**: Game engines, graphics pipelines, audio processing, compilers, and CLI utilities.
-- **Modernizing C Codebases**: Teams wanting the portability, speed, and ABI of C without the maintenance overhead of headers, Makefiles, and UB traps.
-- **Embedded & Resource-Constrained Environments**: Zero-runtime, zero-vtable, and deterministic memory footprint.
-
----
-
-## What Rook Is NOT Used For
-
-- **Rapid Dynamic Web Scripting**: Rook is statically typed and manually managed; it is not meant to replace Python, Ruby, or JavaScript for quick glue scripts.
-- **Heavy Dynamic Reflection**: Rook has no runtime introspection or reflection metadata.
-- **Garbage-Collected Applications**: Memory management in Rook is manual (augmented with deterministic `defer` cleanup), not automated via a tracing GC.
-
----
-
-## Advantages & Disadvantages
-
-### Advantages
-1. **100% C ABI Compatibility**: Native interop with any C library with zero wrapper overhead.
-2. **Transparent Output**: Emitted C files can be audited, debugged, and inspected in `build/generated/`.
-3. **No Header Maintenance**: Change a function signature once, and all comprising modules update immediately.
-4. **Zero Runtime Overhead**: No hidden allocations, no vtable lookups, no garbage collector pauses.
-5. **Instant Build Speed**: Fast parsing and direct toolchain compilation.
-
-### Disadvantages / Trade-offs
-1. **Requires Host C Compiler**: `rokade` requires `gcc` or `clang` on the machine to generate final binaries.
-2. **Manual Memory Management**: You are responsible for freeing what you allocate, though `defer` prevents leak bugs.
-3. **Evolving Ecosystem**: Rook relies directly on C's ecosystem rather than a standalone package registry.
+> [!NOTE]
+> These compiler rules apply strictly to Rook source code (`.rook`). External C headers (`#include`) and `[[raw]]` C blocks retain unrestricted ISO C semantics.
 
 ---
 
 ## Language Tour
 
-### Variables & Types
+### Variables & Type Inference
 
 ```rook
 #include <stdio.h>
 
 int main() {
-    // Type inference with let
+    // Type inference via `let`
     let count = 42;
-    let message = "Hello from Rook!";
+    let message = "Rook initialized";
 
-    // Explicit typed declarations
+    // Explicit type declarations
     int x = 10;
     int* ptr = &x;
 
-    // Uninitialized locals are deterministically zeroed (no stack garbage)
-    int y; // emitted as int y = {0};
+    // Uninitialized locals are zero-initialized by the compiler
+    int zero_val; // Emitted as int zero_val = {0};
 
-    printf("%s count=%d *ptr=%d y=%d\n", message, count, *ptr, y);
+    printf("%s: count=%d, *ptr=%d, zero=%d\n", message, count, *ptr, zero_val);
     return 0;
 }
 ```
 
 ### Headerless Modules with `#comprise`
 
-Rook uses `#comprise` to import other Rook files without separate headers:
+Rook uses `#comprise` to import other modules without separate header files:
 
 ```rook
 // math.rook
@@ -151,16 +107,16 @@ int add(int a, int b) {
 #comprise math
 
 int main() {
-    printf("sum = %d\n", add(3, 4));
+    printf("sum = %d\n", add(10, 20));
     return 0;
 }
 ```
 
-Diamond dependencies (`A -> B`, `A -> C`, `B -> D`, `C -> D`) are automatically deduplicated with `#pragma once` semantics.
+Diamond dependency graphs (`A -> B`, `A -> C`, `B -> D`, `C -> D`) are deduplicated with `#pragma once` semantics.
 
 ### C Interoperability
 
-Standard C headers work out of the box:
+Standard C libraries and POSIX headers can be included directly:
 
 ```rook
 #include <stdio.h>
@@ -168,15 +124,16 @@ Standard C headers work out of the box:
 #include <math.h>
 
 int main() {
-    double root = sqrt(144.0);
-    printf("sqrt(144) = %.1f\n", root);
+    double value = 144.0;
+    double root = sqrt(value);
+    printf("sqrt(%.1f) = %.1f\n", value, root);
     return 0;
 }
 ```
 
 ### Object-Oriented Programming (`object` / `impl`)
 
-Rook provides clean single inheritance with zero runtime overhead:
+Rook provides single inheritance with static dispatch and zero runtime overhead:
 
 ```rook
 #include <stdio.h>
@@ -203,98 +160,163 @@ impl Dog {
 }
 
 int main() {
-    // Flat initialization across base and derived fields
-    Dog dog = Dog { name: "Buddy", age: 4, breed: "Golden Retriever" };
+    // Flat initializer syntax lowers to subobject initialization
+    Dog dog = Dog { name: "Rover", age: 3, breed: "Retriever" };
 
-    // Static method dispatch: zero vtable overhead
-    dog.speak(); // calls Animal_speak(&dog._base)
-    dog.bark();  // calls Dog_bark(&dog)
+    // Static dispatch: lowers to Animal_speak(&dog._base) and Dog_bark(&dog)
+    dog.speak();
+    dog.bark();
 
     return 0;
 }
 ```
 
-### Resource Management with `defer`
+### Sum Types & Pattern Matching (`sum` / `match`)
 
-`defer` ensures cleanups run when exiting scope:
+Rook supports tagged unions (algebraic sum types) with compile-time layout matching and exhaustive pattern matching:
+
+```rook
+#include <stdio.h>
+
+sum Shape {
+    Circle { radius: double; };
+    Rect { width: double; height: double; };
+    Point;
+}
+
+double compute_area(Shape s) {
+    match (s) {
+        Circle { radius } => 3.1415926535 * radius * radius,
+        Rect { width, height } => width * height,
+        Point => 0.0,
+        _ => 0.0,
+    }
+}
+
+int main() {
+    Shape s1 = Circle { radius: 2.0 };
+    Shape s2 = Rect { width: 4.0, height: 5.0 };
+
+    printf("Circle area: %.2f\n", compute_area(s1));
+    printf("Rect area: %.2f\n", compute_area(s2));
+    return 0;
+}
+```
+
+### Deterministic Resource Management (`defer`)
+
+`defer` schedules cleanup statements to execute upon exiting the enclosing scope or returning from a function:
 
 ```rook
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() {
-    int* buffer = (int*)malloc(1024 * sizeof(int));
+int process_data(int size) {
+    int* buffer = (int*)malloc(size * sizeof(int));
+    if (!buffer) return -1;
     defer free(buffer);
 
-    buffer[0] = 123;
-    printf("buffer[0] = %d\n", buffer[0]);
-    // buffer is automatically freed here
-    return 0;
+    buffer[0] = 42;
+    if (buffer[0] < 0) {
+        return -2; // buffer is freed before early return
+    }
+
+    printf("Buffer value: %d\n", buffer[0]);
+    return 0; // buffer is freed before normal return
 }
 ```
 
 ---
 
-## Getting Started
+## Getting Started & Installation
 
 ### Prerequisites
 
-- A C compiler (`gcc` or `clang`)
-- CMake (for compiling the `rokade` compiler itself)
-- Optional: Cargo/Rust (if building the LSP server `rook-lsp`)
+- C compiler (`gcc` or `clang`)
+- CMake 3.16+
+- Optional: Cargo/Rust (if building the language server `rook-lsp`)
 
-### Building & Installing Rokade
+### Building from Source
 
-#### Linux (Automated Installer):
 ```bash
 git clone https://github.com/bknsehan/Rook.git
 cd Rook
-./install.sh --prefix=/home/bknsehan/bin/Rook --with-zed
+cmake -B build -S .
+cmake --build build
 ```
-This builds `rokade` and `rook-lsp`, installs the toolchain and `std/` into your chosen prefix, creates symlinks in `~/bin/`, and automatically integrates with the Zed editor.
 
-> [!NOTE]
-> Do **not** run `install.sh` with `sudo`. Rook installs directly into your personal user environment (`~/bin/Rook`), so simple user installation works without any root permissions.
+### Automated Installer (Linux / macOS)
 
-#### Windows (PowerShell):
+The installer script builds the `rokade` compiler and `rook-lsp` server, installs standard libraries, and configures user symlinks:
+
+```bash
+git clone https://github.com/bknsehan/Rook.git
+cd Rook
+./install.sh --prefix=$HOME/.local --with-zed
+```
+
+- Default prefix (if `--prefix` is omitted): `$HOME/bin/Rook`
+- Symlinks are placed in `$HOME/.local/bin` or `$HOME/bin`
+
+### Windows Installation (PowerShell)
+
 ```powershell
 git clone https://github.com/bknsehan/Rook.git
 cd Rook
 .\install.ps1 -WithZed
 ```
 
-#### Manual Build with CMake:
+### Environment Diagnostics (`rokade doctor`)
+
+Verify your compiler toolchain, backends, cross-compilers, and standard library:
+
 ```bash
-cmake -B build -S .
-cmake --build build
-./build/rokade doctor
+rokade doctor
 ```
 
-### Project Workflow
-
-Create a new project:
-```bash
-./build/rokade new myapp
-cd myapp
-```
-
-Build the project (generates `.c` files in `build/generated/` and native binary in `build/`):
-```bash
-rokade build
-```
-
-Run the project:
-```bash
-rokade run
+Sample output:
+```text
+rokade doctor — environment health check
+=========================================
+[PASS] toolchain: /usr/bin/gcc (gcc) — gcc (GCC) 16.2.1
+[PASS] backend: c (C23 / C11)
+[PASS] backend: llvm (22.1.8) [JIT verified]
+[PASS] c-interop: libclang (dynamic C header AST)
+[PASS] corpus: 38 pass, 0 skip
+[PASS] android NDK: /opt/android-sdk/ndk/27.0.12077973
+[PASS] windows cross-compiler: /usr/bin/x86_64-w64-mingw32-gcc
+=========================================
+doctor: PASS
 ```
 
 ---
 
-## Multi-Target & Cross-Platform Builds
+## Project System & Multi-Target Builds
 
-Rook features a built-in cross-compilation engine that transpiles source code once into `build/generated/*.c` and compiles/links for multiple platforms simultaneously.
+### Project Workflow
 
-### `rokade.toml` Multi-Target Configuration
+Create a new project scaffold:
+```bash
+rokade new myapp
+cd myapp
+```
+
+Directory structure:
+```text
+myapp/
+├── rokade.toml
+└── src/
+    └── main.rook
+```
+
+Build and execute:
+```bash
+rokade build        # Transpiles to build/generated/ and compiles binary to build/
+rokade run          # Builds and runs target binary
+rokade test         # Runs test suite
+```
+
+### `rokade.toml` Configuration
 
 ```toml
 [package]
@@ -302,118 +324,83 @@ name = "myapp"
 version = "0.1.0"
 
 [build]
-kind = "exe"                    # Default build kind: exe, shared-lib, static-lib
-standard = "c2x"                # C standard: c11, c17, c2x, gnu23
-targets = ["linux", "android", "windows"] # Builds all 3 targets simultaneously!
+kind = "exe"                              # "exe", "shared-lib", or "static-lib"
+standard = "c2x"                          # "c11", "c17", "c2x", "gnu23"
+targets = ["linux", "windows", "android"] # Target platforms
 
-# Target-specific customizations:
 [target.linux]
 kind = "exe"
 cflags = "-O3"
 
 [target.android]
-kind = "shared-lib"             # Typically .so for JNI/NDK
-api = 24                        # Android API level / min SDK
-arch = ["arm64-v8a", "x86_64"]  # Targets multiple Android ABIs!
+kind = "shared-lib"
+api = 24
+arch = ["arm64-v8a", "x86_64"]
 cflags = "-fPIC -O3"
 
 [target.windows]
 kind = "exe"
-# Auto-detects x86_64-w64-mingw32-gcc when cross-compiling from Linux!
 ```
 
-### Build CLI Options
+### Cross-Platform Compilation
 
-- Build all configured targets:
-  ```bash
-  rokade build
-  # or explicitly:
-  rokade build --all
-  ```
-- Build a specific target:
-  ```bash
-  rokade build --target=android
-  rokade build --target=windows
-  rokade build --target=linux
-  ```
+Build all targets or select a specific platform:
 
-### Generated Binaries Output
-
+```bash
+rokade build --all
+rokade build --target=windows    # Cross-compiles using MinGW
+rokade build --target=android    # Cross-compiles using Android NDK clang
+rokade build --target=linux
 ```
+
+Output layout:
+```text
 build/
 ├── generated/
-│   └── main.c                        # Shared transpiled C
+│   └── main.c                        # Transpiled C source
 ├── linux/
-│   └── myapp                         # ELF 64-bit Linux executable
+│   └── myapp                         # Linux ELF binary
 ├── windows/
-│   └── myapp.exe                     # PE32+ Windows executable
+│   └── myapp.exe                     # Windows PE32+ binary
 └── android/
     ├── arm64-v8a/
-    │   └── libmyapp.so               # ELF 64-bit ARM aarch64 shared library
+    │   └── libmyapp.so               # Android ARM64 shared library
     └── x86_64/
-        └── libmyapp.so               # ELF 64-bit x86-64 shared library
+        └── libmyapp.so               # Android x86_64 shared library
 ```
 
----
+### Dependencies: Source Packages & `pkg-config`
 
-## Package Dependencies & C Library Integration
-
-Rook provides two modern dependency mechanisms: **Source-Level Packages** for other Rook projects, and **First-Class C Library Interop** via `pkg-config`.
-
-### 1. Rook-to-Rook Package Dependencies
-
-Rook uses source-level module dependencies (similar to Go and Zig). Because Rook has no header files, source dependencies allow full compile-time static dispatch, whole-program optimizations, and consistent multi-target cross-compilation.
-
-In your consumer's `rokade.toml`:
+#### 1. Source-Level Rook Packages
 ```toml
-[package]
-name = "mygame"
-version = "0.1.0"
-
 [dependencies]
 mathlib = { path = "../mathlib" }
 ```
 
-In your Rook source code:
+In source code:
 ```rook
 #comprise mathlib
-
-int main() {
-    let v1 = Vec2 { x: 10.0, y: 20.0 };
-    let v2 = Vec2 { x: 5.0, y: 5.0 };
-    let v3 = v1.add(v2);
-    return 0;
-}
 ```
 
-### 2. C Libraries as Dependencies (e.g. Raylib, SDL2, SQLite)
-
-Rook natively understands C headers. By using `pkg-config`, Rokade automatically resolves all include paths, compiler flags, and link flags for system C libraries.
-
-In `rokade.toml`:
+#### 2. System C Libraries via `pkg-config`
 ```toml
-[package]
-name = "raylib_demo"
-version = "0.1.0"
-
 [build]
 kind = "exe"
 pkg-config = ["raylib"]
 ```
 
-In `src/main.rook`:
+In source code:
 ```rook
-#include <stdio.h>
 #include <raylib.h>
 
 int main() {
-    InitWindow(800, 450, "Rook + Raylib Demo");
+    InitWindow(800, 450, "Rook Application");
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        DrawText("Congrats! You are running Raylib natively in Rook!", 120, 200, 20, DARKGRAY);
+        DrawText("Running Raylib natively in Rook", 120, 200, 20, DARKGRAY);
         EndDrawing();
     }
 
@@ -422,55 +409,51 @@ int main() {
 }
 ```
 
-Build and run:
-```bash
-rokade build
-rokade run
-```
-
 ---
 
 ## Standard Library (`std`)
 
-Rook comes with a modular standard library installed directly with the toolchain (located at `<install_prefix>/std`). Rokade strictly resolves standard library modules from the verified installation directory, eliminating messy relative include paths.
+Rook provides a modular standard library installed under `<install_prefix>/std`:
 
-### Available Modules
-- `<std/io>`: Basic output (`println`, `print`, `eprintln`).
-- `<std/math>`: Vector math (`Vec2`, `Vec3`, methods like `.add()`, `.dot()`, and math functions `clampf`, `minf`, `maxf`, `lerpf`).
-- `<std/os>`: Runtime control (`panic`, `exit_with`).
-- `std`: Central prelude module importing all foundational utilities.
+- `<std/io>`: Formatted output functions (`println`, `print`, `eprintln`).
+- `<std/math>`: Vector math (`Vec2`, `Vec3`, `.add()`, `.dot()`, `clampf`, `minf`, `maxf`, `lerpf`).
+- `<std/os>`: Runtime and process primitives (`panic`, `exit_with`).
+- `std`: Umbrella prelude module importing core utilities.
 
-### Example
+Example:
 ```rook
 #comprise <std/io>
 #comprise <std/math>
 
 int main() {
-    println("Hello from Rook Standard Library!");
-    let v1 = Vec2 { x: 3.0, y: 4.0 };
-    let v2 = Vec2 { x: 1.0, y: 2.0 };
-    let v3 = v1.add(v2);
-    printf("Vec2 sum: (%f, %f)\n", v3.x, v3.y);
+    println("Using Rook standard library");
+    let a = Vec2 { x: 3.0, y: 4.0 };
+    let b = Vec2 { x: 1.0, y: 2.0 };
+    let c = a.add(b);
+    printf("Result: (%.1f, %.1f)\n", c.x, c.y);
     return 0;
 }
 ```
 
 ---
 
-## Zed Editor Integration
+## Editor Integration (Zed & LSP)
 
-Rook provides first-class integration with the [Zed](https://zed.dev) editor:
-- **Language Extension**: Located at `editors/zed/` (auto-installed by `./install.sh --with-zed` to `~/.local/share/zed/extensions/installed/rook`).
-- **Syntax Highlighting**: Leverages C grammar mapping for robust, instant highlighting.
-- **Language Server (`rook-lsp`)**: Fully supported via stdio JSON-RPC.
+Rook includes a Language Server Protocol implementation (`rook-lsp`) and an extension for the [Zed](https://zed.dev) editor:
 
-Configure `~/.config/zed/settings.json`:
+- **Extension Location**: `editors/zed/` (installed automatically via `./install.sh --with-zed`).
+- **Language Server**: Built from `lsp/` (`rook-lsp`).
+
+### Zed Configuration
+
+Add to `~/.config/zed/settings.json`:
+
 ```json
 {
   "lsp": {
     "rook-lsp": {
       "binary": {
-        "path": "/home/bknsehan/bin/Rook/bin/rook-lsp"
+        "path": "rook-lsp"
       }
     }
   },
@@ -482,8 +465,10 @@ Configure `~/.config/zed/settings.json`:
 }
 ```
 
+If `rook-lsp` is located in `$HOME/.local/bin` or `$HOME/bin`, ensure the directory is present in your user environment `PATH`.
+
 ---
 
 ## License
 
-Rook is released under the [MIT License](LICENSE).
+Rook is distributed under the [MIT License](LICENSE).

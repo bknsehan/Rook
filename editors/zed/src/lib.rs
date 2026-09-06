@@ -16,7 +16,7 @@ impl Extension for RookExtension {
         let command = if let Some(p) = path {
             p
         } else {
-            "/home/bknsehan/bin/Rook/bin/rook-lsp".to_string()
+            "rook-lsp".to_string()
         };
 
         Ok(Command {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.5.1).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.5.1a).
 Contains Chapters 1 to 21.
 """
 

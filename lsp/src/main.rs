@@ -102,8 +102,16 @@ fn find_std_dir() -> Option<PathBuf> {
             }
         }
     }
-    let default_p = PathBuf::from("/home/bknsehan/bin/Rook/std");
-    if default_p.is_dir() { return Some(default_p); }
+    if let Ok(home) = std::env::var("HOME") {
+        let user_p = PathBuf::from(&home).join("bin/Rook/std");
+        if user_p.is_dir() { return Some(user_p); }
+        let xdg_p = PathBuf::from(&home).join(".local/share/rook/std");
+        if xdg_p.is_dir() { return Some(xdg_p); }
+    }
+    let sys_p = PathBuf::from("/usr/local/lib/rook/std");
+    if sys_p.is_dir() { return Some(sys_p); }
+    let sys_p2 = PathBuf::from("/usr/lib/rook/std");
+    if sys_p2.is_dir() { return Some(sys_p2); }
     None
 }
 

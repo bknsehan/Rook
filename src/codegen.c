@@ -1054,6 +1054,29 @@ static void cg_impl(CG* g, ImplDef* im) {
     free(tyname);
 }
 
+/* Returns non-zero if the statement unconditionally transfers control or returns,
+   meaning statements sequentially following it in the same block are unreachable. */
+static int stmt_terminates(Stmt* s) {
+    if (!s) return 0;
+    switch (s->kind) {
+    case S_RETURN:
+    case S_BREAK:
+    case S_CONTINUE:
+        return 1;
+    case S_BLOCK:
+        for (int i = 0; i < s->nstmts; i++) {
+            if (stmt_terminates(s->stmts[i])) return 1;
+        }
+        return 0;
+    case S_IF:
+        if (s->els && stmt_terminates(s->then) && stmt_terminates(s->els))
+            return 1;
+        return 0;
+    default:
+        return 0;
+    }
+}
+
 static void cg_stmt(CG* g, Stmt* s) {
     if (!s) return;
     switch (s->kind) {
@@ -1073,13 +1096,20 @@ static void cg_stmt(CG* g, Stmt* s) {
         f->count = 0; f->cap = 0; f->stmts = NULL; f->loop_depth = g->loop_depth;
         sb_append(&g->sb, "{\n");
         g->ind++;
+        int terminated = 0;
         for (int i = 0; i < s->nstmts; i++) {
             if (s->stmts[i]->kind == S_DEFER)
                 cg_add_defer(g, s->stmts[i]->defer);
-            else
+            else {
                 cg_stmt(g, s->stmts[i]);
+                if (stmt_terminates(s->stmts[i])) {
+                    terminated = 1;
+                    break;
+                }
+            }
         }
-        cg_emit_defers(g, f);
+        if (!terminated)
+            cg_emit_defers(g, f);
         if (f->stmts) {
             free(f->stmts);
             f->stmts = NULL;
