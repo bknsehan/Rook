@@ -1,0 +1,64 @@
+// Rook Standard Library - std/log.rook
+// Leveled logging with runtime level filter: debug/info -> stdout, warn/error -> stderr.
+
+#include <stdio.h>
+
+object Logger {
+    level: int
+}
+
+int log_level_debug() {
+    return 0;
+}
+
+int log_level_info() {
+    return 1;
+}
+
+int log_level_warn() {
+    return 2;
+}
+
+int log_level_error() {
+    return 3;
+}
+
+Logger log_new(int level) {
+    int lvl = level;
+    if (lvl < 0) {
+        lvl = 0;
+    }
+    if (lvl > 3) {
+        lvl = 3;
+    }
+    return Logger { level: lvl };
+}
+
+impl Logger {
+    void set_level(Logger* self, int level) {
+        if (level < 0) {
+            level = 0;
+        }
+        if (level > 3) {
+            level = 3;
+        }
+        self->level = level;
+    }    int get_level(Logger* self) {
+        return self->level;
+    }    void debug(Logger* self, const char* msg) {
+        if (self->level <= 0) {
+            printf("DEBUG %s\n", msg);
+        }
+    }    void info(Logger* self, const char* msg) {
+        if (self->level <= 1) {
+            printf("INFO %s\n", msg);
+        }
+    }    void warn(Logger* self, const char* msg) {
+        if (self->level <= 2) {
+            fprintf(stderr, "WARN %s\n", msg);
+        }
+    }    void error(Logger* self, const char* msg) {
+        if (self->level <= 3) {
+            fprintf(stderr, "ERROR %s\n", msg);
+        }
+    }}
