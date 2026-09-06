@@ -1089,33 +1089,10 @@ static FnDef* parse_fn_def(Parser* p) {
     return f;
 }
 
-/* Parse a dotted name like `gimmick.ui` (each segment is an identifier). */
-static char* parse_dotted_name(Parser* p) {
-    char* first = ident(p);
-    if (!first) return NULL;
-    size_t cap = strlen(first) + 1;
-    char* out = malloc(cap);
-    if (!out) exit(1);
-    memcpy(out, first, cap);
-    free(first);
-    while (tok_is(cur(p), ".")) {
-        adv(p);
-        char* part = ident(p);
-        if (!part) { free(out); return NULL; }
-        size_t need = strlen(out) + 1 + strlen(part) + 1;
-        out = realloc(out, need);
-        if (!out) exit(1);
-        strcat(out, ".");
-        strcat(out, part);
-        free(part);
-    }
-    return out;
-}
-
-/* Lookahead: is the current top-level position the start of a D-style
-   free function `Type name ( ... )`? Used by the top-level dispatcher so it
+/* Lookahead: is the current top-level position the start of a C-style
+   function `Type name ( ... )`? Used by the top-level dispatcher so it
    parses such functions instead of treating them as raw C. */
-static int looks_like_dstyle_fn(Parser* p) {
+static int looks_like_c_fn(Parser* p) {
     int save = p->idx;
     AstType* ty = try_parse_type(p);
     if (!ty) { p->idx = save; return 0; }
@@ -1138,7 +1115,7 @@ static int parse_struct_field(Parser* p, StructField* f) {
     /* 1. 'let name: Type;' style */
     if (is_kw(t, "let")) {
         adv(p);
-        f->style = FIELD_YUP;
+        f->style = FIELD_COLON;
         f->name = ident(p);
         if (!f->name) return 0;
         if (!expect_punct(p, ":")) return 0;
@@ -1156,7 +1133,7 @@ static int parse_struct_field(Parser* p, StructField* f) {
 
     /* 2. Colon style: 'name: Type;' (permissive compatibility) */
     if (t->kind == TK_IDENT && tok_is(peek(p, 1), ":")) {
-        f->style = FIELD_YUP;
+        f->style = FIELD_COLON;
         f->name = ident(p);
         if (!f->name) return 0;
         adv(p); /* skip ':' */
@@ -1281,52 +1258,16 @@ static FnDef* parse_extern_fn(Parser* p) {
 static Item* parse_top(Parser* p) {
     Token* t = cur(p);
     if (is_kw(t, "module")) {
-        adv(p);
-        char* n = parse_dotted_name(p);
-        if (!n) return NULL;
-        if (!expect_punct(p, ";")) { free(n); return NULL; }
-        Item* it = ast_item_new(TOP_MODULE);
-        it->modname = n;
-        return it;
+        error_at(p, t, "'module' is not supported; Rook source files are self-contained modules without a 'module' declaration");
+        return NULL;
     }
     if (is_kw(t, "import")) {
-        adv(p);
-        char* n = parse_dotted_name(p);
-        if (!n) return NULL;
-        if (!expect_punct(p, ";")) { free(n); return NULL; }
-        Item* it = ast_item_new(TOP_IMPORT);
-        it->impname = n;
-        return it;
+        error_at(p, t, "'import' is not supported; Rook uses '#comprise <module>' for module imports");
+        return NULL;
     }
     if (is_kw(t, "alias")) {
-        /* alias NAME = TYPE;  →  typedef TYPE NAME; */
-        adv(p);
-        char* name = ident(p);
-        if (!name) return NULL;
-        if (!expect_punct(p, "=")) { free(name); return NULL; }
-        AstType* target = parse_type(p);
-        if (!target) { free(name); return NULL; }
-        if (!expect_punct(p, ";")) { free(name); ast_type_free(target); return NULL; }
-        /* Emit as TOP_RAW: "typedef <type> <name>;\n" */
-        SB raw_sb;
-        sb_init(&raw_sb);
-        sb_append(&raw_sb, "typedef ");
-        if (target->qual && target->qual[0]) {
-            sb_append(&raw_sb, target->qual);
-            sb_append(&raw_sb, " ");
-        }
-        sb_append(&raw_sb, target->name ? target->name : "int");
-        for (int i = 0; i < target->ptrs; i++) sb_append(&raw_sb, "*");
-        sb_append(&raw_sb, " ");
-        sb_append(&raw_sb, name);
-        sb_append(&raw_sb, ";\n");
-        ast_type_free(target);
-        Item* it = ast_item_new(TOP_RAW);
-        it->raw = sb_strdup(&raw_sb);
-        it->raw_len = raw_sb.len;
-        sb_free(&raw_sb);
-        free(name);
-        return it;
+        error_at(p, t, "'alias' is not supported; use standard C 'typedef <type> <name>;'");
+        return NULL;
     }
     if (is_kw(t, "extern")) {
         adv(p);
@@ -1444,7 +1385,7 @@ static Item* parse_top(Parser* p) {
         }
         if (rt) { ast_type_free(rt); p->idx = save; }
     }
-    error_at(p, t, "expected 'struct', 'object', 'impl', 'sum', 'extern' or 'alias'");
+    error_at(p, t, "expected 'struct', 'object', 'impl', 'sum' or 'extern'");
     return NULL;
 }
 
@@ -1453,7 +1394,8 @@ static Item* parse_top(Parser* p) {
 static int is_construct_kw(Token* t) {
     return is_kw(t, "struct") || is_kw(t, "object") || is_kw(t, "impl") ||
            is_kw(t, "sum") || is_kw(t, "enum") || is_kw(t, "extern") ||
-           is_kw(t, "alias") || is_kw(t, "class") || is_kw(t, "trait") ||
+           is_kw(t, "alias") || is_kw(t, "module") || is_kw(t, "import") ||
+           is_kw(t, "class") || is_kw(t, "trait") ||
            is_kw(t, "def") || is_kw(t, "func") || is_kw(t, "fn");
 }
 
@@ -1479,9 +1421,8 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
         Token* t = cur(&p);
         if (t->kind == TK_EOF) break;
         int top_start = (t->bol && p.depth == 0 &&
-                         (is_construct_kw(t) || is_kw(t, "module") ||
-                          is_kw(t, "import") ||
-                          (t->kind == TK_IDENT && looks_like_dstyle_fn(&p))));
+                         (is_construct_kw(t) ||
+                          (t->kind == TK_IDENT && looks_like_c_fn(&p))));
         if (top_start) {
             Item* raw = ast_item_new(TOP_RAW);
             raw->raw = (char*)src + raw_begin;

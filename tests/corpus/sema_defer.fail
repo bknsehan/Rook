@@ -1,4 +1,2 @@
-fn main() int {
-    defer return 0;
-    return 0;
-}
+# This program intentionally contains a semantic error ('defer' cannot contain a
+# return statement). `rokade` must reject it.

@@ -109,9 +109,8 @@ typedef struct Decl {
 typedef struct SwitchArm {
     Expr** labels;
     int nlabels;
-    int is_default;     /* default: / else -> */
-    int arrow;          /* -> style */
-    Stmt* body;         /* colon: S_BLOCK of stmts; arrow: single stmt */
+    int is_default;     /* default: */
+    Stmt* body;         /* S_BLOCK of stmts */
 } SwitchArm;
 
 typedef struct MatchArm {
@@ -145,7 +144,7 @@ typedef struct Stmt {
     int col;
 } Stmt;
 
-typedef enum { TOP_RAW, TOP_FN, TOP_STRUCT, TOP_IMPL, TOP_ENUM, TOP_MODULE, TOP_IMPORT } TopKind;
+typedef enum { TOP_RAW, TOP_FN, TOP_STRUCT, TOP_IMPL, TOP_ENUM } TopKind;
 
 typedef struct Param {
     char* name;
@@ -158,14 +157,14 @@ typedef struct FnDef {
     int nparams;
     AstType* ret;           /* NULL when absent */
     Stmt* body;             /* S_BLOCK */
-    int is_extern;          /* 1 for `extern fn` (declared in C, no body) */
+    int is_extern;          /* 1 for extern function declaration (no body) */
     int start;
     int len;
     int line;
     int col;
 } FnDef;
 
-typedef enum { FIELD_YUP, FIELD_C } FieldStyle;
+typedef enum { FIELD_COLON, FIELD_C } FieldStyle;
 
 typedef struct StructField {
     FieldStyle style;
@@ -218,8 +217,6 @@ typedef struct Item {
     StructDef* st;
     ImplDef* im;
     EnumDef* ed;        /* TOP_ENUM */
-    char* modname;         /* TOP_MODULE */
-    char* impname;         /* TOP_IMPORT */
 } Item;
 
 typedef struct Program {

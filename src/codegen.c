@@ -1260,13 +1260,7 @@ static void cg_stmt(CG* g, Stmt* s) {
                 }
             }
             sb_append(&g->sb, ":\n");
-            if (a->arrow) {
-                cg_stmt(g, a->body);
-                cg_indent(g);
-                sb_append(&g->sb, "break;\n");
-            } else {
-                cg_stmt(g, a->body);
-            }
+            cg_stmt(g, a->body);
         }
         g->ind--;
         cg_indent(g);

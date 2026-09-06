@@ -791,7 +791,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
 
   function highlightCAndRook(src) {
-    var masterRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')|(^\s*#(?:include|comprise|define|raw_c|end_raw_c|ifdef|ifndef|endif|comprise_lib)[^\n]*)|(\b(?:let|fn|struct|object|impl|sum|enum|match|defer|return|if|else|while|for|in|switch|case|default|break|continue|extern|auto|typedef|sizeof|const|inline|static)\b)|(\b(?:int|uint|float|double|i8|u8|i16|u16|i32|u32|i64|u64|f32|f64|bool|void|char|string|size_t|ssize_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|FILE|Vector2|Point|Entity|Shape|Node|Rectangle|Color|Circle)\b)|(\b(?:true|false|NULL|null)\b)|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?(?:f|u|U|L|LL|ll)?\b)|(\b[a-zA-Z_]\w*(?=\s*\())/gm;
+    var masterRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')|(^\s*#(?:include|comprise|define|raw_c|end_raw_c|ifdef|ifndef|endif|comprise_lib)[^\n]*)|(\b(?:let|struct|object|impl|sum|enum|match|defer|return|if|else|while|for|in|switch|case|default|break|continue|extern|auto|typedef|sizeof|const|inline|static)\b)|(\b(?:int|uint|float|double|i8|u8|i16|u16|i32|u32|i64|u64|f32|f64|bool|void|char|string|size_t|ssize_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|FILE|Vector2|Point|Entity|Shape|Node|Rectangle|Color|Circle)\b)|(\b(?:true|false|NULL|null)\b)|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?(?:f|u|U|L|LL|ll)?\b)|(\b[a-zA-Z_]\w*(?=\s*\())/gm;
     var lastIndex = 0;
     var out = "";
     var match;

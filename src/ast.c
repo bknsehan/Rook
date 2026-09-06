@@ -145,7 +145,6 @@ int stmt_eq(Stmt* a, Stmt* b) {
             for (int j = 0; j < x->nlabels; j++)
                 if (!expr_eq(x->labels[j], y->labels[j])) return 0;
             if (x->is_default != y->is_default) return 0;
-            if (x->arrow != y->arrow) return 0;
             if (!stmt_eq(x->body, y->body)) return 0;
         }
         return 1;
@@ -240,10 +239,6 @@ int item_eq(Item* a, Item* b) {
         return impl_eq(a->im, b->im);
     case TOP_ENUM:
         return enumdef_eq(a->ed, b->ed);
-    case TOP_MODULE:
-        return (a->modname && b->modname) ? (strcmp(a->modname, b->modname) == 0) : (a->modname == b->modname);
-    case TOP_IMPORT:
-        return (a->impname && b->impname) ? (strcmp(a->impname, b->impname) == 0) : (a->impname == b->impname);
     }
     return 0;
 }
@@ -417,7 +412,6 @@ static void dump_stmt(Stmt* s, int d) {
                 indent_out(d + 1);
             }
             if (a->is_default) printf("default:\n");
-            if (a->arrow) printf("-> ");
             dump_stmt(a->body, d + 2);
             printf("\n");
         }
@@ -483,7 +477,7 @@ void ast_dump(Program* p) {
             for (int j = 0; j < it->st->nfields; j++) {
                 StructField* f = &it->st->fields[j];
                 indent_out(1);
-                if (f->style == FIELD_YUP) {
+                if (f->style == FIELD_COLON) {
                     printf("%s: ", f->name);
                     dump_type(f->type);
                 } else {
@@ -524,12 +518,6 @@ void ast_dump(Program* p) {
                  printf(",\n");
             }
             printf("}\n");
-            break;
-        case TOP_MODULE:
-            printf("module %s;\n", it->modname ? it->modname : "");
-            break;
-        case TOP_IMPORT:
-            printf("import %s;\n", it->impname ? it->impname : "");
             break;
         }
     }
@@ -687,8 +675,6 @@ static void item_free(Item* it) {
     structdef_free(it->st);
     impldef_free(it->im);
     enumdef_free(it->ed);
-    free(it->modname);
-    free(it->impname);
     free(it);
 }
 

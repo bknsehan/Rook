@@ -538,7 +538,7 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
             ..Default::default()
         },
         CompletionItem {
-            label: "void fn".to_string(),
+            label: "void function".to_string(),
             kind: Some(CompletionItemKind::SNIPPET),
             detail: Some("void function definition (standard C style)".to_string()),
             insert_text: Some("void ${1:name}(${2}) {\n\t${0}\n}".to_string()),
@@ -546,7 +546,7 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
             ..Default::default()
         },
         CompletionItem {
-            label: "int fn".to_string(),
+            label: "int function".to_string(),
             kind: Some(CompletionItemKind::SNIPPET),
             detail: Some("int-returning function definition (standard C style)".to_string()),
             insert_text: Some("int ${1:name}(${2}) {\n\treturn ${0};\n}".to_string()),

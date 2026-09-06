@@ -438,8 +438,6 @@ static void collect_program(Sema* sema, Program* prog) {
         Item* it = prog->items[i];
         switch (it->kind) {
         case TOP_RAW:
-        case TOP_MODULE:
-        case TOP_IMPORT:
             break;
         case TOP_FN: {
             Sym* sym = sym_new_fn(it->fn->name, it->fn);

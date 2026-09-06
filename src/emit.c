@@ -293,37 +293,21 @@ static void e_stmt_plain(Emit* e, Stmt* s, int ind) {
         sb_append(&e->sb, ") {\n");
         for (int i = 0; i < s->narms; i++) {
             SwitchArm* a = &s->arms[i];
-            if (a->arrow) {
+            for (int j = 0; j < a->nlabels; j++) {
                 e_indent(e, ind + 1);
-                if (a->is_default && a->nlabels == 0) {
-                    sb_append(&e->sb, "else -> ");
-                } else {
-                    for (int j = 0; j < a->nlabels; j++) {
-                        if (j) sb_append(&e->sb, " ");
-                        sb_append(&e->sb, "case ");
-                        e_expr(e, a->labels[j]);
-                    }
-                    sb_append(&e->sb, " -> ");
-                }
-                e_stmt_plain(e, a->body, ind + 1);
-                sb_append(&e->sb, "\n");
+                sb_append(&e->sb, "case ");
+                e_expr(e, a->labels[j]);
+                sb_append(&e->sb, ":\n");
+            }
+            if (a->is_default && a->nlabels == 0) {
+                e_indent(e, ind + 1);
+                sb_append(&e->sb, "default:\n");
+            }
+            if (a->body->kind == S_BLOCK) {
+                e_block_stmts(e, a->body, ind + 2);
             } else {
-                for (int j = 0; j < a->nlabels; j++) {
-                    e_indent(e, ind + 1);
-                    sb_append(&e->sb, "case ");
-                    e_expr(e, a->labels[j]);
-                    sb_append(&e->sb, ":\n");
-                }
-                if (a->is_default && a->nlabels == 0) {
-                    e_indent(e, ind + 1);
-                    sb_append(&e->sb, "default:\n");
-                }
-                if (a->body->kind == S_BLOCK) {
-                    e_block_stmts(e, a->body, ind + 2);
-                } else {
-                    e_stmt(e, a->body, ind + 1);
-                    sb_append(&e->sb, "\n");
-                }
+                e_stmt(e, a->body, ind + 1);
+                sb_append(&e->sb, "\n");
             }
         }
         e_indent(e, ind);
@@ -414,7 +398,7 @@ static void e_struct(Emit* e, StructDef* st) {
     for (int i = 0; i < st->nfields; i++) {
         StructField* f = &st->fields[i];
         e_indent(e, 1);
-        if (f->style == FIELD_YUP) {
+        if (f->style == FIELD_COLON) {
             /* Preserve Rook-style: name: Type (round-trip stable). */
             sb_append(&e->sb, f->name);
             sb_append(&e->sb, ": ");
@@ -459,7 +443,7 @@ static void e_enum(Emit* e, EnumDef* ed) {
             for (int j = 0; j < ed->variants[i].nfields; j++) {
                 StructField* vf = &ed->variants[i].fields[j];
                 if (j) sb_append(&e->sb, " ");
-                if (vf->style == FIELD_YUP) {
+                if (vf->style == FIELD_COLON) {
                     sb_append(&e->sb, vf->name);
                     sb_append(&e->sb, ": ");
                     e_type(e, vf->type);
@@ -517,12 +501,6 @@ char* emit_program(Program* p, int* out_len) {
             break;
         case TOP_ENUM:
             e_enum(&e, it->ed);
-            break;
-        case TOP_MODULE:
-            if (it->modname) sb_appendf(&e.sb, "module %s;\n", it->modname);
-            break;
-        case TOP_IMPORT:
-            if (it->impname) sb_appendf(&e.sb, "import %s;\n", it->impname);
             break;
         }
     }
