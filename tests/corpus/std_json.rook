@@ -1,0 +1,27 @@
+#comprise <std/json>
+
+int main() {
+    const char* doc = "{\"name\": \"Ada \\\"the\\\" Great\", \"n\": -42, \"ok\": true, \"sub\": {\"x\": 1}}";
+    char name[64];
+    int n = 0;
+    bool ok = false;
+    bool f1 = json_get_string(doc, "name", name, 64);
+    bool f2 = json_get_int(doc, "n", &n);
+    bool f3 = json_get_bool(doc, "ok", &ok);
+    bool f4 = json_has_key(doc, "sub");
+    bool f5 = json_has_key(doc, "zzz");
+    printf("found=%d name=%s n=%d ok=%d sub=%d missing=%d\n", f1 && f2 && f3 && f4 && !f5, name, n, ok, f4, !f5);
+    StringBuilder sb = sb_new(64);
+    defer sb.destroy();
+    sb.append_cstr("{");
+    json_write_string(&sb, "a\"b");
+    sb.append_cstr(":");
+    json_write_int(&sb, -7);
+    sb.append_cstr(",");
+    json_write_bool(&sb, true);
+    sb.append_cstr(",");
+    json_write_null(&sb);
+    sb.append_cstr("}");
+    printf("%s\n", sb.to_cstr());
+    return 0;
+}

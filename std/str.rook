@@ -13,7 +13,7 @@ object Str {
 
 Str str_from_cstr(const char* s) {
     if (s == NULL) return Str { data: "", len: 0 };
-    return Str { data: s, len: strlen(s) };
+    return Str { data: s, len: (size_t)strlen(s) };
 }
 
 Str str_from_parts(const char* data, size_t len) {
@@ -45,7 +45,7 @@ impl Str {
 
     bool equals_cstr(self, const char* s) {
         if (s == NULL) return self.len == 0;
-        size_t slen = strlen(s);
+        size_t slen = (size_t)strlen(s);
         if (self.len != slen) return false;
         return memcmp(self.data, s, self.len) == 0;
     }
