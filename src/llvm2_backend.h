@@ -10,6 +10,7 @@ Backend* llvm2_backend_create(void);
 int llvm2_backend_emit_obj(Sema* sema, Program* prog, const char* obj_path, int opt_level);
 int llvm2_backend_emit_obj_target(Sema* sema, Program* prog, const char* obj_path, int opt_level, const char* target_triple);
 char* llvm2_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple);
+char* llvm2_backend_emit_program_opt(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple, int opt_level);
 
 /* In-memory JIT execution of program. Returns main's exit code, or -1 on failure. */
 int llvm2_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv);

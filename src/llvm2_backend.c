@@ -19,6 +19,10 @@
 #include <llvm-c/Support.h>
 #include <llvm-c/IRReader.h>
 #include <llvm-c/Linker.h>
+#if __has_include(<llvm-c/Transforms/PassBuilder.h>)
+#include <llvm-c/Transforms/PassBuilder.h>
+#define ROKADE_LLVM2_HAS_PASSBUILDER 1
+#endif
 
 /* LLVMParseIRInContext2 was added in LLVM 20. On older versions fall back to the
    deprecated LLVMParseIRInContext, which consumes the memory buffer.
@@ -1209,22 +1213,75 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMTypeRef fn_type = NULL;
 
         if (!fn_val) {
-            const char* c_ret = sema_lookup_cfunc(fn_name);
-            int np = sema_cfunc_nparams(fn_name);
-            int is_var = sema_cfunc_is_variadic(fn_name);
+            const char* intrinsic_name = NULL;
+            LLVMTypeRef int_ret_t = NULL;
+            LLVMTypeRef int_param_t = NULL;
 
-            AstType ret_at = { .qual = "", .name = (char*)(c_ret ? c_ret : "int"), .ptrs = (c_ret && strchr(c_ret, '*')) ? 1 : 0 };
-            LLVMTypeRef ret_t = gen_llvm_type(g, &ret_at);
-
-            LLVMTypeRef* param_ts = calloc(np > 0 ? np : 1, sizeof(LLVMTypeRef));
-            for (int i = 0; i < np; i++) {
-                const char* pt = sema_lookup_cfunc_param(fn_name, i);
-                AstType p_at = { .qual = "", .name = (char*)(pt ? pt : "int"), .ptrs = (pt && strchr(pt, '*')) ? 1 : 0 };
-                param_ts[i] = gen_llvm_type(g, &p_at);
+            if (strcmp(fn_name, "sqrtf") == 0) {
+                intrinsic_name = "llvm.sqrt.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "sqrt") == 0) {
+                intrinsic_name = "llvm.sqrt.f64";
+                int_ret_t = LLVMDoubleTypeInContext(g->ctx);
+                int_param_t = LLVMDoubleTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "fabsf") == 0) {
+                intrinsic_name = "llvm.fabs.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "fabs") == 0) {
+                intrinsic_name = "llvm.fabs.f64";
+                int_ret_t = LLVMDoubleTypeInContext(g->ctx);
+                int_param_t = LLVMDoubleTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "floorf") == 0) {
+                intrinsic_name = "llvm.floor.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "ceilf") == 0) {
+                intrinsic_name = "llvm.ceil.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "roundf") == 0) {
+                intrinsic_name = "llvm.round.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "sinf") == 0) {
+                intrinsic_name = "llvm.sin.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
+            } else if (strcmp(fn_name, "cosf") == 0) {
+                intrinsic_name = "llvm.cos.f32";
+                int_ret_t = LLVMFloatTypeInContext(g->ctx);
+                int_param_t = LLVMFloatTypeInContext(g->ctx);
             }
-            fn_type = LLVMFunctionType(ret_t, param_ts, np >= 0 ? np : 0, is_var);
-            fn_val = LLVMAddFunction(g->module, fn_name, fn_type);
-            free(param_ts);
+
+            if (intrinsic_name) {
+                fn_val = LLVMGetNamedFunction(g->module, intrinsic_name);
+                if (!fn_val) {
+                    LLVMTypeRef param_types[1] = { int_param_t };
+                    fn_type = LLVMFunctionType(int_ret_t, param_types, 1, 0);
+                    fn_val = LLVMAddFunction(g->module, intrinsic_name, fn_type);
+                } else {
+                    fn_type = LLVMGlobalGetValueType(fn_val);
+                }
+            } else {
+                const char* c_ret = sema_lookup_cfunc(fn_name);
+                int np = sema_cfunc_nparams(fn_name);
+                int is_var = sema_cfunc_is_variadic(fn_name);
+
+                AstType ret_at = { .qual = "", .name = (char*)(c_ret ? c_ret : "int"), .ptrs = (c_ret && strchr(c_ret, '*')) ? 1 : 0 };
+                LLVMTypeRef ret_t = gen_llvm_type(g, &ret_at);
+
+                LLVMTypeRef* param_ts = calloc(np > 0 ? np : 1, sizeof(LLVMTypeRef));
+                for (int i = 0; i < np; i++) {
+                    const char* pt = sema_lookup_cfunc_param(fn_name, i);
+                    AstType p_at = { .qual = "", .name = (char*)(pt ? pt : "int"), .ptrs = (pt && strchr(pt, '*')) ? 1 : 0 };
+                    param_ts[i] = gen_llvm_type(g, &p_at);
+                }
+                fn_type = LLVMFunctionType(ret_t, param_ts, np >= 0 ? np : 0, is_var);
+                fn_val = LLVMAddFunction(g->module, fn_name, fn_type);
+                free(param_ts);
+            }
         } else {
             fn_type = LLVMGlobalGetValueType(fn_val);
         }
@@ -2506,9 +2563,49 @@ static LLVMModuleRef llvm2_backend_build_module(LLVMContextRef ctx, Sema* sema, 
     return module;
 }
 
-char* llvm2_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple) {
+char* llvm2_backend_emit_program_opt(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple, int opt_level) {
     LLVMContextRef ctx = LLVMContextCreate();
     LLVMModuleRef module = llvm2_backend_build_module(ctx, sema, prog, bounds_check, target_triple);
+    if (!module) {
+        LLVMContextDispose(ctx);
+        return NULL;
+    }
+
+#ifdef ROKADE_LLVM2_HAS_PASSBUILDER
+    if (opt_level > 0) {
+        LLVMInitializeAllTargetInfos();
+        LLVMInitializeAllTargets();
+        LLVMInitializeAllTargetMCs();
+        LLVMInitializeAllAsmPrinters();
+
+        char* triple_allocated = NULL;
+        const char* triple = target_triple;
+        if (!triple || !triple[0]) {
+            triple_allocated = LLVMGetDefaultTargetTriple();
+            triple = triple_allocated;
+        }
+        LLVMTargetRef target = NULL;
+        char* err = NULL;
+        if (LLVMGetTargetFromTriple(triple, &target, &err) == 0 && target) {
+            LLVMCodeGenOptLevel opt = (opt_level == 1) ? LLVMCodeGenLevelLess : ((opt_level >= 3) ? LLVMCodeGenLevelAggressive : LLVMCodeGenLevelDefault);
+            LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+                target, triple, "generic", "",
+                opt, LLVMRelocPIC, LLVMCodeModelDefault);
+            if (tm) {
+                const char* passes = "default<O2>";
+                if (opt_level == 1) passes = "default<O1>";
+                else if (opt_level >= 3) passes = "default<O3>";
+
+                LLVMPassBuilderOptionsRef pb_opts = LLVMCreatePassBuilderOptions();
+                LLVMRunPasses(module, passes, tm, pb_opts);
+                LLVMDisposePassBuilderOptions(pb_opts);
+                LLVMDisposeTargetMachine(tm);
+            }
+        }
+        if (err) LLVMDisposeMessage(err);
+        if (triple_allocated) LLVMDisposeMessage(triple_allocated);
+    }
+#endif
 
     char* ir_str = LLVMPrintModuleToString(module);
     size_t len = strlen(ir_str);
@@ -2523,6 +2620,10 @@ char* llvm2_backend_emit_program_target(Sema* sema, Program* prog, int* out_len,
     LLVMContextDispose(ctx);
 
     return result;
+}
+
+char* llvm2_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple) {
+    return llvm2_backend_emit_program_opt(sema, prog, out_len, bounds_check, target_triple, 0);
 }
 
 static char* llvm2_backend_emit_program(Sema* sema, Program* prog, int* out_len, int bounds_check) {
@@ -2572,6 +2673,18 @@ static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int op
     LLVMSetTarget(module, triple);
     LLVMDisposeMessage(td_str);
     LLVMDisposeTargetData(td);
+
+#ifdef ROKADE_LLVM2_HAS_PASSBUILDER
+    if (opt_level > 0) {
+        const char* passes = "default<O2>";
+        if (opt_level == 1) passes = "default<O1>";
+        else if (opt_level >= 3) passes = "default<O3>";
+
+        LLVMPassBuilderOptionsRef pb_opts = LLVMCreatePassBuilderOptions();
+        LLVMRunPasses(module, passes, tm, pb_opts);
+        LLVMDisposePassBuilderOptions(pb_opts);
+    }
+#endif
 
     char* emit_err = NULL;
     if (LLVMTargetMachineEmitToFile(tm, module, obj_path, LLVMObjectFile, &emit_err) != 0) {

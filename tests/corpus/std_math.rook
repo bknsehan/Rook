@@ -1,0 +1,31 @@
+#include <stdio.h>
+#comprise <std/math>
+
+int main() {
+    Vec2 v1 = Vec2 { x: 3.0f, y: 4.0f };
+    printf("v1_len=%.1f\n", v1.length());
+
+    Vec2 v2 = Vec2 { x: 1.0f, y: 2.0f };
+    Vec2 v3 = v1.add(v2);
+    printf("v3_add=%.1f,%.1f\n", v3.x, v3.y);
+    printf("dot=%.1f\n", v1.dot(v2));
+
+    Vec3 a = Vec3 { x: 1.0f, y: 0.0f, z: 0.0f };
+    Vec3 b = Vec3 { x: 0.0f, y: 1.0f, z: 0.0f };
+    Vec3 c = a.cross(b);
+    printf("cross=%.1f,%.1f,%.1f\n", c.x, c.y, c.z);
+
+    Rect r = Rect { x: 0.0f, y: 0.0f, w: 10.0f, h: 10.0f };
+    Vec2 p_in = Vec2 { x: 5.0f, y: 5.0f };
+    Vec2 p_out = Vec2 { x: 15.0f, y: 5.0f };
+    printf("r_in=%d\n", r.contains(p_in));
+    printf("r_out=%d\n", r.contains(p_out));
+
+    printf("clampf=%.1f\n", clampf(15.0f, 0.0f, 10.0f));
+    printf("clampi=%d\n", clampi(-5, 0, 10));
+    printf("lerp=%.1f\n", lerpf(0.0f, 100.0f, 0.25f));
+    printf("powi=%d\n", powi(2, 5));
+    printf("absi=%d\n", absi(-42));
+    printf("deg2rad=%.2f\n", deg2rad(180.0f));
+    return 0;
+}

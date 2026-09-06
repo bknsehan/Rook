@@ -1,0 +1,9 @@
+r1_ok=42
+r1_is_err=0
+r2_is_ok=0
+r2_err=not positive
+r2_fallback=999
+o1_is_some=1
+o1_idx=3
+o2_is_none=1
+o2_fallback=-1

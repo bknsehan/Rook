@@ -37,6 +37,13 @@ impl Result {
             _ => "",
         };
     }
+
+    void* unwrap_or(Result* self, void* fallback) {
+        return match (*self) {
+            Ok { val } => val,
+            _ => fallback,
+        };
+    }
 }
 
 Result result_ok(void* val) {
@@ -71,6 +78,13 @@ impl Option {
         return match (*self) {
             Some { val } => val,
             _ => NULL,
+        };
+    }
+
+    void* unwrap_or(Option* self, void* fallback) {
+        return match (*self) {
+            Some { val } => val,
+            _ => fallback,
         };
     }
 }

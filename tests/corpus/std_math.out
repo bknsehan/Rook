@@ -1,0 +1,12 @@
+v1_len=5.0
+v3_add=4.0,6.0
+dot=11.0
+cross=0.0,0.0,1.0
+r_in=1
+r_out=0
+clampf=10.0
+clampi=0
+lerp=25.0
+powi=32
+absi=42
+deg2rad=3.14

@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <stdlib.h>
+#comprise <std/result>
+
+Result parse_positive(int n) {
+    if (n <= 0) {
+        return result_err("not positive");
+    }
+    int* val = malloc(sizeof(int));
+    *val = n * 2;
+    return result_ok(val);
+}
+
+Option find_char(const char* s, char c) {
+    if (!s) return option_none();
+    for (int i = 0; s[i] != '\0'; i = i + 1) {
+        if (s[i] == c) {
+            return option_some((void*)(long)i);
+        }
+    }
+    return option_none();
+}
+
+int main() {
+    Result r1 = parse_positive(21);
+    if (r1.is_ok()) {
+        int* v = (int*)r1.unwrap();
+        printf("r1_ok=%d\n", *v);
+        free(v);
+    }
+    printf("r1_is_err=%d\n", r1.is_err());
+
+    Result r2 = parse_positive(-5);
+    printf("r2_is_ok=%d\n", r2.is_ok());
+    if (r2.is_err()) {
+        printf("r2_err=%s\n", r2.unwrap_err());
+    }
+
+    int fallback_val = 999;
+    int* f_res = (int*)r2.unwrap_or(&fallback_val);
+    printf("r2_fallback=%d\n", *f_res);
+
+    Option o1 = find_char("rook_lang", 'k');
+    printf("o1_is_some=%d\n", o1.is_some());
+    if (o1.is_some()) {
+        printf("o1_idx=%ld\n", (long)o1.unwrap());
+    }
+
+    Option o2 = find_char("rook_lang", 'z');
+    printf("o2_is_none=%d\n", o2.is_none());
+    long o2_val = (long)o2.unwrap_or((void*)-1L);
+    printf("o2_fallback=%ld\n", o2_val);
+
+    return 0;
+}

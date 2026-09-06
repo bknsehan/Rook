@@ -3320,6 +3320,7 @@ int main(int argc, char** argv) {
     /* File processing commands */
     int mode = 0; /* 0 emit, 1 emit-c, 2 ast, 3 check, 4 checkdir, 5 diagnostics, 6 emit-llvm, 7 emit-obj, 8 emit-llvm2 */
     int bounds_check = 0;
+    int opt_level = 0;
     const char* cli_backend = "c";
     int i = 1;
     /* Parse flags before the mode keyword */
@@ -3329,6 +3330,18 @@ int main(int argc, char** argv) {
             i++;
         } else if (strncmp(argv[i], "--backend=", 10) == 0) {
             cli_backend = argv[i] + 10;
+            i++;
+        } else if (strcmp(argv[i], "-O0") == 0) {
+            opt_level = 0;
+            i++;
+        } else if (strcmp(argv[i], "-O1") == 0) {
+            opt_level = 1;
+            i++;
+        } else if (strcmp(argv[i], "-O2") == 0 || strcmp(argv[i], "-O") == 0) {
+            opt_level = 2;
+            i++;
+        } else if (strcmp(argv[i], "-O3") == 0) {
+            opt_level = 3;
             i++;
         } else {
             break;
@@ -3364,6 +3377,14 @@ int main(int argc, char** argv) {
     for (; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out_obj_override = argv[++i];
+        } else if (strcmp(argv[i], "-O0") == 0) {
+            opt_level = 0;
+        } else if (strcmp(argv[i], "-O1") == 0) {
+            opt_level = 1;
+        } else if (strcmp(argv[i], "-O2") == 0 || strcmp(argv[i], "-O") == 0) {
+            opt_level = 2;
+        } else if (strcmp(argv[i], "-O3") == 0) {
+            opt_level = 3;
         } else if (argv[i][0] != '-') {
             if (!path) path = argv[i];
         }
@@ -3480,7 +3501,7 @@ int main(int argc, char** argv) {
         }
 
         int rc = (strcmp(cli_backend, "llvm2") == 0)
-            ? llvm2_backend_emit_obj(sema, p, out_obj, 2)
+            ? llvm2_backend_emit_obj(sema, p, out_obj, opt_level > 0 ? opt_level : 2)
             : llvm_backend_emit_obj(sema, p, out_obj, 2);
         if (rc == 0) {
             printf("emitted: %s\n", out_obj);
@@ -3519,7 +3540,9 @@ int main(int argc, char** argv) {
             return 1;
         }
         char* c = NULL;
-        if (be->emit_program_target) {
+        if (strcmp(bname, "llvm2") == 0 && opt_level > 0) {
+            c = llvm2_backend_emit_program_opt(sema, p, &elen, bounds_check, NULL, opt_level);
+        } else if (be->emit_program_target) {
             c = be->emit_program_target(sema, p, &elen, bounds_check, NULL);
         } else {
             c = be->emit_program(sema, p, &elen, bounds_check);
