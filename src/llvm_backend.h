@@ -9,6 +9,7 @@ Backend* llvm_backend_create(void);
 /* Direct native object file emission (.o). Returns 0 on success, non-zero on error. */
 int llvm_backend_emit_obj(Sema* sema, Program* prog, const char* obj_path, int opt_level);
 int llvm_backend_emit_obj_target(Sema* sema, Program* prog, const char* obj_path, int opt_level, const char* target_triple);
+char* llvm_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple);
 
 /* In-memory JIT execution of program. Returns main's exit code, or -1 on failure. */
 int llvm_backend_jit_run(Sema* sema, Program* prog, int argc, char** argv);

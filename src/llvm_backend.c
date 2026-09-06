@@ -288,7 +288,8 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
             return LLVMInt32TypeInContext(g->ctx);
         }
         LLVMTypeRef st_type = LLVMStructCreateNamed(g->ctx, n);
-        unsigned long long payload_sz = 32;
+        unsigned long long payload_sz = 0;
+        unsigned int max_align = 4;
         if (ed) {
             for (int vi = 0; vi < ed->nvariants; vi++) {
                 EnumVariant* v = &ed->variants[vi];
@@ -299,18 +300,34 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
                     }
                     LLVMTypeRef vpayload_t = LLVMStructTypeInContext(g->ctx, vft, (unsigned)v->nfields, 0);
                     unsigned long long sz = g->td ? LLVMABISizeOfType(g->td, vpayload_t) : 0;
+                    unsigned int al = g->td ? LLVMABIAlignmentOfType(g->td, vpayload_t) : 0;
                     if (sz == 0) sz = (unsigned long long)v->nfields * 8;
+                    if (al == 0) al = 8;
                     if (sz > payload_sz) payload_sz = sz;
+                    if (al > max_align) max_align = al;
                     free(vft);
                 }
             }
-            payload_sz = (payload_sz + 7) & ~7ULL;
+            if (max_align < 4) max_align = 4;
+            if (max_align > 0) {
+                payload_sz = (payload_sz + max_align - 1) & ~((unsigned long long)max_align - 1);
+            }
+            if (payload_sz == 0) payload_sz = (unsigned long long)max_align;
         }
-        LLVMTypeRef elems[2] = {
-            LLVMInt32TypeInContext(g->ctx),
-            LLVMArrayType(LLVMInt8TypeInContext(g->ctx), (unsigned)payload_sz)
-        };
-        LLVMStructSetBody(st_type, elems, 2, 0);
+        if (max_align >= 8) {
+            LLVMTypeRef elems[3] = {
+                LLVMInt32TypeInContext(g->ctx),
+                LLVMInt32TypeInContext(g->ctx),
+                LLVMArrayType(LLVMInt64TypeInContext(g->ctx), (unsigned)(payload_sz / 8))
+            };
+            LLVMStructSetBody(st_type, elems, 3, 0);
+        } else {
+            LLVMTypeRef elems[2] = {
+                LLVMInt32TypeInContext(g->ctx),
+                LLVMArrayType(LLVMInt8TypeInContext(g->ctx), (unsigned)payload_sz)
+            };
+            LLVMStructSetBody(st_type, elems, 2, 0);
+        }
         return st_type;
     }
 
@@ -321,6 +338,12 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
     }
 
     return LLVMInt32TypeInContext(g->ctx);
+}
+
+static LLVMValueRef gen_sum_payload_ptr(LLVMGen* g, LLVMTypeRef sum_t, LLVMValueRef sum_alloca, const char* name) {
+    unsigned elem_count = LLVMCountStructElementTypes(sum_t);
+    unsigned pidx = (elem_count > 2) ? elem_count - 1 : 1;
+    return LLVMBuildStructGEP2(g->builder, sum_t, sum_alloca, pidx, name ? name : "payload_buf");
 }
 
 static LLVMValueRef cast_to_type_ext(LLVMGen* g, LLVMValueRef val, LLVMTypeRef from, LLVMTypeRef to, int is_signed) {
@@ -1112,7 +1135,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                     LLVMBuildStore(g->builder, LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)vi, 0), tag_ptr);
 
                     if (v->nfields > 0) {
-                        LLVMValueRef payload_ptr = LLVMBuildStructGEP2(g->builder, enum_t, sum_alloca, 1, "payload_buf");
+                        LLVMValueRef payload_ptr = gen_sum_payload_ptr(g, enum_t, sum_alloca, "payload_buf");
                         LLVMTypeRef* vft = calloc(v->nfields, sizeof(LLVMTypeRef));
                         for (int k = 0; k < v->nfields; k++) vft[k] = gen_llvm_type(g, v->fields[k].type);
                         LLVMTypeRef vpayload_t = LLVMStructTypeInContext(g->ctx, vft, v->nfields, 0);
@@ -1399,7 +1422,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 LLVMBuildStore(g->builder, LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)vi, 0), tag_ptr);
 
                 if (v->nfields > 0) {
-                    LLVMValueRef payload_ptr = LLVMBuildStructGEP2(g->builder, enum_t, sum_alloca, 1, "payload_buf");
+                    LLVMValueRef payload_ptr = gen_sum_payload_ptr(g, enum_t, sum_alloca, "payload_buf");
                     LLVMTypeRef* vft = calloc(v->nfields, sizeof(LLVMTypeRef));
                     for (int k = 0; k < v->nfields; k++) vft[k] = gen_llvm_type(g, v->fields[k].type);
                     LLVMTypeRef vpayload_t = LLVMStructTypeInContext(g->ctx, vft, v->nfields, 0);
@@ -1632,7 +1655,7 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
 
         LLVMValueRef tag_ptr = LLVMBuildStructGEP2(g->builder, sum_t, sum_slot, 0, "tag_ptr");
         LLVMValueRef tag_val = LLVMBuildLoad2(g->builder, LLVMInt32TypeInContext(g->ctx), tag_ptr, "tag");
-        LLVMValueRef payload_ptr = LLVMBuildStructGEP2(g->builder, sum_t, sum_slot, 1, "payload_buf");
+        LLVMValueRef payload_ptr = gen_sum_payload_ptr(g, sum_t, sum_slot, "payload_buf");
 
         for (int i = 0; i < nmarms; i++) {
             MatchArm* arm = &marms[i];
@@ -2055,12 +2078,8 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
         if (s->iter && s->iter->kind == E_ARR_LIT) {
             int saved_locals = g->nlocals;
             int nitems = s->iter->nitems;
-            LLVMTypeRef elem_type = LLVMInt32TypeInContext(g->ctx);
-            if (nitems > 0) {
-                LLVMTypeRef it_t = NULL;
-                gen_expr(g, s->iter->items[0], &it_t);
-                if (it_t) elem_type = it_t;
-            }
+            AstType* elem_ast_t = (nitems > 0) ? llvm_resolve_expr_type(g, s->iter->items[0]) : NULL;
+            LLVMTypeRef elem_type = elem_ast_t ? gen_llvm_type(g, elem_ast_t) : LLVMInt32TypeInContext(g->ctx);
             LLVMTypeRef arr_type = LLVMArrayType(elem_type, nitems > 0 ? (unsigned)nitems : 1);
             LLVMValueRef arr_alloca = LLVMBuildAlloca(g->builder, arr_type, "forin_arr");
 
@@ -2212,6 +2231,16 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
             while (r < end) {
                 while (r < end && (*r == ' ' || *r == '\t' || *r == '\r' || *r == '\n')) r++;
                 if (r >= end) break;
+                if (*r == '/' && r + 1 < end && r[1] == '/') {
+                    const char* nl = memchr(r, '\n', end - r);
+                    r = nl ? nl + 1 : end;
+                    continue;
+                }
+                if (*r == '/' && r + 1 < end && r[1] == '*') {
+                    const char* close = strstr(r + 2, "*/");
+                    r = close ? close + 2 : end;
+                    continue;
+                }
                 if (*r != '#') {
                     has_defs = 1;
                     break;
@@ -2447,9 +2476,9 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
     return module;
 }
 
-static char* llvm_backend_emit_program(Sema* sema, Program* prog, int* out_len, int bounds_check) {
+char* llvm_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple) {
     LLVMContextRef ctx = LLVMContextCreate();
-    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog, bounds_check, NULL);
+    LLVMModuleRef module = llvm_backend_build_module(ctx, sema, prog, bounds_check, target_triple);
 
     char* ir_str = LLVMPrintModuleToString(module);
     size_t len = strlen(ir_str);
@@ -2464,6 +2493,10 @@ static char* llvm_backend_emit_program(Sema* sema, Program* prog, int* out_len, 
     LLVMContextDispose(ctx);
 
     return result;
+}
+
+static char* llvm_backend_emit_program(Sema* sema, Program* prog, int* out_len, int bounds_check) {
+    return llvm_backend_emit_program_target(sema, prog, out_len, bounds_check, NULL);
 }
 
 static int emit_module_to_obj(LLVMModuleRef module, const char* obj_path, int opt_level, const char* target_triple) {
@@ -2625,6 +2658,7 @@ Backend* llvm_backend_create(void) {
     if (!b) return NULL;
     b->name = "llvm";
     b->emit_program = llvm_backend_emit_program;
+    b->emit_program_target = llvm_backend_emit_program_target;
     b->emit_obj = llvm_backend_emit_obj;
     b->jit_run = llvm_backend_jit_run;
     b->destroy = llvm_backend_destroy;
@@ -2634,6 +2668,12 @@ Backend* llvm_backend_create(void) {
 #else
 
 Backend* llvm_backend_create(void) {
+    fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
+    return NULL;
+}
+
+char* llvm_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple) {
+    (void)sema; (void)prog; (void)out_len; (void)bounds_check; (void)target_triple;
     fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
     return NULL;
 }

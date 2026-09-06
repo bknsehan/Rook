@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.5.0"
+#define ROKADE_VERSION "0.5.1"
 #endif
 
 #ifdef _WIN32
@@ -1508,6 +1508,39 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
     const char* active_backend = (cli_backend && cli_backend[0]) ? cli_backend : (cfg.backend[0] ? cfg.backend : "c");
 
+    /* Determine list of targets to build */
+    const char* targets_to_build[16];
+    size_t n_targets_to_build = 0;
+    if (cli_target && cli_target[0]) {
+        targets_to_build[n_targets_to_build++] = cli_target;
+    } else if (cfg.n_configured_targets > 0) {
+        for (size_t i = 0; i < cfg.n_configured_targets; i++) {
+            targets_to_build[n_targets_to_build++] = cfg.configured_targets[i];
+        }
+    } else if (build_all) {
+        targets_to_build[n_targets_to_build++] = "linux";
+        targets_to_build[n_targets_to_build++] = "windows";
+        targets_to_build[n_targets_to_build++] = "macos";
+    } else {
+        targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target : "linux";
+    }
+
+    const char* default_triple = NULL;
+    Toolchain primary_tc;
+    memset(&primary_tc, 0, sizeof(primary_tc));
+    if (n_targets_to_build > 0) {
+        TargetSpec primary_spec;
+        memset(&primary_spec, 0, sizeof(primary_spec));
+        snprintf(primary_spec.target_os, sizeof(primary_spec.target_os), "%s", targets_to_build[0]);
+        if (strcmp(targets_to_build[0], "android") == 0) {
+            snprintf(primary_spec.target_arch, sizeof(primary_spec.target_arch), "%s", "arm64-v8a");
+            primary_spec.android_api = 24;
+        }
+        if (toolchain_detect_target(&primary_tc, &primary_spec) == 0 && primary_tc.target_triple) {
+            default_triple = primary_tc.target_triple;
+        }
+    }
+
     /* Collect .rook files from src/ */
     char src_dir[4096];
     if (snprintf(src_dir, sizeof(src_dir), "%s/src", proj_path) >= (int)sizeof(src_dir)) {
@@ -1656,7 +1689,12 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             sema_free(sema);
             continue;
         }
-        char* c_code = be->emit_program(sema, p, &clen, 0);
+        char* c_code = NULL;
+        if (be->emit_program_target) {
+            c_code = be->emit_program_target(sema, p, &clen, 0, default_triple);
+        } else {
+            c_code = be->emit_program(sema, p, &clen, 0);
+        }
         backend_destroy(be);
         if (!c_code) {
             fprintf(stderr, "error: backend code emission failed for %s\n", entry->d_name);
@@ -1716,25 +1754,9 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
 
     if (n_src == 0) {
         fprintf(stderr, "error: no .rook files found in %s\n", src_dir);
+        toolchain_free(&primary_tc);
         project_config_free(&cfg);
         return 1;
-    }
-
-    /* Determine list of targets to build */
-    const char* targets_to_build[16];
-    size_t n_targets_to_build = 0;
-    if (cli_target && cli_target[0]) {
-        targets_to_build[n_targets_to_build++] = cli_target;
-    } else if (cfg.n_configured_targets > 0) {
-        for (size_t i = 0; i < cfg.n_configured_targets; i++) {
-            targets_to_build[n_targets_to_build++] = cfg.configured_targets[i];
-        }
-    } else if (build_all) {
-        targets_to_build[n_targets_to_build++] = "linux";
-        targets_to_build[n_targets_to_build++] = "windows";
-        targets_to_build[n_targets_to_build++] = "macos";
-    } else {
-        targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target : "linux";
     }
 
     size_t total_inc_cap = cfg.n_include_dirs + 2;
@@ -1930,6 +1952,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     free(c_file_paths);
     if (inc_dirs) free(inc_dirs);
     if (libs) free(libs);
+    toolchain_free(&primary_tc);
     project_config_free(&cfg);
     return any_err;
 }
@@ -3466,7 +3489,12 @@ int main(int argc, char** argv) {
             program_free(p);
             return 1;
         }
-        char* c = be->emit_program(sema, p, &elen, bounds_check);
+        char* c = NULL;
+        if (be->emit_program_target) {
+            c = be->emit_program_target(sema, p, &elen, bounds_check, NULL);
+        } else {
+            c = be->emit_program(sema, p, &elen, bounds_check);
+        }
         backend_destroy(be);
         if (c) {
             fwrite(c, 1, elen, stdout);

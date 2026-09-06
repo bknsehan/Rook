@@ -13,6 +13,7 @@ typedef struct Backend {
     /* Emit target code for `prog` (already semantically checked). Returns a
        malloc'd string and writes its length to *out_len. */
     char* (*emit_program)(Sema* sema, Program* prog, int* out_len, int bounds_check);
+    char* (*emit_program_target)(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple);
     /* Direct native object file emission (.o). Returns 0 on success. (Optional, can be NULL) */
     int (*emit_obj)(Sema* sema, Program* prog, const char* obj_path, int opt_level);
     /* In-memory JIT execution. Returns main's exit code or negative on failure. (Optional, can be NULL) */

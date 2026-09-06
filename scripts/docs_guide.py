@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.5.0).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.5.1).
 Contains Chapters 1 to 21.
 """
 
@@ -1441,7 +1441,7 @@ int calculate(int x) {
 {make_code_box("toml", """
 [package]
 name = "service_engine"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Engineering Team <dev@example.com>"]
 description = "Telemetry daemon"
 

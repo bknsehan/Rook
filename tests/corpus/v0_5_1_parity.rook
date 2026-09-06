@@ -1,0 +1,56 @@
+#include <stdio.h>
+
+sum Shape {
+    Circle { r: float; };
+    Rect { w: float; h: float; };
+    Point;
+}
+
+sum ShapeD {
+    CircleD { r: double; };
+    PointD;
+}
+
+int test_defer_order() {
+    int x = 10;
+    defer {
+        x = 99;
+    }
+    return x;
+}
+
+int forin_side_effect(int* cnt) {
+    *cnt = *cnt + 1;
+    return 10;
+}
+
+int main() {
+    // 1. Defer return evaluation order
+    printf("defer=%d\n", test_defer_order());
+
+    // 2. Sum type layout & alignment
+    printf("shape_sz=%d\n", (int)sizeof(Shape));
+    printf("shaped_sz=%d\n", (int)sizeof(ShapeD));
+
+    Shape s1 = Rect { w: 3.0, h: 4.0 };
+    match (s1) {
+        Rect { w, h } => printf("rect=%.1f\n", w * h),
+        _ => printf("other\n"),
+    }
+
+    ShapeD s2 = CircleD { r: 5.5 };
+    match (s2) {
+        CircleD { r } => printf("circle_d=%.1f\n", r),
+        _ => printf("other_d\n"),
+    }
+
+    // 3. For-in without re-evaluating side effects
+    int cnt = 0;
+    int acc = 0;
+    for x in [forin_side_effect(&cnt), 20, 30] {
+        acc += x;
+    }
+    printf("forin_sum=%d cnt=%d\n", acc, cnt);
+
+    return 0;
+}

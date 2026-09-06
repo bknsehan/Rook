@@ -411,12 +411,12 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
             char* q = find_in_path(win_cands[i]);
             if (q) { tc->cc_path = q; break; }
         }
-        tc->target_triple = strdup("x86_64-w64-windows");
+        tc->target_triple = strdup("x86_64-w64-windows-gnu");
 #else
         char* mingw_cc = toolchain_find_mingw();
         if (mingw_cc) {
             tc->cc_path = mingw_cc;
-            tc->target_triple = strdup("x86_64-w64-mingw32");
+            tc->target_triple = strdup("x86_64-w64-windows-gnu");
             char* mingw_ar = find_in_path("x86_64-w64-mingw32-ar");
             if (mingw_ar) tc->ar_path = mingw_ar;
         }

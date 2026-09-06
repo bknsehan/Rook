@@ -67,6 +67,13 @@ static void cg_emit_loop_defers(CG* g) {
             cg_emit_defers(g, &g->defer_stack[d]);
 }
 
+static int cg_has_defers(CG* g) {
+    for (int d = 0; d < g->defer_depth; d++) {
+        if (g->defer_stack[d].count > 0) return 1;
+    }
+    return 0;
+}
+
 static void cg_indent(CG* g);
 static void cg_type(CG* g, AstType* t);
 static void cg_expr(CG* g, Expr* x);
@@ -508,8 +515,20 @@ static void cg_expr(CG* g, Expr* x) {
         sb_append(&g->sb, "->");
         sb_append(&g->sb, x->str);
         break;
-    case E_INDEX:
-        if (g->bounds_check) {
+    case E_INDEX: {
+        int is_bounded = 0;
+        if (g->bounds_check && x->a) {
+            AstType* t = cg_resolve_type(g, x->a);
+            if (!t || t->ptrs == 0) {
+                if (x->a->kind == E_IDENT && g->sema) {
+                    Sym* sym = sema_lookup(g->sema, x->a->str);
+                    if (sym && sym->decl && sym->decl->dim) {
+                        is_bounded = 1;
+                    }
+                }
+            }
+        }
+        if (is_bounded) {
             cg_expr(g, x->a);
             sb_append(&g->sb, "[rk_bounds(");
             cg_expr(g, x->b);
@@ -525,6 +544,7 @@ static void cg_expr(CG* g, Expr* x) {
             sb_append(&g->sb, "]");
         }
         break;
+    }
     case E_UNARY:
         sb_append(&g->sb, x->str);
         cg_expr(g, x->a);
@@ -1339,15 +1359,27 @@ static void cg_stmt(CG* g, Stmt* s) {
         sb_append(&g->sb, "} while (0);\n");
         break;
     }
-    case S_RETURN:
-        cg_emit_all_defers(g);
-        sb_append(&g->sb, "return");
-        if (s->e) {
-            sb_append(&g->sb, " ");
+    case S_RETURN: {
+        if (cg_has_defers(g) && s->e) {
+            char ret_var[32];
+            snprintf(ret_var, sizeof(ret_var), "__rk_ret%d", g->result_count++);
+            sb_appendf(&g->sb, "auto %s = ", ret_var);
             cg_expr(g, s->e);
+            sb_append(&g->sb, ";\n");
+            cg_emit_all_defers(g);
+            cg_indent(g);
+            sb_appendf(&g->sb, "return %s;\n", ret_var);
+        } else {
+            cg_emit_all_defers(g);
+            sb_append(&g->sb, "return");
+            if (s->e) {
+                sb_append(&g->sb, " ");
+                cg_expr(g, s->e);
+            }
+            sb_append(&g->sb, ";\n");
         }
-        sb_append(&g->sb, ";\n");
         break;
+    }
     case S_BREAK: {
         cg_emit_loop_defers(g);
         sb_append(&g->sb, "break;\n");

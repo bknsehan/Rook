@@ -1,0 +1,6 @@
+defer=10
+shape_sz=12
+shaped_sz=16
+rect=12.0
+circle_d=5.5
+forin_sum=60 cnt=1
