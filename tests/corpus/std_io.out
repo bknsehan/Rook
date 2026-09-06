@@ -1,0 +1,22 @@
+--- output ---
+hello world
+(null)
+(null)
+123
+-456
+789
+3.14
+true
+false
+X
+str slice
+str slice
+sb: 100 true
+--- input ---
+line: Hello World from scanln
+int: 42
+float: 3.14
+word: apple
+char: Z
+alloc: A long line that should be cleanly read by scanln_alloc
+sb scanln: Another line read directly into StringBuilder

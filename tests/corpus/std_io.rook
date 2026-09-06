@@ -1,0 +1,94 @@
+#comprise <std/io>
+#comprise <std/vec>
+#comprise <std/str>
+
+int main() {
+    // 1. Safe Output
+    println("--- output ---");
+    print("hello ");
+    println("world");
+    println(NULL);
+    print(NULL);
+    println("");
+    
+    println_int(123);
+    print_int(-456);
+    println("");
+    
+    println_uint(789);
+    println_float_prec(3.14159f, 2);
+    println_bool(true);
+    println_bool(false);
+    println_char('X');
+    
+    Str s = str_from_cstr("str slice");
+    println_str(s);
+    print_str(s);
+    println("");
+
+    StringBuilder sb = sb_new(32);
+    defer sb.destroy();
+    sb.append_cstr("sb: ");
+    sb.append_int(100);
+    sb.append_cstr(" ");
+    sb.append_bool(true);
+    sb.println();
+
+    // 2. Safe Input
+    println("--- input ---");
+    char line[128];
+    bool ok_line = scanln(line, 128);
+    if (ok_line) {
+        print("line: ");
+        println(line);
+    }
+
+    int n = 0;
+    bool ok_int = scan_int(&n);
+    if (ok_int) {
+        print("int: ");
+        println_int(n);
+    }
+
+    float f = 0.0f;
+    bool ok_flt = scan_float(&f);
+    if (ok_flt) {
+        print("float: ");
+        println_float_prec(f, 2);
+    }
+
+    char word[32];
+    bool ok_word = scan_word(word, 32);
+    if (ok_word) {
+        print("word: ");
+        println(word);
+    }
+
+    int ch = scan_char();
+    while (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+        ch = scan_char();
+    }
+    print("char: ");
+    println_char((char)ch);
+
+    int rem = scan_char();
+    while (rem != '\n' && rem != '\0') {
+        rem = scan_char();
+    }
+
+    char* alloc_line = scanln_alloc();
+    if (alloc_line != NULL) {
+        defer free(alloc_line);
+        print("alloc: ");
+        println(alloc_line);
+    }
+
+    StringBuilder sb2 = sb_new(16);
+    defer sb2.destroy();
+    if (sb2.scanln()) {
+        print("sb scanln: ");
+        sb2.println();
+    }
+
+    return 0;
+}

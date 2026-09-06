@@ -141,3 +141,44 @@ float deg2rad(float deg) {
 float rad2deg(float rad) {
     return rad * (180.0f / 3.14159265f);
 }
+
+float math_floor(float x) {
+    return floorf(x);
+}
+
+float math_ceil(float x) {
+    return ceilf(x);
+}
+
+float math_round(float x) {
+    return roundf(x);
+}
+
+float math_pow(float base, float exp) {
+    return powf(base, exp);
+}
+
+int signi(int x) {
+    if (x > 0) return 1;
+    if (x < 0) return -1;
+    return 0;
+}
+
+float signf(float x) {
+    if (x > 0.0f) return 1.0f;
+    if (x < 0.0f) return -1.0f;
+    return 0.0f;
+}
+
+int powi(int base, int exp) {
+    if (exp < 0) return 0;
+    int res = 1;
+    int b = base;
+    int e = exp;
+    while (e > 0) {
+        if ((e & 1) == 1) res = res * b;
+        b = b * b;
+        e = e >> 1;
+    }
+    return res;
+}

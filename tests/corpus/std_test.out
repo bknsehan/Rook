@@ -1,7 +1,24 @@
 PASS true_passes
+PASS false_passes
 PASS int_eq
 PASS str_eq
 PASS null_eq
+PASS null_passes
+PASS not_null_passes
+PASS float_eq
+PASS str_to_float
+PASS str_to_bool
+PASS str_compare
+PASS powi_8
+PASS signi_1
+PASS fs_is_dir
+PASS is_digit
+PASS is_alpha
+PASS is_space
+PASS vec_len_3
+PASS vec_removed_20
+PASS vec_len_2
+PASS arena_zero
 PASS suite_passing
-PASS total_5
-test: 6 passed, 0 failed, 6 total
+PASS total_22
+test: 23 passed, 0 failed, 23 total

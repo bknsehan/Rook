@@ -1,13 +1,327 @@
+// Rook Standard Library - std/io.rook
+// Safe, ergonomic input/output operations replacing raw C printf/scanf.
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
+#comprise <std/str>
+
+// ---------------------------------------------------------------------------
+// Standard Output (stdout)
+// ---------------------------------------------------------------------------
 
 void println(const char* s) {
+    if (s == NULL) {
+        puts("(null)");
+        return;
+    }
     puts(s);
 }
 
 void print(const char* s) {
-    printf("%s", s);
+    if (s == NULL) {
+        fputs("(null)", stdout);
+        return;
+    }
+    fputs(s, stdout);
 }
 
+void println_int(int n) {
+    printf("%d\n", n);
+}
+
+void print_int(int n) {
+    printf("%d", n);
+}
+
+void println_uint(unsigned int u) {
+    printf("%u\n", u);
+}
+
+void print_uint(unsigned int u) {
+    printf("%u", u);
+}
+
+void println_float(float f) {
+    printf("%f\n", (double)f);
+}
+
+void print_float(float f) {
+    printf("%f", (double)f);
+}
+
+void println_float_prec(float f, int prec) {
+    printf("%.*f\n", prec, (double)f);
+}
+
+void print_float_prec(float f, int prec) {
+    printf("%.*f", prec, (double)f);
+}
+
+void println_bool(bool b) {
+    if (b) {
+        puts("true");
+    } else {
+        puts("false");
+    }
+}
+
+void print_bool(bool b) {
+    if (b) {
+        fputs("true", stdout);
+    } else {
+        fputs("false", stdout);
+    }
+}
+
+void println_char(char c) {
+    putchar(c);
+    putchar('\n');
+}
+
+void print_char(char c) {
+    putchar(c);
+}
+
+void println_str(Str s) {
+    if (s.data == NULL) {
+        puts("(null)");
+        return;
+    }
+    printf("%.*s\n", (int)s.len, s.data);
+}
+
+void print_str(Str s) {
+    if (s.data == NULL) {
+        fputs("(null)", stdout);
+        return;
+    }
+    printf("%.*s", (int)s.len, s.data);
+}
+
+void println_ptr(const void* ptr) {
+    printf("%p\n", ptr);
+}
+
+void print_ptr(const void* ptr) {
+    printf("%p", ptr);
+}
+
+void io_flush() {
+    fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Standard Error (stderr)
+// ---------------------------------------------------------------------------
+
 void eprintln(const char* s) {
+    if (s == NULL) {
+        fputs("(null)\n", stderr);
+        return;
+    }
     fprintf(stderr, "%s\n", s);
+}
+
+void eprint(const char* s) {
+    if (s == NULL) {
+        fputs("(null)", stderr);
+        return;
+    }
+    fputs(s, stderr);
+}
+
+void eprintln_int(int n) {
+    fprintf(stderr, "%d\n", n);
+}
+
+void eprint_int(int n) {
+    fprintf(stderr, "%d", n);
+}
+
+void eprintln_float(float f) {
+    fprintf(stderr, "%f\n", (double)f);
+}
+
+void eprint_float(float f) {
+    fprintf(stderr, "%f", (double)f);
+}
+
+void eprintln_bool(bool b) {
+    if (b) {
+        fputs("true\n", stderr);
+    } else {
+        fputs("false\n", stderr);
+    }
+}
+
+void eprint_bool(bool b) {
+    if (b) {
+        fputs("true", stderr);
+    } else {
+        fputs("false", stderr);
+    }
+}
+
+void eprintln_str(Str s) {
+    if (s.data == NULL) {
+        fputs("(null)\n", stderr);
+        return;
+    }
+    fprintf(stderr, "%.*s\n", (int)s.len, s.data);
+}
+
+void eprint_str(Str s) {
+    if (s.data == NULL) {
+        fputs("(null)", stderr);
+        return;
+    }
+    fprintf(stderr, "%.*s", (int)s.len, s.data);
+}
+
+void io_eflush() {
+    fflush(stderr);
+}
+
+// ---------------------------------------------------------------------------
+// Standard Input (stdin)
+// ---------------------------------------------------------------------------
+
+bool io_eof() {
+    return feof(stdin) != 0;
+}
+
+char scan_char() {
+    int c = fgetc(stdin);
+    if (c == EOF) return '\0';
+    return (char)c;
+}
+
+// Read a full line into a user-provided buffer, stripping \r and \n.
+// If the line is longer than cap - 1, the remaining characters up to \n are discarded
+// so subsequent reads start cleanly.
+bool scanln(char* buf, size_t cap) {
+    if (buf == NULL || cap == 0) return false;
+    buf[0] = '\0';
+    if (fgets(buf, (int)cap, stdin) == NULL) {
+        return false;
+    }
+    size_t len = (size_t)strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') {
+        len = len - 1;
+        buf[len] = '\0';
+        if (len > 0 && buf[len - 1] == '\r') {
+            len = len - 1;
+            buf[len] = '\0';
+        }
+    } else {
+        // Line exceeded buffer capacity; drain remaining characters until \n or EOF
+        int c = 0;
+        while (true) {
+            c = fgetc(stdin);
+            if (c == '\n' || c == EOF) break;
+        }
+    }
+    return true;
+}
+
+Str scanln_str(char* buf, size_t cap) {
+    if (!scanln(buf, cap)) {
+        return Str { data: "", len: 0 };
+    }
+    return str_from_cstr(buf);
+}
+
+// Dynamically allocate and read a full line of any length from stdin.
+// Strips \r and \n. Returns NULL on EOF. Caller must free().
+char* scanln_alloc() {
+    size_t cap = 64;
+    size_t len = 0;
+    char* buf = malloc(cap);
+    if (buf == NULL) return NULL;
+
+    int c = fgetc(stdin);
+    if (c == EOF) {
+        free(buf);
+        return NULL;
+    }
+
+    while (c != EOF && c != '\n') {
+        if (len + 2 >= cap) {
+            size_t new_cap = cap * 2;
+            char* new_buf = realloc(buf, new_cap);
+            if (new_buf == NULL) {
+                free(buf);
+                return NULL;
+            }
+            buf = new_buf;
+            cap = new_cap;
+        }
+        buf[len] = (char)c;
+        len = len + 1;
+        c = fgetc(stdin);
+    }
+
+    if (len > 0 && buf[len - 1] == '\r') {
+        len = len - 1;
+    }
+    buf[len] = '\0';
+    return buf;
+}
+
+// Scan the next whitespace-delimited word into buf (bounds-checked).
+bool scan_word(char* buf, size_t cap) {
+    if (buf == NULL || cap == 0) return false;
+    buf[0] = '\0';
+
+    // Skip leading whitespace
+    int c = fgetc(stdin);
+    while (c != EOF && (c == ' ' || c == '\t' || c == '\n' || c == '\r')) {
+        c = fgetc(stdin);
+    }
+    if (c == EOF) return false;
+
+    size_t len = 0;
+    while (c != EOF && c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+        if (len + 1 < cap) {
+            buf[len] = (char)c;
+            len = len + 1;
+        }
+        c = fgetc(stdin);
+    }
+    buf[len] = '\0';
+    return true;
+}
+
+// Scan the next integer from stdin without scanf.
+bool scan_int(int* out) {
+    char word[64];
+    if (!scan_word(word, 64)) return false;
+    Str s = str_from_cstr(word);
+    int val = s.to_int();
+    if (out != NULL) *out = val;
+    return true;
+}
+
+int scan_int_or(int default_val) {
+    int val = 0;
+    if (!scan_int(&val)) return default_val;
+    return val;
+}
+
+// Scan the next float from stdin without scanf.
+bool scan_float(float* out) {
+    char word[64];
+    if (!scan_word(word, 64)) return false;
+    float val = (float)atof(word);
+    if (out != NULL) *out = val;
+    return true;
+}
+
+float scan_float_or(float default_val) {
+    float val = 0.0f;
+    if (!scan_float(&val)) return default_val;
+    return val;
 }

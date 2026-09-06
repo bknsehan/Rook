@@ -1,4 +1,9 @@
 #comprise <std/test>
+#comprise <std/math>
+#comprise <std/str>
+#comprise <std/fs>
+#comprise <std/vec>
+#comprise <std/mem>
 
 int add(int a, int b) {
     return a + b;
@@ -7,12 +12,53 @@ int add(int a, int b) {
 int main() {
     TestSuite t = test_new();
     t.assert_true(true, "true_passes");
+    t.assert_false(false, "false_passes");
     t.assert_eq_int(4, add(2, 2), "int_eq");
     t.assert_eq_str("rook", "rook", "str_eq");
     t.assert_eq_str(NULL, NULL, "null_eq");
+    t.assert_null(NULL, "null_passes");
+    int dummy = 10;
+    t.assert_not_null(&dummy, "not_null_passes");
+    t.assert_eq_float(3.14f, 3.14159f, 0.01f, "float_eq");
+
+    Str s1 = str_from_cstr("3.14");
+    t.assert_eq_float(3.14f, s1.to_float(), 0.01f, "str_to_float");
+
+    Str s2 = str_from_cstr("true");
+    t.assert_true(s2.to_bool(), "str_to_bool");
+
+    Str sa = str_from_cstr("a");
+    Str sb = str_from_cstr("b");
+    t.assert_eq_int(-1, sa.compare(sb), "str_compare");
+
+    t.assert_eq_int(8, powi(2, 3), "powi_8");
+    t.assert_eq_int(1, signi(42), "signi_1");
+    t.assert_true(fs_is_dir("."), "fs_is_dir");
+    t.assert_true(char_is_digit('5'), "is_digit");
+    t.assert_true(char_is_alpha('A'), "is_alpha");
+    t.assert_true(char_is_space(' '), "is_space");
+
+    Vec v = vec_new(4);
+    defer v.destroy();
+    int item1 = 10;
+    int item2 = 20;
+    int item3 = 30;
+    v.push(&item1);
+    v.push(&item3);
+    v.insert_at(1, &item2);
+    t.assert_eq_int(3, (int)v.len, "vec_len_3");
+    int* got = (int*)v.remove_at(1);
+    t.assert_eq_int(20, *got, "vec_removed_20");
+    t.assert_eq_int(2, (int)v.len, "vec_len_2");
+
+    Arena a = arena_new(64);
+    defer a.destroy();
+    int* z = (int*)a.alloc_zero(sizeof(int));
+    t.assert_eq_int(0, *z, "arena_zero");
+
     bool ok = t.passed();
     t.assert_true(ok, "suite_passing");
     int n = t.total();
-    t.assert_eq_int(5, n, "total_5");
+    t.assert_eq_int(22, n, "total_22");
     return t.finish();
 }

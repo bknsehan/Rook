@@ -1,0 +1,7 @@
+Hello World from scanln
+42
+3.14
+apple
+Z
+A long line that should be cleanly read by scanln_alloc
+Another line read directly into StringBuilder

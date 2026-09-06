@@ -24,7 +24,19 @@ impl TestSuite {
             self->fail = self->fail + 1;
             printf("FAIL %s\n", name);
         }
-    }    void assert_eq_int(TestSuite* self, int expected, int actual, const char* name) {
+    }
+
+    void assert_false(TestSuite* self, bool cond, const char* name) {
+        if (!cond) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected false, got true\n", name);
+        }
+    }
+
+    void assert_eq_int(TestSuite* self, int expected, int actual, const char* name) {
         if (expected == actual) {
             self->pass = self->pass + 1;
             printf("PASS %s\n", name);
@@ -32,7 +44,21 @@ impl TestSuite {
             self->fail = self->fail + 1;
             printf("FAIL %s: expected %d, got %d\n", name, expected, actual);
         }
-    }    void assert_eq_str(TestSuite* self, const char* expected, const char* actual, const char* name) {
+    }
+
+    void assert_eq_float(TestSuite* self, float expected, float actual, float epsilon, const char* name) {
+        float diff = expected - actual;
+        if (diff < 0.0f) diff = -diff;
+        if (diff <= epsilon) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected %f, got %f\n", name, (double)expected, (double)actual);
+        }
+    }
+
+    void assert_eq_str(TestSuite* self, const char* expected, const char* actual, const char* name) {
         bool eq = false;
         if (expected == NULL && actual == NULL) {
             eq = true;
@@ -56,16 +82,45 @@ impl TestSuite {
             }
             printf("FAIL %s: expected '%s', got '%s'\n", name, exp_show, act_show);
         }
-    }    int total(TestSuite* self) {
+    }
+
+    void assert_null(TestSuite* self, void* ptr, const char* name) {
+        if (ptr == NULL) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected NULL, got %p\n", name, ptr);
+        }
+    }
+
+    void assert_not_null(TestSuite* self, void* ptr, const char* name) {
+        if (ptr != NULL) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected non-NULL, got NULL\n", name);
+        }
+    }
+
+    int total(TestSuite* self) {
         return self->pass + self->fail;
-    }    bool passed(TestSuite* self) {
+    }
+
+    bool passed(TestSuite* self) {
         return self->fail == 0;
-    }    void summary(TestSuite* self) {
+    }
+
+    void summary(TestSuite* self) {
         printf("test: %d passed, %d failed, %d total\n", self->pass, self->fail, self->pass + self->fail);
-    }    int finish(TestSuite* self) {
+    }
+
+    int finish(TestSuite* self) {
         self.summary();
         if (self->fail == 0) {
             return 0;
         }
         return 1;
-    }}
+    }
+}

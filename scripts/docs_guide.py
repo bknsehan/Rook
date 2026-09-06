@@ -1232,17 +1232,41 @@ int calculate_hash(const char* str) {
     # Chapter 18: Standard Library Reference (std/)
     # ==========================================
     ch18 = f"""
-<p>Rook includes a small standard library in the <code>std/</code> directory. Modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or together via <code>#comprise &lt;std&gt;</code>.</p>
+<p>Rook includes a modern, high-performance standard library in the <code>std/</code> directory. Modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or together via <code>#comprise &lt;std&gt;</code>.</p>
 
-<h3>18.1 std/io: Console Output</h3>
-<p>Import with <code>#comprise &lt;std/io&gt;</code>:</p>
+<h3>18.1 std/io: Safe, Idiomatic Console I/O</h3>
+<p>Import with <code>#comprise &lt;std/io&gt;</code>. Rook provides first-class, type-safe output and safe line/token input without requiring raw C <code>printf</code> or vulnerable <code>scanf</code> format strings:</p>
 {make_code_box("rook", """
-println("Standard output with newline");
-print("Standard output without newline");
-eprintln("Standard error message");
+// Typed Output
+println("Rook standard I/O");     // Prints string + newline
+print("Value: ");                  // Prints string without newline
+println_int(42);                   // Prints integer + newline
+println_float(3.14159f);           // Prints float (default precision)
+println_float_prec(3.14159f, 2);   // Prints float with 2 decimal places
+println_bool(true);                // Prints 'true' or 'false'
+println_char('A');                 // Prints single character
+io_flush();                        // Flushes stdout
+
+// Standard Error Output
+eprintln("Fatal error occurred!"); // Prints to stderr + newline
+eprintln_int(err_code);            // Prints int to stderr
+
+// Safe Interactive Input
+char buf[128];
+print("Enter name: ");
+io_flush();
+size_t len = scanln(buf, sizeof(buf)); // Reads line, strips \\r/\\n, drains overflow
+
+print("Enter age: ");
+io_flush();
+int age = scan_int();             // Parses next integer safely
+
+print("Enter score: ");
+io_flush();
+float score = scan_float();       // Parses next float safely
 """, "std/io Usage")}
 
-<h3>18.2 std/str: String Slices</h3>
+<h3>18.2 std/str: String Slices &amp; Classification</h3>
 <p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a non-owning string view containing a pointer and a length (<code>const char* data; size_t len;</code>):</p>
 <div class="table-container">
 <table>
@@ -1254,13 +1278,18 @@ eprintln("Standard error message");
     <tr><td><code>s.is_empty()</code></td><td>Returns true if <code>s.len == 0</code>.</td></tr>
     <tr><td><code>s.slice(start, len)</code></td><td>Returns a subslice without allocating new memory.</td></tr>
     <tr><td><code>s.equals(other)</code></td><td>Returns true if both string slices match in content.</td></tr>
+    <tr><td><code>s.compare(other)</code></td><td>Lexicographically compares two string slices (-1, 0, 1).</td></tr>
     <tr><td><code>s.starts_with(prefix)</code></td><td>Checks for matching prefix.</td></tr>
     <tr><td><code>s.ends_with(suffix)</code></td><td>Checks for matching suffix.</td></tr>
     <tr><td><code>s.trim()</code></td><td>Returns a subslice with leading and trailing whitespace stripped.</td></tr>
     <tr><td><code>s.find(sub)</code></td><td>Returns byte offset of substring, or -1 if not found.</td></tr>
     <tr><td><code>s.contains(sub)</code></td><td>Returns true if substring is present.</td></tr>
     <tr><td><code>s.to_int()</code></td><td>Parses ASCII digits into an integer.</td></tr>
+    <tr><td><code>s.to_float()</code></td><td>Parses ASCII string slice into a float.</td></tr>
+    <tr><td><code>s.to_bool()</code></td><td>Returns true for "true" or "1".</td></tr>
     <tr><td><code>s.to_cstr(buf, cap)</code></td><td>Copies string slice into buffer and null-terminates.</td></tr>
+    <tr><td><code>s.clone()</code></td><td>Duplicates string slice into a heap-allocated null-terminated C string.</td></tr>
+    <tr><td><code>char_is_digit(c)</code> / <code>char_is_alpha(c)</code> / <code>char_is_space(c)</code></td><td>Character classification functions.</td></tr>
   </tbody>
 </table>
 </div>
@@ -1273,17 +1302,19 @@ Vec v = vec_new(8);
 defer v.destroy();
 
 v.push(&item1);
-v.push(&item2);
+v.insert_at(0, &item0); // Insert at index
+void* removed = v.remove_at(0); // Remove at index
 void* val = v.pop();
 
-// String builder
+// Dynamic String Builder
 StringBuilder sb = sb_new(64);
 defer sb.destroy();
 
 sb.append_cstr("Latency: ");
 sb.append_int(42);
-sb.append_cstr(" ms\n");
-printf("%s", sb.to_cstr());
+sb.append_cstr(" ms, status: ");
+sb.append_bool(true);
+sb.println(); // Prints builder content with newline directly
 """, "std/vec Usage")}
 
 <h3>18.4 std/mem: Arena Allocator</h3>
@@ -1293,32 +1324,45 @@ Arena arena = arena_new(65536); // 64 KB memory pool
 defer arena.destroy();
 
 void* block1 = arena.alloc(128);
-void* block2 = arena.alloc(512);
+int* zeroed_array = (int*)arena.alloc_zero(10 * sizeof(int));
 
 arena.reset(); // Resets allocation offset
 """, "Arena Allocator Usage")}
 
-<h3>18.5 std/result: Result and Option Types</h3>
-<p>Import with <code>#comprise &lt;std/result&gt;</code>:</p>
+<h3>18.5 std/test: Lightweight Testing Framework</h3>
+<p>Import with <code>#comprise &lt;std/test&gt;</code>:</p>
 {make_code_box("rook", """
-Result r = result_ok(payload);
-if (r.is_ok()) {
-    void* data = r.unwrap();
-} else {
-    const char* err = r.unwrap_err();
-}
+TestSuite t = test_new();
 
-Option opt = option_some(item);
-if (opt.is_some()) {
-    void* val = opt.unwrap();
-}
-""", "std/result Usage")}
+t.assert_true(1 + 1 == 2, "math_addition");
+t.assert_false(false, "boolean_check");
+t.assert_eq_int(42, calculate(), "calc_check");
+t.assert_eq_float(3.14f, get_pi(), 0.01f, "pi_approx");
+t.assert_eq_str("hello", greeting, "str_match");
+t.assert_not_null(ptr, "ptr_allocated");
 
-<h3>18.6 Additional Modules</h3>
+return t.finish(); // Prints summary and returns 0 if all passed, 1 on failure
+""", "std/test Usage")}
+
+<h3>18.6 std/fs: File System &amp; Paths</h3>
+<p>Import with <code>#comprise &lt;std/fs&gt;</code>:</p>
 <ul>
-  <li><strong>std/fs:</strong> File operations (<code>fs_read_to_string</code>, <code>fs_write_file</code>, <code>fs_exists</code>) and path utilities (<code>path_basename</code>, <code>path_dirname</code>, <code>path_extension</code>).</li>
-  <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
-  <li><strong>std/math:</strong> Vector math (<code>Vec2</code>, <code>Vec3</code>), rectangles (<code>Rect</code>), clamping, and interpolation (<code>lerpf</code>).</li>
+  <li><code>fs_read_to_string(path, out_size)</code> — Reads entire file into heap buffer.</li>
+  <li><code>fs_write_file(path, data, size)</code> — Overwrites file with buffer.</li>
+  <li><code>fs_append_file(path, data, size)</code> — Appends buffer to file.</li>
+  <li><code>fs_exists(path)</code>, <code>fs_is_file(path)</code>, <code>fs_is_dir(path)</code> — Path queries.</li>
+  <li><code>fs_create_dir(path)</code> — Creates directory with 0755 permissions.</li>
+  <li><code>fs_copy_file(src, dst)</code> — Copies file content.</li>
+  <li><code>path_basename(path)</code>, <code>path_dirname(path)</code>, <code>path_extension(path)</code> — Path parsing.</li>
+</ul>
+
+<h3>18.7 std/log, std/json, std/math &amp; std/os</h3>
+<ul>
+  <li><strong>std/log:</strong> Leveled structured logger (<code>Logger.debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>, <code>log(level, msg)</code>).</li>
+  <li><strong>std/json:</strong> Lightweight zero-dependency JSON tokenizing and value inspection.</li>
+  <li><strong>std/math:</strong> Vector math (<code>Vec2</code>, <code>Vec3</code>), rectangles (<code>Rect</code>), clamping, <code>lerpf</code>, <code>signi</code>, <code>signf</code>, <code>powi</code>, <code>math_round</code>, <code>math_floor</code>, <code>math_ceil</code>, <code>math_pow</code>.</li>
+  <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_cwd</code>, <code>os_pid</code>, <code>os_time_sec</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
+  <li><strong>std/result:</strong> Monadic types (<code>Result</code> and <code>Option</code>).</li>
 </ul>
 """
     add_ch("stdlib", "18. Standard Library Reference (std/)", ch18)

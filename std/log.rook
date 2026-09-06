@@ -43,22 +43,45 @@ impl Logger {
             level = 3;
         }
         self->level = level;
-    }    int get_level(Logger* self) {
+    }
+
+    int get_level(Logger* self) {
         return self->level;
-    }    void debug(Logger* self, const char* msg) {
+    }
+
+    void log(Logger* self, int level, const char* msg) {
+        if (level == 0) {
+            self.debug(msg);
+        } else if (level == 1) {
+            self.info(msg);
+        } else if (level == 2) {
+            self.warn(msg);
+        } else if (level == 3) {
+            self.error(msg);
+        }
+    }
+
+    void debug(Logger* self, const char* msg) {
         if (self->level <= 0) {
             printf("DEBUG %s\n", msg);
         }
-    }    void info(Logger* self, const char* msg) {
+    }
+
+    void info(Logger* self, const char* msg) {
         if (self->level <= 1) {
             printf("INFO %s\n", msg);
         }
-    }    void warn(Logger* self, const char* msg) {
+    }
+
+    void warn(Logger* self, const char* msg) {
         if (self->level <= 2) {
             fprintf(stderr, "WARN %s\n", msg);
         }
-    }    void error(Logger* self, const char* msg) {
+    }
+
+    void error(Logger* self, const char* msg) {
         if (self->level <= 3) {
             fprintf(stderr, "ERROR %s\n", msg);
         }
-    }}
+    }
+}

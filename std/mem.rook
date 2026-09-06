@@ -33,6 +33,13 @@ impl Arena {
         return ptr;
     }
 
+    void* alloc_zero(Arena* self, size_t size) {
+        void* ptr = self.alloc(size);
+        if (!ptr) return NULL;
+        memset(ptr, 0, size);
+        return ptr;
+    }
+
     void reset(Arena* self) {
         self->offset = 0;
     }

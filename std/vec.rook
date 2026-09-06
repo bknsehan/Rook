@@ -54,6 +54,34 @@ impl Vec {
         return true;
     }
 
+    void* remove_at(Vec* self, size_t idx) {
+        if (idx >= self->len) return NULL;
+        void* item = self->items[idx];
+        for (size_t i = idx; i + 1 < self->len; i = i + 1) {
+            self->items[i] = self->items[i + 1];
+        }
+        self->len = self->len - 1;
+        return item;
+    }
+
+    bool insert_at(Vec* self, size_t idx, void* item) {
+        if (idx > self->len) return false;
+        if (self->len >= self->cap) {
+            if (self->cap > 1073741824) return false;
+            size_t new_cap = self->cap * 2;
+            void** new_items = realloc(self->items, new_cap * sizeof(void*));
+            if (!new_items) return false;
+            self->items = new_items;
+            self->cap = new_cap;
+        }
+        for (size_t i = self->len; i > idx; i = i - 1) {
+            self->items[i] = self->items[i - 1];
+        }
+        self->items[idx] = item;
+        self->len = self->len + 1;
+        return true;
+    }
+
     void clear(Vec* self) {
         self->len = 0;
     }
@@ -137,6 +165,55 @@ impl StringBuilder {
         char tmp[32];
         snprintf(tmp, sizeof(tmp), "%d", n);
         self.append_cstr(tmp);
+    }
+
+    void append_uint(StringBuilder* self, unsigned int u) {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp), "%u", u);
+        self.append_cstr(tmp);
+    }
+
+    void append_float(StringBuilder* self, float f) {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp), "%f", (double)f);
+        self.append_cstr(tmp);
+    }
+
+    void append_bool(StringBuilder* self, bool b) {
+        if (b) {
+            self.append_cstr("true");
+        } else {
+            self.append_cstr("false");
+        }
+    }
+
+    void print(StringBuilder* self) {
+        if (self->buf) {
+            fputs(self->buf, stdout);
+        }
+    }
+
+    void println(StringBuilder* self) {
+        if (self->buf) {
+            puts(self->buf);
+        } else {
+            puts("");
+        }
+    }
+
+    bool scanln(StringBuilder* self) {
+        self.reset();
+        int c = fgetc(stdin);
+        if (c == EOF) return false;
+        while (c != EOF && c != '\n') {
+            self.append_char((char)c);
+            c = fgetc(stdin);
+        }
+        if (self->len > 0 && self->buf[self->len - 1] == '\r') {
+            self->len = self->len - 1;
+            self->buf[self->len] = '\0';
+        }
+        return true;
     }
 
     Str as_str(StringBuilder* self) {

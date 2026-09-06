@@ -663,6 +663,25 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             if (e->a && e->a->kind == E_IDENT) {
                 int li = gen_find_local(g, e->a->str);
                 if (li >= 0) at = g->local_ast_types[li];
+            } else if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
+                AstType* parent_at = NULL;
+                if (e->a->a && e->a->a->kind == E_IDENT) {
+                    int li = gen_find_local(g, e->a->a->str);
+                    if (li >= 0) parent_at = g->local_ast_types[li];
+                }
+                if (parent_at && parent_at->name) {
+                    StructDef* pst = sema_lookup_struct(g->sema, parent_at->name);
+                    while (pst) {
+                        for (int i = 0; i < pst->nfields; i++) {
+                            if (strcmp(pst->fields[i].name, e->a->str) == 0) {
+                                at = pst->fields[i].type;
+                                break;
+                            }
+                        }
+                        if (at) break;
+                        pst = pst->parent ? sema_lookup_struct(g->sema, pst->parent) : NULL;
+                    }
+                }
             }
             if (!at) {
                 at = sema_resolve_type(g->sema, e->a);
@@ -784,6 +803,10 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         if (strcmp(name, "NULL") == 0 || strcmp(name, "null") == 0) {
             if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
             return LLVMConstNull(LLVMPointerTypeInContext(g->ctx, 0));
+        }
+        if (strcmp(name, "EOF") == 0) {
+            if (out_type) *out_type = LLVMInt32TypeInContext(g->ctx);
+            return LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)-1, 1);
         }
 
         int idx = gen_find_local(g, name);

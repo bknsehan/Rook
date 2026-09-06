@@ -39,3 +39,15 @@ void os_sleep_ms(unsigned int ms) {
 int os_system(const char* cmd) {
     return system(cmd);
 }
+
+char* os_cwd(char* buf, size_t cap) {
+    return getcwd(buf, cap);
+}
+
+uint64_t os_time_sec() {
+    return (uint64_t)time(NULL);
+}
+
+int os_pid() {
+    return getpid();
+}

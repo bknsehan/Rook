@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #comprise <std/result>
 #comprise <std/str>
 
@@ -78,9 +80,49 @@ bool fs_remove_file(const char* path) {
     return unlink(path) == 0;
 }
 
+bool fs_is_dir(const char* path) {
+    void* d = opendir(path);
+    if (d != NULL) {
+        closedir(d);
+        return true;
+    }
+    return false;
+}
+
+bool fs_is_file(const char* path) {
+    return fs_exists(path) && !fs_is_dir(path);
+}
+
+bool fs_create_dir(const char* path) {
+    return mkdir(path, 0755) == 0;
+}
+
+Result fs_copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return result_err("could not open source file for reading");
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return result_err("could not open destination file for writing");
+    }
+    char buf[4096];
+    size_t n = 0;
+    while ((n = fread(buf, 1, 4096, in)) > 0) {
+        size_t written = fwrite(buf, 1, n, out);
+        if (written < n) {
+            fclose(in);
+            fclose(out);
+            return result_err("write failure during file copy");
+        }
+    }
+    fclose(in);
+    fclose(out);
+    return result_ok(NULL);
+}
+
 Str path_basename(const char* path) {
     if (!path) return Str { data: "", len: 0 };
-    size_t len = strlen(path);
+    size_t len = (size_t)strlen(path);
     if (len == 0) return Str { data: "", len: 0 };
 
     size_t i = len;
@@ -95,7 +137,7 @@ Str path_basename(const char* path) {
 
 Str path_dirname(const char* path) {
     if (!path) return Str { data: ".", len: 1 };
-    size_t len = strlen(path);
+    size_t len = (size_t)strlen(path);
     if (len == 0) return Str { data: ".", len: 1 };
 
     size_t i = len;
@@ -111,7 +153,7 @@ Str path_dirname(const char* path) {
 
 Str path_extension(const char* path) {
     if (!path) return Str { data: "", len: 0 };
-    size_t len = strlen(path);
+    size_t len = (size_t)strlen(path);
     if (len == 0) return Str { data: "", len: 0 };
 
     size_t i = len;

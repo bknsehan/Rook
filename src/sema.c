@@ -725,7 +725,7 @@ static void ck_bind_match_pattern(Checker* ck, Expr* p, AstType* scrut) {
 static const char* const BUILTIN_NAMES[] = {
     "int", "float", "double", "char", "long", "short", "void",
     "size_t", "ssize_t", "bool", "auto", "const", "unsigned", "signed",
-    "true", "false", "NULL", "self",
+    "true", "false", "NULL", "EOF", "self",
     "FILE", "FILE*", "va_list", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
     "int8_t", "int16_t", "int32_t", "int64_t", "uintptr_t", "intptr_t",
     "stdin", "stdout", "stderr",
@@ -1188,6 +1188,7 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         if (ck_is_self(ck, e)) return ck->self_t ? ck_clone_type(ck->self_t) : NULL;
         if (strcmp(e->str, "true") == 0 || strcmp(e->str, "false") == 0) return ck_mk_type("bool", 0);
         if (strcmp(e->str, "NULL") == 0 || strcmp(e->str, "null") == 0) return ck_mk_type("void", 1);
+        if (strcmp(e->str, "EOF") == 0) return ck_mk_type("int", 0);
         Sym* sym = ck_lookup_local(ck, e->str);
         if (sym) {
             AstType* r = sym->type ? ck_clone_type(sym->type) : NULL;
@@ -1209,7 +1210,7 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         if (e->str[0] == '"') return ck_mk_type("char", 1);
         if (e->str[0] == '\'') return ck_mk_type("char", 0);
         return ck_mk_type("int", 0);   /* numeric literal defaults to int */
-    case E_CALL:
+    case E_CALL: {
         if (e->a && e->a->kind == E_IDENT) {
             const char* fn = e->a->str;
             const char* en = sema_lookup_variant(ck->s, fn);
@@ -1226,29 +1227,42 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             const char* c_ret = sema_lookup_cfunc(fn);
             if (c_ret) return ck_mk_type(c_ret, 0);
         }
-        if (e->a && e->a->kind == E_MEMBER) {
+        if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
             Expr* m = e->a;
             AstType* base = ck_resolve_type(ck, m->a);
-            if (base) {
-                /* struct field access */
-                Sym* sym = sema_lookup(ck->s, base->name);
-                if (sym && (sym->kind == SYM_STRUCT || sym->kind == SYM_IMPL)) {
-                    StructDef* st = sema_lookup_struct(ck->s, base->name);
-                    while (st) {
-                        for (int i = 0; i < st->nfields; i++) {
-                            if (strcmp(st->fields[i].name, m->str) == 0) {
-                                AstType* r = ck_clone_type(st->fields[i].type);
-                                free(base);
-                                return r;
-                            }
-                        }
-                        st = st->parent ? sema_lookup_struct(ck->s, st->parent) : NULL;
+            if (base && base->name) {
+                Sym* msym = sema_lookup_method(ck->s, base->name, m->str);
+                if (msym) {
+                    AstType* r = msym->ret_type ? ck_clone_type(msym->ret_type) : NULL;
+                    free(msym->name);
+                    free(msym);
+                    free(base);
+                    return r;
+                }
+                free(base);
+            }
+        }
+        return NULL;
+    }
+    case E_MEMBER:
+    case E_ARROW: {
+        AstType* base = ck_resolve_type(ck, e->a);
+        if (base && base->name) {
+            StructDef* st = sema_lookup_struct(ck->s, base->name);
+            while (st) {
+                for (int i = 0; i < st->nfields; i++) {
+                    if (strcmp(st->fields[i].name, e->str) == 0) {
+                        AstType* r = ck_clone_type(st->fields[i].type);
+                        free(base);
+                        return r;
                     }
                 }
+                st = st->parent ? sema_lookup_struct(ck->s, st->parent) : NULL;
             }
             free(base);
         }
         return NULL;
+    }
     case E_INDEX: {
         AstType* base = ck_resolve_type(ck, e->a);
         if (!base) return NULL;
