@@ -189,6 +189,13 @@ const char* sema_lookup_cfunc(const char* name) {
     return NULL;
 }
 
+const char* sema_cfunc_ret(const char* name) {
+    for (size_t i = 0; i < cl_count; i++)
+        if (strcmp(cl_funcs[i].name, name) == 0)
+            return cl_funcs[i].ret;
+    return NULL;
+}
+
 const char* sema_lookup_cfunc_param(const char* name, int pidx) {
     for (size_t i = 0; i < cl_count; i++) {
         if (strcmp(cl_funcs[i].name, name) == 0 && pidx < cl_funcs[i].nparams) {
@@ -765,12 +772,27 @@ static int is_c_type_word(const char* name) {
 
 static AstType* ck_mk_type(const char* name, int ptrs) {
     AstType* t = ast_type_new();
-    const char* p = name ? strchr(name, '*') : NULL;
+    if (!name) return t;
+    const char* start = name;
+    while (*start == ' ') start++;
+    if (strncmp(start, "const ", 6) == 0) {
+        t->qual = strdup("const ");
+        start += 6;
+        while (*start == ' ') start++;
+    }
+    if (strncmp(start, "struct ", 7) == 0) {
+        start += 7;
+        while (*start == ' ') start++;
+    } else if (strncmp(start, "enum ", 5) == 0) {
+        start += 5;
+        while (*start == ' ') start++;
+    }
+    const char* p = strchr(start, '*');
     if (p) {
-        size_t nlen = (size_t)(p - name);
+        size_t nlen = (size_t)(p - start);
         char base[256];
         if (nlen >= sizeof(base)) nlen = sizeof(base) - 1;
-        memcpy(base, name, nlen);
+        memcpy(base, start, nlen);
         base[nlen] = '\0';
         while (nlen > 0 && base[nlen - 1] == ' ') base[--nlen] = '\0';
         t->name = strdup(base);
@@ -778,7 +800,13 @@ static AstType* ck_mk_type(const char* name, int ptrs) {
         for (const char* q = p; *q; q++) { if (*q == '*') extra++; }
         t->ptrs = ptrs + extra;
     } else {
-        t->name = name ? strdup(name) : NULL;
+        char base[256];
+        size_t nlen = strlen(start);
+        if (nlen >= sizeof(base)) nlen = sizeof(base) - 1;
+        memcpy(base, start, nlen);
+        base[nlen] = '\0';
+        while (nlen > 0 && base[nlen - 1] == ' ') base[--nlen] = '\0';
+        t->name = strdup(base);
         t->ptrs = ptrs;
     }
     return t;
@@ -799,6 +827,7 @@ static int ck_type_is_numeric(const char* name) {
            strcmp(name, "double") == 0 || strcmp(name, "char") == 0 ||
            strcmp(name, "long") == 0 || strcmp(name, "short") == 0 ||
            strcmp(name, "size_t") == 0 || strcmp(name, "ssize_t") == 0 ||
+           strcmp(name, "__size_t") == 0 || strcmp(name, "__ssize_t") == 0 ||
            strcmp(name, "bool") == 0 || strcmp(name, "unsigned") == 0 ||
            strcmp(name, "signed") == 0 || strcmp(name, "uint8_t") == 0 ||
            strcmp(name, "uint16_t") == 0 || strcmp(name, "uint32_t") == 0 ||
@@ -806,6 +835,9 @@ static int ck_type_is_numeric(const char* name) {
            strcmp(name, "int16_t") == 0 || strcmp(name, "int32_t") == 0 ||
            strcmp(name, "int64_t") == 0 || strcmp(name, "uintptr_t") == 0 ||
            strcmp(name, "intptr_t") == 0 ||
+           strcmp(name, "__off_t") == 0 || strcmp(name, "__off64_t") == 0 ||
+           strcmp(name, "__uint64_t") == 0 || strcmp(name, "__int64_t") == 0 ||
+           strcmp(name, "__uint32_t") == 0 || strcmp(name, "__int32_t") == 0 ||
            strcmp(name, "unsigned int") == 0 || strcmp(name, "unsigned long") == 0 ||
            strcmp(name, "unsigned short") == 0 || strcmp(name, "unsigned char") == 0 ||
            strcmp(name, "signed char") == 0 || strcmp(name, "signed int") == 0 ||
@@ -815,14 +847,25 @@ static int ck_type_is_numeric(const char* name) {
            strcmp(name, "long double") == 0;
 }
 
+static int raw_has(const char* name);
+
 static int ck_type_name_equiv(const char* a, const char* b) {
     if (!a || !b) return 0;
     if (strcmp(a, b) == 0) return 1;
-    if ((strcmp(a, "size_t") == 0 && (strcmp(b, "unsigned long") == 0 || strcmp(b, "unsigned long long") == 0 || strcmp(b, "uint64_t") == 0)) ||
-        (strcmp(b, "size_t") == 0 && (strcmp(a, "unsigned long") == 0 || strcmp(a, "unsigned long long") == 0 || strcmp(a, "uint64_t") == 0)))
+    if ((strcmp(a, "char") == 0 && strcmp(b, "gchar") == 0) ||
+        (strcmp(b, "char") == 0 && strcmp(a, "gchar") == 0))
         return 1;
-    if ((strcmp(a, "ssize_t") == 0 && (strcmp(b, "long") == 0 || strcmp(b, "long long") == 0 || strcmp(b, "int64_t") == 0)) ||
-        (strcmp(b, "ssize_t") == 0 && (strcmp(a, "long") == 0 || strcmp(a, "long long") == 0 || strcmp(a, "int64_t") == 0)))
+    if ((strcmp(a, "int") == 0 && (strcmp(b, "gint") == 0 || strcmp(b, "gboolean") == 0)) ||
+        (strcmp(b, "int") == 0 && (strcmp(a, "gint") == 0 || strcmp(a, "gboolean") == 0)))
+        return 1;
+    if ((strcmp(a, "bool") == 0 && strcmp(b, "gboolean") == 0) ||
+        (strcmp(b, "bool") == 0 && strcmp(a, "gboolean") == 0))
+        return 1;
+    if ((strcmp(a, "size_t") == 0 && (strcmp(b, "__size_t") == 0 || strcmp(b, "unsigned long") == 0 || strcmp(b, "unsigned long long") == 0 || strcmp(b, "uint64_t") == 0 || strcmp(b, "gsize") == 0)) ||
+        (strcmp(b, "size_t") == 0 && (strcmp(a, "__size_t") == 0 || strcmp(a, "unsigned long") == 0 || strcmp(a, "unsigned long long") == 0 || strcmp(a, "uint64_t") == 0 || strcmp(a, "gsize") == 0)))
+        return 1;
+    if ((strcmp(a, "ssize_t") == 0 && (strcmp(b, "__ssize_t") == 0 || strcmp(b, "long") == 0 || strcmp(b, "long long") == 0 || strcmp(b, "int64_t") == 0 || strcmp(b, "gssize") == 0)) ||
+        (strcmp(b, "ssize_t") == 0 && (strcmp(a, "__ssize_t") == 0 || strcmp(a, "long") == 0 || strcmp(a, "long long") == 0 || strcmp(a, "int64_t") == 0 || strcmp(a, "gssize") == 0)))
         return 1;
     return 0;
 }
@@ -835,14 +878,37 @@ static int ck_type_eq(AstType* a, AstType* b) {
     return 1;
 }
 
-static int ck_types_compatible(AstType* want, AstType* got) {
+static AstType* ck_unwrap_typedef(Sema* s, AstType* t) {
+    if (!s || !s->scope || !t || !t->name) return t;
+    int depth = 0;
+    while (t && t->name && depth < 10) {
+        Sym* sym = sema_lookup(s, t->name);
+        if (sym && sym->kind == SYM_TYPE && sym->type) {
+            AstType* unwrapped = calloc(1, sizeof *unwrapped);
+            unwrapped->name = sym->type->name;
+            unwrapped->qual = t->qual ? t->qual : sym->type->qual;
+            unwrapped->ptrs = t->ptrs + sym->type->ptrs;
+            t = unwrapped;
+            depth++;
+        } else {
+            break;
+        }
+    }
+    return t;
+}
+
+static int ck_types_compatible(Checker* ck, AstType* want, AstType* got) {
     if (!want || !got) return 0;
-    if (ck_type_is_numeric(want->name) && ck_type_is_numeric(got->name) &&
-        want->ptrs == 0 && got->ptrs == 0) return 1;
-    if (ck_type_eq(want, got)) return 1;
+    AstType* uw = ck ? ck_unwrap_typedef(ck->s, want) : want;
+    AstType* ug = ck ? ck_unwrap_typedef(ck->s, got) : got;
+
+    if (ck_type_is_numeric(uw->name) && ck_type_is_numeric(ug->name) &&
+        uw->ptrs == 0 && ug->ptrs == 0) return 1;
+    if (ck_type_eq(uw, ug)) return 1;
     /* void* is compatible with any pointer type (standard C: NULL and malloc) */
-    if (want->ptrs > 0 && got->ptrs > 0) {
-        if (strcmp(want->name, "void") == 0 || strcmp(got->name, "void") == 0) return 1;
+    if (uw->ptrs > 0 && ug->ptrs > 0) {
+        if (strcmp(uw->name, "void") == 0 || strcmp(ug->name, "void") == 0) return 1;
+        if (raw_has(uw->name) || raw_has(ug->name)) return 1;
     }
     return 0;
 }
@@ -864,33 +930,48 @@ typedef struct RawName {
     struct RawName* next;
 } RawName;
 
-static RawName* raw_names = NULL;
+#define RAW_HASH_BUCKETS 1024
+static RawName* raw_buckets[RAW_HASH_BUCKETS];
+
+static unsigned int raw_hash(const char* s) {
+    unsigned int h = 5381;
+    while (*s) h = ((h << 5) + h) + (unsigned char)*s++;
+    return h % RAW_HASH_BUCKETS;
+}
 
 static void raw_add(const char* name) {
     if (!name || !*name) return;
+    unsigned int b = raw_hash(name);
+    for (RawName* r = raw_buckets[b]; r; r = r->next) {
+        if (strcmp(r->name, name) == 0) return;
+    }
     RawName* r = malloc(sizeof *r);
     if (!r) exit(1);
     r->name = strdup(name);
-    r->next = raw_names;
-    raw_names = r;
+    r->next = raw_buckets[b];
+    raw_buckets[b] = r;
 }
 
 static int raw_has(const char* name) {
     if (!name) return 0;
-    for (RawName* r = raw_names; r; r = r->next)
+    unsigned int b = raw_hash(name);
+    for (RawName* r = raw_buckets[b]; r; r = r->next) {
         if (strcmp(r->name, name) == 0) return 1;
+    }
     return 0;
 }
 
 static void raw_names_free(void) {
-    RawName* r = raw_names;
-    while (r) {
-        RawName* n = r->next;
-        free(r->name);
-        free(r);
-        r = n;
+    for (int i = 0; i < RAW_HASH_BUCKETS; i++) {
+        RawName* r = raw_buckets[i];
+        while (r) {
+            RawName* n = r->next;
+            free(r->name);
+            free(r);
+            r = n;
+        }
+        raw_buckets[i] = NULL;
     }
-    raw_names = NULL;
 }
 
 /* ── "did you mean?" suggestions ─────────────────────────────────────── */
@@ -946,12 +1027,16 @@ static char* with_suggestion(const char* base, const char* cand) {
    array (malloc'd). */
 static const char** collect_raw_names(int* out_n) {
     int n = 0;
-    for (RawName* r = raw_names; r; r = r->next) n++;
+    for (int i = 0; i < RAW_HASH_BUCKETS; i++) {
+        for (RawName* r = raw_buckets[i]; r; r = r->next) n++;
+    }
     const char** arr = malloc((size_t)(n + 1) * sizeof(char*));
     if (!arr) exit(1);
-    int i = 0;
-    for (RawName* r = raw_names; r; r = r->next) arr[i++] = r->name;
-    arr[i] = NULL;
+    int idx = 0;
+    for (int i = 0; i < RAW_HASH_BUCKETS; i++) {
+        for (RawName* r = raw_buckets[i]; r; r = r->next) arr[idx++] = r->name;
+    }
+    arr[idx] = NULL;
     *out_n = n;
     return arr;
 }
@@ -998,18 +1083,20 @@ static int is_ident_char(char c) {
            (c >= '0' && c <= '9') || c == '_';
 }
 
-static void scan_raw_region(Checker* ck, const char* raw, int len);
+static void scan_raw_region(Checker* ck, const char* raw, int len, int scan_includes);
 
 static void scan_c_header_file(Checker* ck, const char* header_name) {
     if (!header_name || !*header_name) return;
 
-    static char scanned[256][256];
+    static char scanned[1024][256];
     static size_t n_scanned = 0;
     for (size_t i = 0; i < n_scanned; i++) {
         if (strcmp(scanned[i], header_name) == 0) return;
     }
-    if (n_scanned < 256) {
+    if (n_scanned < 1024) {
         snprintf(scanned[n_scanned++], 256, "%s", header_name);
+    } else {
+        return;
     }
 
     const char* search_dirs[] = {
@@ -1051,7 +1138,7 @@ static void scan_c_header_file(Checker* ck, const char* header_name) {
         if (content) {
             size_t rd = fread(content, 1, (size_t)sz, f);
             content[rd] = '\0';
-            scan_raw_region(ck, content, (int)rd);
+            scan_raw_region(ck, content, (int)rd, 0);
             free(content);
         }
     }
@@ -1062,41 +1149,43 @@ static void scan_c_header_file(Checker* ck, const char* header_name) {
    names, and top-level C global variable names, so the checker does not flag
    them. Conservative: every bare identifier that is not a C type-word and not
    a keyword is treated as a "raw-known" name. */
-static void scan_raw_region(Checker* ck, const char* raw, int len) {
+static void scan_raw_region(Checker* ck, const char* raw, int len, int scan_includes) {
     if (!raw || len <= 0) return;
     char* buf = malloc(len + 1);
     if (!buf) exit(1);
     memcpy(buf, raw, len);
     buf[len] = '\0';
 
-    /* Discover any included C headers and scan their symbols */
-    const char* inc = strstr(buf, "#include");
-    while (inc) {
-        const char* q1 = strchr(inc, '<');
-        const char* q2 = strchr(inc, '"');
-        char end_char = 0;
-        const char* hstart = NULL;
-        if (q1 && (!q2 || q1 < q2)) {
-            hstart = q1 + 1;
-            end_char = '>';
-        } else if (q2) {
-            hstart = q2 + 1;
-            end_char = '"';
-        }
-        if (hstart) {
-            const char* hend = strchr(hstart, end_char);
-            if (hend && (hend - hstart < 256)) {
-                char hname[256];
-                size_t hlen = (size_t)(hend - hstart);
-                memcpy(hname, hstart, hlen);
-                hname[hlen] = '\0';
-                /* Only scan C headers (.h or without extension), not .rook */
-                if (hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) {
-                    scan_c_header_file(ck, hname);
+    if (scan_includes) {
+        /* Discover any included C headers and scan their symbols */
+        const char* inc = strstr(buf, "#include");
+        while (inc) {
+            const char* q1 = strchr(inc, '<');
+            const char* q2 = strchr(inc, '"');
+            char end_char = 0;
+            const char* hstart = NULL;
+            if (q1 && (!q2 || q1 < q2)) {
+                hstart = q1 + 1;
+                end_char = '>';
+            } else if (q2) {
+                hstart = q2 + 1;
+                end_char = '"';
+            }
+            if (hstart) {
+                const char* hend = strchr(hstart, end_char);
+                if (hend && (hend - hstart < 256)) {
+                    char hname[256];
+                    size_t hlen = (size_t)(hend - hstart);
+                    memcpy(hname, hstart, hlen);
+                    hname[hlen] = '\0';
+                    /* Only scan C headers (.h or without extension), not .rook */
+                    if (hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) {
+                        scan_c_header_file(ck, hname);
+                    }
                 }
             }
+            inc = strstr(inc + 8, "#include");
         }
-        inc = strstr(inc + 8, "#include");
     }
 
     /* Blank out comments, string/char literals, and preprocessor directives
@@ -1426,7 +1515,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
                 AstType* want = ck_clone_type(f->params[pi].type);
                 AstType* got = ck_resolve_type(ck, x->items[i]);
                 if (!want || !got) { free(want); free(got); continue; }
-                int ok = ck_types_compatible(want, got);
+                int ok = ck_types_compatible(ck, want, got);
                 if (!ok) {
                     char* ws = ck_type_str(want);
                     char* gs = ck_type_str(got);
@@ -1498,7 +1587,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
                     AstType* want = ck_clone_type(mdef->params[pi].type);
                     AstType* got = ck_resolve_type(ck, x->items[j]);
                     if (!want || !got) { free(want); free(got); continue; }
-                    int ok = ck_types_compatible(want, got);
+                    int ok = ck_types_compatible(ck, want, got);
                     if (!ok) {
                         char* ws = ck_type_str(want);
                         char* gs = ck_type_str(got);
@@ -1804,7 +1893,8 @@ static void ck_expr(Checker* ck, Expr* x) {
                     ck_err_expr(ck, x, "invalid operand of pointer type for binary operator");
                 }
             }
-            int ok = ck_types_compatible(lt, rt);
+            int ok = ck_types_compatible(ck, lt, rt);
+            if (!ok && (raw_has(lt->name) || raw_has(rt->name))) ok = 1;
             if (!ok) {
                 char* ls = ck_type_str(lt);
                 char* rs = ck_type_str(rt);
@@ -1919,6 +2009,7 @@ static int ck_decl_type_valid(Checker* ck, AstType* t) {
         StructDef* st = sema_lookup_struct(ck->s, t->name);
         if (st) return 1;
     }
+    if (sym && sym->kind == SYM_TYPE) return 1;
     /* A `sum` (enum) is a valid type. `scope_lookup` may return a shadowing
        `impl` symbol registered under the same name, so verify the enum exists
        directly against the program items. */
@@ -1973,8 +2064,8 @@ static void ck_decl(Checker* ck, Decl* d) {
     if (d->type && d->init) {
         AstType* got = ck_resolve_type(ck, d->init);
         if (got) {
-            int ok = ck_types_compatible(d->type, got);
-            if (!ok && raw_has(d->type->name)) ok = 1;
+            int ok = ck_types_compatible(ck, d->type, got);
+            if (!ok && (raw_has(d->type->name) || raw_has(got->name))) ok = 1;
             if (!ok) {
                 char* ws = ck_type_str(d->type);
                 char* gs = ck_type_str(got);
@@ -2179,7 +2270,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
             if (want && s->e) {
                 AstType* got = ck_resolve_type(ck, s->e);
                 if (want && got && strcmp(want->name, "void") != 0) {
-                    int ok = ck_types_compatible(want, got);
+                    int ok = ck_types_compatible(ck, want, got);
                     if (!ok) {
                         char* ws = ck_type_str(want);
                         char* gs = ck_type_str(got);
@@ -2302,7 +2393,7 @@ static int ck_check_program(Checker* ck, Program* prog) {
     /* scan raw regions for C names */
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
-        if (it->kind == TOP_RAW) scan_raw_region(ck, it->raw, it->raw_len);
+        if (it->kind == TOP_RAW) scan_raw_region(ck, it->raw, it->raw_len, 1);
     }
 
     /* pass 1: register structs/impls/enums as type names (also for self) */

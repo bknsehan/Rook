@@ -5,6 +5,56 @@
 
 #ifdef ROKADE_HAS_LIBCLANG
 #include <clang-c/Index.h>
+#ifdef _WIN32
+#include <io.h>
+#define R_OK 4
+#define access_file _access
+#else
+#include <unistd.h>
+#define access_file access
+#endif
+
+static const char* detect_clang_resource_dir(void) {
+    static char res_dir[256] = "";
+    static int detected = 0;
+    if (detected) return res_dir[0] ? res_dir : NULL;
+    detected = 1;
+
+    const char* env = getenv("CLANG_RESOURCE_DIR");
+    if (env && env[0]) {
+        snprintf(res_dir, sizeof(res_dir), "%s", env);
+        return res_dir;
+    }
+
+    FILE* fp = popen("clang -print-resource-dir 2>/dev/null", "r");
+    if (fp) {
+        if (fgets(res_dir, sizeof(res_dir), fp)) {
+            size_t l = strlen(res_dir);
+            while (l > 0 && (res_dir[l-1] == '\n' || res_dir[l-1] == '\r')) {
+                res_dir[--l] = '\0';
+            }
+        }
+        pclose(fp);
+    }
+    if (!res_dir[0]) {
+        const char* probes[] = {
+            "/usr/lib/clang/22", "/usr/lib/clang/21", "/usr/lib/clang/20",
+            "/usr/lib/clang/19", "/usr/lib/clang/18", "/usr/lib/clang/17",
+            "/usr/lib/clang/16", "/usr/lib/clang/15",
+            "/usr/local/lib/clang/22", "/usr/local/lib/clang/21",
+            NULL
+        };
+        for (int i = 0; probes[i]; i++) {
+            char path[300];
+            snprintf(path, sizeof(path), "%s/include/stddef.h", probes[i]);
+            if (access_file(path, R_OK) == 0) {
+                snprintf(res_dir, sizeof(res_dir), "%s", probes[i]);
+                break;
+            }
+        }
+    }
+    return res_dir[0] ? res_dir : NULL;
+}
 
 static char g_imported_headers[512][256];
 static size_t g_n_imported = 0;
@@ -60,10 +110,13 @@ static AstType* parse_c_type_to_ast(const char* raw) {
     int ptrs = 0;
     char name[128];
     size_t ni = 0;
-    while (*p && *p != '*' && *p != ' ' && ni + 1 < sizeof(name)) {
+    while (*p && *p != '*' && ni + 1 < sizeof(name)) {
         name[ni++] = *p++;
     }
     name[ni] = '\0';
+    while (ni > 0 && name[ni - 1] == ' ') {
+        name[--ni] = '\0';
+    }
 
     while (*p) {
         if (*p == '*') ptrs++;
@@ -129,6 +182,17 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             snprintf(ret_buf, sizeof(ret_buf), "%s", ret_cstr ? ret_cstr : "void");
             clean_c_type_str(ret_buf, sizeof(ret_buf));
 
+            CXType can_ret = clang_getCanonicalType(ret_type);
+            if ((can_ret.kind == CXType_Pointer || can_ret.kind == CXType_BlockPointer) && !strchr(ret_buf, '*')) {
+                CXString can_rstr = clang_getTypeSpelling(can_ret);
+                const char* can_rcstr = clang_getCString(can_rstr);
+                if (can_rcstr && strchr(can_rcstr, '*')) {
+                    snprintf(ret_buf, sizeof(ret_buf), "%s", can_rcstr);
+                    clean_c_type_str(ret_buf, sizeof(ret_buf));
+                }
+                clang_disposeString(can_rstr);
+            }
+
             int num_args = clang_Cursor_getNumArguments(cursor);
             char params_buf[512] = "";
             for (int i = 0; i < num_args; i++) {
@@ -140,6 +204,17 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                 char single_param[128];
                 snprintf(single_param, sizeof(single_param), "%s", at_str ? at_str : "int");
                 clean_c_type_str(single_param, sizeof(single_param));
+
+                CXType can_arg = clang_getCanonicalType(arg_type);
+                if ((can_arg.kind == CXType_Pointer || can_arg.kind == CXType_BlockPointer || can_arg.kind == CXType_FunctionProto) && !strchr(single_param, '*')) {
+                    CXString can_aname = clang_getTypeSpelling(can_arg);
+                    const char* can_astr = clang_getCString(can_aname);
+                    if (can_astr && strchr(can_astr, '*')) {
+                        snprintf(single_param, sizeof(single_param), "%s", can_astr);
+                        clean_c_type_str(single_param, sizeof(single_param));
+                    }
+                    clang_disposeString(can_aname);
+                }
 
                 if (i > 0) strncat(params_buf, "\x1f", sizeof(params_buf) - strlen(params_buf) - 1);
                 strncat(params_buf, single_param, sizeof(params_buf) - strlen(params_buf) - 1);
@@ -182,6 +257,28 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                 clang_visitChildren(cursor, field_collector_cb, &sfc);
                 if (sfc.nfields > 0) {
                     sema_register_cstruct(ctx->sema, name, sfc.fields, sfc.nfields);
+                } else {
+                    CXCursor def_cur = clang_getTypeDeclaration(utype);
+                    if (!clang_Cursor_isNull(def_cur)) {
+                        clang_visitChildren(def_cur, field_collector_cb, &sfc);
+                        if (sfc.nfields > 0) {
+                            sema_register_cstruct(ctx->sema, name, sfc.fields, sfc.nfields);
+                        } else {
+                            long long sz = clang_Type_getSizeOf(utype);
+                            if (sz > 0) {
+                                StructField* f = calloc(1, sizeof(StructField));
+                                f[0].name = strdup("data");
+                                f[0].type = sema_mk_type("", "char", 0);
+                                Expr* d = calloc(1, sizeof *d);
+                                d->kind = E_LITERAL;
+                                char sz_str[32];
+                                snprintf(sz_str, sizeof sz_str, "%lld", sz);
+                                d->str = strdup(sz_str);
+                                f[0].dim = d;
+                                sema_register_cstruct(ctx->sema, name, f, 1);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -235,6 +332,16 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
         args[n_args++] = "-D_GNU_SOURCE";
         args[n_args++] = "-D_DEFAULT_SOURCE";
         args[n_args++] = "-D_POSIX_C_SOURCE=200809L";
+
+        const char* res = detect_clang_resource_dir();
+        static char res_arg[300];
+        static char isys_arg[300];
+        if (res) {
+            snprintf(res_arg, sizeof(res_arg), "-resource-dir=%s", res);
+            args[n_args++] = res_arg;
+            snprintf(isys_arg, sizeof(isys_arg), "-isystem%s/include", res);
+            args[n_args++] = isys_arg;
+        }
 
         if (inc_bufs) {
             for (size_t i = 0; i < n_inc; i++) {

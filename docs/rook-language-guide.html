@@ -641,44 +641,27 @@
   </div>
 
   <nav class="nav-list" id="nav-guide">
-    <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Prior Art</a>
-    <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & Compilation Model</a>
-    <a href="#c-comparison" class="nav-item nav-guide-item" data-id="c-comparison">3. Direct Comparison: Standard C vs. Rook</a>
-    <a href="#mental-model" class="nav-item nav-guide-item" data-id="mental-model">4. Mental Model & Memory Semantics</a>
-    <a href="#installation" class="nav-item nav-guide-item" data-id="installation">5. Installation, Setup & Diagnostics</a>
-    <a href="#quickstart" class="nav-item nav-guide-item" data-id="quickstart">6. Project Lifecycle & Quickstart</a>
-    <a href="#variables" class="nav-item nav-guide-item" data-id="variables">7. Variables, Types & Invariants</a>
-    <a href="#pointers" class="nav-item nav-guide-item" data-id="pointers">8. Pointers & Pointer Safety</a>
-    <a href="#control-flow" class="nav-item nav-guide-item" data-id="control-flow">9. Control Flow & Branching</a>
-    <a href="#functions" class="nav-item nav-guide-item" data-id="functions">10. Functions & Call Semantics</a>
-    <a href="#structs" class="nav-item nav-guide-item" data-id="structs">11. Structs & Memory Layout</a>
-    <a href="#objects" class="nav-item nav-guide-item" data-id="objects">12. Objects, Methods & Single Inheritance</a>
-    <a href="#sum-match" class="nav-item nav-guide-item" data-id="sum-match">13. Algebraic Data Types: sum, enum & match</a>
-    <a href="#cleanup-defer" class="nav-item nav-guide-item" data-id="cleanup-defer">14. Deterministic Cleanup: defer</a>
-    <a href="#modules" class="nav-item nav-guide-item" data-id="modules">15. Modules, Namespaces & Directives</a>
-    <a href="#dependencies" class="nav-item nav-guide-item" data-id="dependencies">16. Vendored Dependencies & Packages</a>
-    <a href="#c-interop" class="nav-item nav-guide-item" data-id="c-interop">17. C Interoperability & Integration</a>
-    <a href="#stdlib" class="nav-item nav-guide-item" data-id="stdlib">18. Standard Library Reference (std/)</a>
-    <a href="#safety" class="nav-item nav-guide-item" data-id="safety">19. Safety Invariants & Compile-Time Checks</a>
-    <a href="#config" class="nav-item nav-guide-item" data-id="config">20. Configuration & Multi-Target Builds (rokade.toml)</a>
-    <a href="#cli" class="nav-item nav-guide-item" data-id="cli">21. Compiler CLI & Architecture Reference</a>
+    <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Technical Constraints</a>
+    <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & The Three Compiler Backends</a>
+    <a href="#c-comparison" class="nav-item nav-guide-item" data-id="c-comparison">3. Technical Comparison: C, Rust, Zig, and Rook</a>
+    <a href="#mental-model" class="nav-item nav-guide-item" data-id="mental-model">4. Memory Layout & Storage Semantics</a>
+    <a href="#variables" class="nav-item nav-guide-item" data-id="variables">5. Type System & Semantic Analysis</a>
+    <a href="#control-flow" class="nav-item nav-guide-item" data-id="control-flow">6. Control Flow & Evaluation Rules</a>
+    <a href="#sum-match" class="nav-item nav-guide-item" data-id="sum-match">7. Algebraic Data Types: sum, enum & match</a>
+    <a href="#c-interop" class="nav-item nav-guide-item" data-id="c-interop">8. Zero-Overhead C Interoperability & Libclang Integration</a>
+    <a href="#stdlib" class="nav-item nav-guide-item" data-id="stdlib">9. Standard Library (std/) Architecture</a>
+    <a href="#config" class="nav-item nav-guide-item" data-id="config">10. Configuration, Multi-Target Builds & Toolchains</a>
   </nav>
 
   <nav class="nav-list" id="nav-beginner" style="display:none;">
-    <a href="#b1-how-computers-work" class="nav-item nav-beginner-item" data-id="b1-how-computers-work">Module 1: How Computers Work</a>
-    <a href="#b2-first-program" class="nav-item nav-beginner-item" data-id="b2-first-program">Module 2: Your First Program</a>
-    <a href="#b3-variables-types" class="nav-item nav-beginner-item" data-id="b3-variables-types">Module 3: Storing Information: Variables and Types</a>
-    <a href="#b4-math-operators" class="nav-item nav-beginner-item" data-id="b4-math-operators">Module 4: Doing Math & Making Comparisons</a>
-    <a href="#b5-control-flow" class="nav-item nav-beginner-item" data-id="b5-control-flow">Module 5: Making Choices: Control Flow</a>
-    <a href="#b6-loops-repetition" class="nav-item nav-beginner-item" data-id="b6-loops-repetition">Module 6: Repetition: Automating with Loops</a>
-    <a href="#b7-functions" class="nav-item nav-beginner-item" data-id="b7-functions">Module 7: Functions: Reusable Building Blocks</a>
-    <a href="#b8-structs" class="nav-item nav-beginner-item" data-id="b8-structs">Module 8: Grouping Data: Structures</a>
-    <a href="#b9-memory-pointers" class="nav-item nav-beginner-item" data-id="b9-memory-pointers">Module 9: Demystifying Memory: Pointers</a>
-    <a href="#b10-arrays" class="nav-item nav-beginner-item" data-id="b10-arrays">Module 10: Working with Lists: Arrays</a>
-    <a href="#b11-multi-file" class="nav-item nav-beginner-item" data-id="b11-multi-file">Module 11: Building Real Projects</a>
-    <a href="#b12-debugging-thinking" class="nav-item nav-beginner-item" data-id="b12-debugging-thinking">Module 12: How to Think Like a Programmer</a>
-    <a href="#b13-objects-impl" class="nav-item nav-beginner-item" data-id="b13-objects-impl">Module 13: Objects and Methods</a>
-    <a href="#b14-match-patterns" class="nav-item nav-beginner-item" data-id="b14-match-patterns">Module 14: Pattern Matching</a>
+    <a href="#b1-hardware-memory" class="nav-item nav-beginner-item" data-id="b1-hardware-memory">Module B1: Hardware Architecture & Memory Hierarchy</a>
+    <a href="#b2-first-program" class="nav-item nav-beginner-item" data-id="b2-first-program">Module B2: Your First Program & Execution Lifecycle</a>
+    <a href="#b3-bits-bytes" class="nav-item nav-beginner-item" data-id="b3-bits-bytes">Module B3: Bits, Bytes, and Integer Widths</a>
+    <a href="#b4-pointers" class="nav-item nav-beginner-item" data-id="b4-pointers">Module B4: Memory Addresses & The Pointer Mental Model</a>
+    <a href="#b5-structs" class="nav-item nav-beginner-item" data-id="b5-structs">Module B5: Structs & Memory Layout in Practice</a>
+    <a href="#b6-arrays" class="nav-item nav-beginner-item" data-id="b6-arrays">Module B6: Arrays, Buffers, and Bounds Safety</a>
+    <a href="#b7-defer" class="nav-item nav-beginner-item" data-id="b7-defer">Module B7: Resource Management & Avoiding Leaks</a>
+    <a href="#b8-real-projects" class="nav-item nav-beginner-item" data-id="b8-real-projects">Module B8: Building Real Projects & C Library Integration</a>
   </nav>
 </aside>
 
@@ -700,52 +683,37 @@
     
 <section class="chapter" id="philosophy">
   <div class="chapter-header">
-    <h2 class="chapter-title">1. The Rook Philosophy & Prior Art</h2>
+    <h2 class="chapter-title">1. The Rook Philosophy & Technical Constraints</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>C has been the standard language for operating systems, embedded controllers, device drivers, and real-time graphics for decades. Nearly every computing platform exposes a C Application Binary Interface (ABI), making C the universal interface for systems software.</p>
+<p>Rook is an explicit systems programming language designed to eliminate the structural maintenance burdens and common undefined behavior patterns of C while maintaining 100% ABI parity and zero runtime overhead. Rook is implemented in C11 and compiles directly to standard C (C11/C23) and native LLVM IR.</p>
 
-<p>At the same time, developing in C has well-known maintenance challenges and safety pitfalls:</p>
+<h3>1.1 Design Problems in Standard C</h3>
+<p>In standard C (ISO/IEC 9899), systems developers face recurring architectural and safety challenges inherent to the language grammar and compilation model:</p>
 <ul>
-  <li><strong>Header synchronization:</strong> Maintaining declarations in <code>.h</code> files and definitions in <code>.c</code> files requires duplicate maintenance. Inconsistencies between headers and source files lead to linker errors or mismatched symbol definitions.</li>
-  <li><strong>Uninitialized memory defaults:</strong> Local variables declared without initializers contain whatever values were left on the stack. Reading them causes undefined behavior.</li>
-  <li><strong>Accidental assignment in conditions:</strong> Writing <code>if (x = 5)</code> instead of <code>if (x == 5)</code> compiles silently in standard C, overwriting variables and introducing subtle logic bugs.</li>
-  <li><strong>Boilerplate for common abstractions:</strong> Implementing single inheritance or tagged unions in standard C requires nested structs, manual tag checks, and void pointer casting without compiler checks.</li>
+  <li><strong>Header and Implementation Divergence:</strong> C separates declarations into <code>.h</code> header files and definitions into <code>.c</code> translation units. When function prototypes, struct definitions, or macro signatures change in headers without corresponding updates in source files, silent ABI mismatches or linker failures occur.</li>
+  <li><strong>Uninitialized Memory by Default:</strong> Local variables declared without initializers in C inherit indeterminate values from the call stack. Reading uninitialized stack values leads to undefined behavior and security exploits.</li>
+  <li><strong>Syntactic Ambiguity in Conditionals:</strong> In C grammar, assignment is an expression. An assignment written where an equality check was intended (e.g., <code>if (x = 5)</code>) compiles without error, causing silent runtime corruption.</li>
+  <li><strong>Boilerplate for Abstractions:</strong> Implementing basic data structures such as single inheritance or tagged unions requires manual void pointer casting, manual tag tracking, and nested struct layouts without compiler-enforced exhaustiveness.</li>
 </ul>
 
-<h3>Language Trade-Offs and Prior Art</h3>
-<p>Different languages address these challenges with different design trade-offs:</p>
+<h3>1.2 Technical Invariants of Rook</h3>
 <ul>
-  <li><strong>C:</strong> Direct hardware mapping, universal ABI compatibility, and zero runtime overhead. However, it lacks module systems, tagged unions, and basic safety guards. <em>Rook preserves C ABI compatibility and compiles directly to standard C, while replacing header files with <code>#comprise</code>, initializing variables to zero by default, and providing single inheritance and sum types.</em></li>
-  <li><strong>C++:</strong> Rich abstractions, generic templates, and extensive standard libraries. However, it introduces complex grammar rules, slow compile times, and symbol name mangling that complicates C interop. <em>Rook retains the straightforward compilation model of C, adding method syntax and <code>defer</code> without virtual tables, mangled symbols, or template overhead.</em></li>
-  <li><strong>Rust:</strong> Compile-time memory safety and concurrency guarantees enforced through a borrow checker. However, it has a steep learning curve and introduces friction when interfacing directly with untyped C memory layouts. <em>Rook uses traditional pointers and explicit memory management, adding targeted compiler checks to prevent common C mistakes without lifetime annotations.</em></li>
-  <li><strong>Zig and Odin:</strong> Clean systems ergonomics, explicit memory allocation, and independent compiler toolchains. However, their standalone ABIs require dedicated bindings to integrate into existing C builds. <em>Rook transpiles to standard C, allowing single <code>.rook</code> files to integrate directly into existing C Makefiles and CMake projects.</em></li>
-  <li><strong>Go:</strong> Fast compilation, simple syntax, and built-in concurrency. However, its garbage-collected runtime makes it unsuitable for bare-metal targets, low-latency audio, or embedded microcontrollers. <em>Rook has no garbage collector, no runtime overhead, and predictable memory layout.</em></li>
+  <li><strong>Deterministic Zero Initialization:</strong> All local variables, arrays, and structs allocated on the stack are guaranteed by the compiler to be initialized to zero unless explicitly initialized with an expression.</li>
+  <li><strong>Single Source of Truth:</strong> Rook source files define both declarations and implementations in single <code>.rook</code> units. External C headers are parsed dynamically at compile time via libclang without manual bindings.</li>
+  <li><strong>Guaranteed C ABI Parity:</strong> Every Rook struct, function, and primitive type maps 1:1 to host C ABI rules (System V AMD64 ABI, Microsoft x64 ABI, or ARM AAPCS64). Rook binaries can call C libraries and be called by C libraries with zero overhead.</li>
+  <li><strong>Syntactic Rejection of Assignment in Conditions:</strong> Assignment statements (<code>x = 5</code>) cannot be used as conditions. Expressions like <code>if (x = 5)</code> produce a hard compile-time error.</li>
+  <li><strong>Static Single Inheritance with Prefix Subtyping:</strong> Inherited structs embed parent fields at byte offset 0. A pointer to a child struct can be cast to a pointer to a parent struct without pointer offset adjustments.</li>
 </ul>
 
-<h3>Design Goals</h3>
+<h3>1.3 Explicit Non-Goals and Constraints</h3>
 <ul>
-  <li><strong>1:1 C ABI compatibility:</strong> Functions, structs, and primitive types in Rook match standard C layouts, allowing direct calls to C libraries (such as SDL, Raylib, SQLite, or Vulkan) without wrapper code.</li>
-  <li><strong>Headerless modules:</strong> Modules are imported using <code>#comprise</code>, eliminating separate <code>.h</code> files and header guards.</li>
-  <li><strong>Safe defaults:</strong> Local variables default to zero initialization, assignments inside conditional expressions are rejected at compile time, and optional bounds checking (<code>-b</code>) checks array access at runtime.</li>
-  <li><strong>Lightweight abstractions:</strong> Single inheritance (<code>object Child : Parent</code>), methods (<code>impl</code>), and tagged unions with pattern matching (<code>sum</code> and <code>match</code>) lower to clean, static C code.</li>
-</ul>
-
-<h3>Explicit Limitations</h3>
-<ul>
-  <li><strong>No borrow checker:</strong> Rook does not prove memory lifetimes at compile time. Memory is managed explicitly using pointers, allocators, and arenas.</li>
-  <li><strong>No garbage collector:</strong> Memory allocations remain allocated until freed.</li>
-  <li><strong>Early ecosystem:</strong> The standard library is small, though direct C interop allows using any existing C library.</li>
-  <li><strong>LLVM backend status:</strong> Rokade has two backends: a C transpiler backend and an LLVM backend. The C backend is the primary, production-ready backend. The LLVM backend is experimental and in active development.</li>
-</ul>
-
-<h3>Common Use Cases</h3>
-<ul>
-  <li><strong>Command-line tools and utilities:</strong> Standalone binaries that build quickly and run without runtime dependencies.</li>
-  <li><strong>Game engines and multimedia:</strong> Audio, physics, and rendering with Raylib, SDL2, OpenGL, or Vulkan.</li>
-  <li><strong>Upgrading existing C projects:</strong> Replacing or adding modules written in type-safe <code>.rook</code> files within existing C codebases.</li>
+  <li><strong>No Borrow Checker:</strong> Rook does not analyze object lifetimes or lifetimes of references at compile time. Memory management is manual and explicit (stack allocations, <code>malloc</code>, <code>free</code>, and custom memory arenas).</li>
+  <li><strong>No Garbage Collector:</strong> Rook has no runtime garbage collector, no reference counting headers, and no runtime engine. Program execution overhead is identical to optimized C.</li>
+  <li><strong>No Hidden Control Flow:</strong> Rook does not support operator overloading, implicit type conversion between unrelated types, copy constructors, or exceptions. Control flow transitions are strictly visible in source code.</li>
+  <li><strong>Static Dispatch Only:</strong> Method calls (<code>impl</code>) resolve statically at compile time to mangled symbol names. There are no virtual method tables (vtables) or dynamic dispatch overhead unless manually implemented via function pointer fields.</li>
 </ul>
 
   </div>
@@ -754,21 +722,24 @@
 
 <section class="chapter" id="architecture">
   <div class="chapter-header">
-    <h2 class="chapter-title">2. Architecture & Compilation Model</h2>
+    <h2 class="chapter-title">2. Architecture & The Three Compiler Backends</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook uses a compilation pipeline managed by the <code>rokade</code> compiler, which is written in C11.</p>
+<p>The <code>rokade</code> compiler implements a modular, multi-backend pipeline designed to produce either portable C source code or native machine code via LLVM.</p>
 
 <div class="arch-diagram">
-  <div class="arch-box">Source Files<br><code>.rook</code></div>
+  <div class="arch-box">Source (<code>.rook</code>)</div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box">Frontend<br>AST &amp; Semantic Analysis</div>
+  <div class="arch-box">Lexer &amp; Parser (AST)</div>
+  <div class="arch-arrow">➔</div>
+  <div class="arch-box">Sema &amp; Libclang Import</div>
   <div class="arch-arrow">➔</div>
   <div class="arch-split">
-    <div class="arch-box branch"><strong>C Backend (Default)</strong><br>Stable &amp; primary<br>Emits C to <code>build/generated/main.c</code></div>
-    <div class="arch-box branch"><strong>LLVM Backend (Experimental)</strong><br>Active development<br>Object emission &amp; JIT (<code>--jit</code>)</div>
+    <div class="arch-box branch"><strong>C Backend</strong><br>C11/C23 Transpiler<br>GCC / Clang Toolchain</div>
+    <div class="arch-box branch"><strong>LLVM Backend</strong><br>LLVM C-API<br>Object (.o) / JIT</div>
+    <div class="arch-box branch"><strong>LLVM2 Backend</strong><br>Direct IR Codegen<br>Strict C ABI Parity</div>
   </div>
 </div>
 
@@ -776,45 +747,39 @@
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Backend</th><th>Status</th><th>Description</th></tr>
+    <tr><th>Backend</th><th>Implementation</th><th>Target Output</th><th>Characteristics</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>C Backend (Default)</strong></td>
-      <td>Primary</td>
-      <td>Transpiles <code>.rook</code> files into formatted C code (C11/C23) and invokes the host C compiler (GCC or Clang) directly. Full C ABI compatibility, standard debugging with GDB or LLDB, and direct inclusion of external C headers. Recommended for regular development.</td>
+      <td><strong>C Backend (<code>--backend=c</code>)</strong></td>
+      <td><code>src/c_backend.c</code></td>
+      <td>C11 / C23 Source (<code>.c</code>)</td>
+      <td>Default backend. Transpiles AST directly to clean C source and calls the system C compiler (GCC or Clang). Compatible with all C profiling, debugging (GDB/LLDB), and build systems.</td>
     </tr>
     <tr>
-      <td><strong>LLVM Backend</strong></td>
-      <td>Experimental</td>
-      <td>Uses LLVM libraries to generate object files (<code>.o</code>) directly and support in-memory execution (<code>rokade --jit</code>). Supports unsigned operations, pointer arithmetic, sum types, and bounds checks. In active development.</td>
+      <td><strong>LLVM Backend (<code>--backend=llvm</code>)</strong></td>
+      <td><code>src/llvm_backend.c</code></td>
+      <td>Native Object (<code>.o</code>) / JIT</td>
+      <td>Emits LLVM IR via LLVM-C API. Supports in-memory execution via <code>rokade run --jit</code>. Useful for rapid scripting and automated compiler tests without intermediate disk artifacts.</td>
+    </tr>
+    <tr>
+      <td><strong>LLVM2 Backend (<code>--backend=llvm2</code>)</strong></td>
+      <td><code>src/llvm2_backend.c</code></td>
+      <td>Direct LLVM IR (<code>.ll</code> / <code>.o</code>)</td>
+      <td>Next-generation native backend. Implements strict short-circuit control flow via basic blocks and PHI nodes, automated C typedef resolution, recursive struct sizing, union backing buffers, and zero-wrapper foreign function calls.</td>
     </tr>
   </tbody>
 </table>
 </div>
 
-<h3>2.2 Compilation Pipeline</h3>
+<h3>2.2 Pipeline Stages</h3>
 <ol>
-  <li><strong>Lexing and Parsing:</strong> Reads source tokens and builds an Abstract Syntax Tree (AST). The <code>#comprise</code> directive recursively discovers dependencies and deduplicates imports into a single compilation unit.</li>
-  <li><strong>Semantic Analysis (<code>sema.c</code>):</strong> Checks types, validates function argument counts, checks pattern exhaustiveness, enforces pointer rules, and flags prohibited syntax (such as assignments in conditions, division by zero, and <code>goto</code>).</li>
-  <li><strong>Code Generation:</strong>
-    <ul>
-      <li><strong>C Backend:</strong> Emits formatted C source to <code>build/generated/main.c</code>. Each Rook construct maps to a standard C construct.</li>
-      <li><strong>LLVM Backend:</strong> Emits LLVM IR (<code>.ll</code>) and invokes LLVM to produce object files (<code>.o</code>) or run directly in memory via JIT.</li>
-    </ul>
-  </li>
-  <li><strong>Process Execution:</strong> Rokade executes the host compiler and linker directly using POSIX <code>fork()</code> and <code>execv()</code> (or <code>CreateProcess</code> on Windows). It avoids shell wrappers (<code>sh -c</code>) to prevent argument escaping problems and injection issues.</li>
+  <li><strong>Lexing (<code>src/lexer.c</code>):</strong> Tokenizes source text into keywords, identifiers, literals, and operators. Comments and whitespace are discarded.</li>
+  <li><strong>Parsing (<code>src/parse.c</code>):</strong> Builds an Abstract Syntax Tree (AST) using recursive descent parsing. Validates structural syntax (functions, structs, impls, sum types, defer statements).</li>
+  <li><strong>Semantic Analysis (<code>src/sema.c</code>):</strong> Resolves symbol tables across lexical scopes, checks type compatibility, validates struct member access, and ensures pattern matching exhaustiveness.</li>
+  <li><strong>Dynamic C Interop (<code>src/c_import.c</code>):</strong> When an <code>#include &lt;header.h&gt;</code> is encountered, libclang parses the header AST directly from system include paths and registers foreign functions, structs, typedefs, and enums into the semantic symbol table.</li>
+  <li><strong>Code Generation:</strong> The selected backend walks the verified AST and generates target C code or LLVM IR.</li>
 </ol>
-<div class="callout callout-note"><div class="callout-title">Inspecting Generated Code</div><div class="callout-body">
-You can view the C code emitted by Rokade at any time by running <code>rokade --emit-c src/main.rook</code> or inspecting <code>build/generated/main.c</code>.
-</div></div>
-<h3>2.3 C ABI Compatibility</h3>
-<p>Rook adheres to the host C ABI:</p>
-<ul>
-  <li>Primitives (<code>int</code>, <code>size_t</code>, <code>float</code>, <code>double</code>, <code>char*</code>) have the same sizes, alignments, and calling conventions as C.</li>
-  <li>Rook <code>struct</code> and <code>object</code> types have the same memory layout, field offsets, and padding as C structs.</li>
-  <li>Rook functions can be called directly from C, and C functions can be called directly from Rook without glue code.</li>
-</ul>
 
   </div>
 </section>
@@ -822,206 +787,82 @@ You can view the C code emitted by Rokade at any time by running <code>rokade --
 
 <section class="chapter" id="c-comparison">
   <div class="chapter-header">
-    <h2 class="chapter-title">3. Direct Comparison: Standard C vs. Rook</h2>
+    <h2 class="chapter-title">3. Technical Comparison: C, Rust, Zig, and Rook</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>This chapter compares standard C patterns with their Rook equivalents.</p>
-
-<h3>3.1 Modules and Imports</h3>
-<p>Standard C requires declaring interfaces in <code>.h</code> header files with include guards, and writing implementations in <code>.c</code> files. Rook uses single-file modules imported with <code>#comprise</code>.</p>
+<p>To understand Rook's technical position, we evaluate concrete design parameters against established systems languages: Standard C (C11/C23), Rust, and Zig.</p>
 
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Aspect</th><th>Standard C</th><th>Rook</th></tr>
+    <tr>
+      <th>Feature / Dimension</th>
+      <th>Standard C (C11/C23)</th>
+      <th>Rust (2024 Edition)</th>
+      <th>Zig (0.13+)</th>
+      <th>Rook (v0.5.2)</th>
+    </tr>
   </thead>
   <tbody>
     <tr>
-      <td>Source files</td>
-      <td>Dual files: <code>math.h</code> and <code>math.c</code></td>
-      <td>Single file: <code>math.rook</code></td>
+      <td><strong>Memory Model</strong></td>
+      <td>Manual, uninitialized stack defaults, raw pointers.</td>
+      <td>Affine type system, compile-time borrow checker, lifetimes.</td>
+      <td>Manual with explicit allocators, slices, no hidden control flow.</td>
+      <td>Manual, deterministic zero initialization, raw pointers, bounds checks.</td>
     </tr>
     <tr>
-      <td>Import mechanism</td>
-      <td><code>#include "math.h"</code> with <code>#ifndef</code> guards</td>
-      <td><code>#comprise math</code>, deduplicated automatically</td>
+      <td><strong>C ABI Compatibility</strong></td>
+      <td>Native (is C).</td>
+      <td>Requires <code>extern "C"</code> blocks and bindings (<code>bindgen</code>).</td>
+      <td>Requires <code>@cImport</code> and translated C type headers.</td>
+      <td>Native 1:1 ABI mapping, dynamic libclang header parsing without wrappers.</td>
     </tr>
     <tr>
-      <td>Signature consistency</td>
-      <td>Header and source must be kept in sync manually</td>
-      <td>Single definition; no duplicate declarations</td>
+      <td><strong>Polymorphism</strong></td>
+      <td>Manual void* casting or manual vtables.</td>
+      <td>Traits, dynamic trait objects (vtables), generics.</td>
+      <td>Compile-time duck typing (<code>comptime</code>).</td>
+      <td>Single inheritance with prefix subtyping (zero-offset casting), static <code>impl</code> methods.</td>
+    </tr>
+    <tr>
+      <td><strong>Algebraic Data Types</strong></td>
+      <td>Manual tagged union (struct + enum + union).</td>
+      <td>First-class <code>enum</code> with pattern matching.</td>
+      <td>Tagged <code>union(enum)</code> with <code>switch</code>.</td>
+      <td>First-class <code>sum</code> and <code>enum</code> with exhaustive <code>match</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Resource Cleanup</strong></td>
+      <td>Manual <code>goto cleanup</code> or compiler extensions.</td>
+      <td>RAII (<code>Drop</code> trait implementation).</td>
+      <td><code>defer</code> and <code>errdefer</code> statements.</td>
+      <td><code>defer</code> statement with deterministic LIFO block unwinding.</td>
+    </tr>
+    <tr>
+      <td><strong>Compiler &amp; Dependencies</strong></td>
+      <td>Compiler toolchains (GCC, Clang, MSVC).</td>
+      <td><code>rustc</code> + LLVM (~1.5 GB installation).</td>
+      <td>Self-contained binary compiler with embedded Clang.</td>
+      <td>Single lightweight C binary (~500 KB) with optional LLVM/libclang linking.</td>
     </tr>
   </tbody>
 </table>
 </div>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Header and Source</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// math.h
-#ifndef MATH_H
-#define MATH_H
-int add(int a, int b);
-#endif
 
-// math.c
-#include "math.h"
-int add(int a, int b) { return a + b; }</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Module Import</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/math.rook
-int add(int a, int b) {
-    return a + b;
-}
+<h3>3.1 Memory Model &amp; Safety Trade-Offs</h3>
+<p>Unlike Rust, Rook does not attempt to solve use-after-free or data races through static lifetime annotations. Lifetimes in systems code (such as game engine render graphs or operating system page tables) often resist compile-time tracking without substantial syntactic overhead. Rook instead mitigates common C failure modes through targeted mechanical rules:</p>
+<ul>
+  <li>Zero-initialization prevents uninitialized variable use.</li>
+  <li>Condition expressions forbid assignment, preventing logic inversion.</li>
+  <li>Runtime bounds checking (<code>-b</code> flag) validates array indexing.</li>
+  <li><code>defer</code> statements ensure cleanup handlers are called across all exit paths.</li>
+</ul>
 
-// src/main.rook
-#comprise math
-#include &lt;stdio.h&gt;
-
-int main() {
-    printf("Sum: %d
-", add(10, 20));
-    return 0;
-}</code></pre></div>
-<h3>3.2 Variable Initialization</h3>
-<p>In standard C, uninitialized local variables contain indeterminate stack data. Reading them is undefined behavior. In Rook, uninitialized local variables are automatically set to zero.</p>
-
-<div class="table-container">
-<table>
-  <thead>
-    <tr><th>Declaration</th><th>Standard C</th><th>Rook</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Local variable</td>
-      <td><code>int x;</code> has indeterminate value</td>
-      <td><code>int x;</code> is initialized to 0 (<code>int x = {0};</code>)</td>
-    </tr>
-    <tr>
-      <td>Array</td>
-      <td><code>int arr[100];</code> contains uninitialized elements</td>
-      <td><code>int arr[100];</code> is zeroed at declaration</td>
-    </tr>
-    <tr>
-      <td>Struct</td>
-      <td><code>Point p;</code> contains uninitialized fields</td>
-      <td><code>Point p;</code> has all fields zeroed</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Uninitialized Local)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Standard C: Undefined behavior
-int health; // Uninitialized stack value
-if (health &gt; 0) { // Non-deterministic branch
-    take_action();
-}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook (Zero-Initialized)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Rook: Deterministic initialization
-int health; // Initialized to 0
-if (health &gt; 0) { // Predictable: branch is not taken
-    take_action();
-}</code></pre></div>
-<h3>3.3 Assignment Inside Conditions</h3>
-<p>In standard C, accidentally using <code>=</code> instead of <code>==</code> inside an <code>if</code> condition assigns the value and evaluates its truthiness. Rook rejects assignments in conditions at compile time.</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Silent Mutation)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Standard C: Compiles silently (or with warning), overwriting status
-if (status = 0) {
-    handle_success();
-}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook (Compile Error)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Rook: Compile-time error
-if (status = 0) { // error: assignment used as condition; did you mean '=='?
-    handle_success();
-}
-
-// Correct:
-if (status == 0) {
-    handle_success();
-}</code></pre></div>
-<h3>3.4 Methods and Single Inheritance</h3>
-<p>Standard C lacks method syntax and inheritance. Structs must be nested manually, and type casting loses safety checks. Rook provides <code>object</code> and <code>impl</code> blocks, lowering to standard C structs without virtual tables.</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: Emulated Inheritance</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Standard C: Manual nesting and casts
-typedef struct { float x, y; } Point;
-typedef struct { Point base; float radius; } Circle;
-
-void point_move(Point* p, float dx, float dy) { p-&gt;x += dx; p-&gt;y += dy; }
-
-Circle c = { {10.0f, 20.0f}, 5.0f };
-point_move((Point*)&amp;c, 1.0f, 2.0f); // Explicit unverified cast</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: Single Inheritance</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Rook: Single inheritance and methods
-object Point {
-    float x;
-    float y;
-}
-
-object Circle : Point {
-    float radius;
-}
-
-impl Point {
-    void move(Point* self, float dx, float dy) {
-        self.x += dx;
-        self.y += dy;
-    }
-}
-
-Circle c = Circle{ x: 10.0f, y: 20.0f, radius: 5.0f };
-c.move(1.0f, 2.0f); // Calls point_move(&amp;c._base, 1.0f, 2.0f)</code></pre></div>
-<h3>3.5 Tagged Unions and Pattern Matching</h3>
-<p>Standard C requires manually synchronizing an enum tag with an untagged union. Rook provides <code>sum</code> types and <code>match</code> expressions.</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Rook: Sum Types and Pattern Matching</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum NetworkEvent {
-    Connected { int client_id; const char* ip; };
-    DataReceived { int client_id; int bytes; };
-    Disconnected { int client_id; };
-}
-
-void handle_event(NetworkEvent* ev) {
-    match (*ev) {
-        Connected(c)    =&gt; printf("Client %d connected from %s
-", c.client_id, c.ip),
-        DataReceived(d) =&gt; printf("Client %d sent %d bytes
-", d.client_id, d.bytes),
-        Disconnected(q) =&gt; printf("Client %d disconnected
-", q.client_id),
-    }
-}</code></pre></div>
-<h3>3.6 Scope Cleanup: goto vs. defer</h3>
-<p>Cleaning up resources across multiple error exits in C often uses <code>goto cleanup;</code> ladders. Rook provides <code>defer</code>, which executes cleanup statements at scope exit in LIFO order.</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C: goto Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Standard C: goto cleanup ladder
-int process(const char* path) {
-    FILE* fp = fopen(path, "r");
-    if (!fp) return -1;
-    char* buf = malloc(1024);
-    if (!buf) { fclose(fp); return -2; }
-    
-    int ret = 0;
-    if (do_work(fp, buf) &lt; 0) { ret = -3; goto cleanup; }
-    
-cleanup:
-    free(buf);
-    fclose(fp);
-    return ret;
-}</code></pre></div><div class="code-block"><div class="code-header"><span class="code-lang">Rook: defer Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Rook: Scope-based defer cleanup
-int process(const char* path) {
-    FILE* fp = fopen(path, "r");
-    if (!fp) return -1;
-    defer fclose(fp); // Runs on any exit path
-
-    char* buf = (char*)malloc(1024);
-    if (!buf) return -2;
-    defer free(buf); // Runs before fclose(fp)
-
-    if (do_work(fp, buf) &lt; 0) return -3;
-    return 0;
-}</code></pre></div>
-<h3>3.7 Pointer Safety</h3>
-<p>Standard C allows pointer arithmetic on <code>void*</code> as a compiler extension. Rook rejects arithmetic on <code>void*</code> at compile time, requiring explicit casts to byte-oriented pointers (<code>char*</code> or <code>uint8_t*</code>).</p>
-
-<h3>3.8 Build Configuration</h3>
-<p>Rather than requiring Makefiles or CMake scripts for simple projects, Rokade reads a declarative <code>rokade.toml</code> configuration file and handles compilation directly.</p>
-
-<div class="table-container">
-<table>
-  <thead>
-    <tr><th>Feature</th><th>Standard C</th><th>Rook / Rokade</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Build specification</td><td>Makefiles, CMakeLists.txt</td><td>Declarative <code>rokade.toml</code></td></tr>
-    <tr><td>Process execution</td><td>Shell scripts or Make subprocesses</td><td>Direct POSIX <code>fork()</code>/<code>execv()</code></td></tr>
-    <tr><td>Cross-compilation</td><td>Manual toolchain prefix configuration</td><td>Built-in <code>--target=&lt;triple&gt;</code> support</td></tr>
-    <tr><td>Diagnostics</td><td>Varies by compiler</td><td>ANSI terminal output + JSON for editors</td></tr>
-  </tbody>
-</table>
-</div>
+<h3>3.2 C Interoperability Trade-Offs</h3>
+<p>In Rust and Zig, interacting with complex C libraries (such as SDL3, Raylib, or GTK) requires generating bindings, translating macro definitions, and managing ABI boundary types. In Rook, the compiler directly invokes libclang on host system headers. Declarations like <code>GtkWidget*</code> or <code>SDL_Event</code> are ingested natively into the type checker without manual binding files.</p>
 
   </div>
 </section>
@@ -1029,146 +870,75 @@ int process(const char* path) {
 
 <section class="chapter" id="mental-model">
   <div class="chapter-header">
-    <h2 class="chapter-title">4. Mental Model & Memory Semantics</h2>
+    <h2 class="chapter-title">4. Memory Layout & Storage Semantics</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook follows the memory model of standard C: values live on the stack or the heap, pointers represent memory addresses, and data structures have predictable layouts.</p>
+<p>Rook enforces predictable, hardware-aligned memory layouts matching the host architecture's standard C ABI.</p>
 
-<h3>4.1 Stack Memory and Zero-Initialization</h3>
-<p>In standard C, uninitialized local variables contain indeterminate stack data:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard C (Uninitialized)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Standard C: Reading uninitialized stack value
-void compute(void) {
-    int counter;
-    if (ready) counter++; // Undefined behavior
+<h3>4.1 Primitive Scalar Storage</h3>
+<p>Primitive types have fixed bit widths and natural byte alignments:</p>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Rook Type</th><th>C Equivalent</th><th>LLVM IR Type</th><th>Size (Bytes)</th><th>Alignment (Bytes)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>bool</code></td><td><code>bool</code> / <code>_Bool</code></td><td><code>i8</code> / <code>i1</code></td><td>1</td><td>1</td></tr>
+    <tr><td><code>char</code></td><td><code>char</code></td><td><code>i8</code></td><td>1</td><td>1</td></tr>
+    <tr><td><code>int8_t</code> / <code>uint8_t</code></td><td><code>int8_t</code> / <code>uint8_t</code></td><td><code>i8</code></td><td>1</td><td>1</td></tr>
+    <tr><td><code>int16_t</code> / <code>uint16_t</code></td><td><code>int16_t</code> / <code>uint16_t</code></td><td><code>i16</code></td><td>2</td><td>2</td></tr>
+    <tr><td><code>int</code> / <code>int32_t</code></td><td><code>int</code> / <code>int32_t</code></td><td><code>i32</code></td><td>4</td><td>4</td></tr>
+    <tr><td><code>int64_t</code> / <code>uint64_t</code></td><td><code>int64_t</code> / <code>uint64_t</code></td><td><code>i64</code></td><td>8</td><td>8</td></tr>
+    <tr><td><code>float</code></td><td><code>float</code></td><td><code>float</code></td><td>4</td><td>4</td></tr>
+    <tr><td><code>double</code></td><td><code>double</code></td><td><code>double</code></td><td>8</td><td>8</td></tr>
+    <tr><td><code>T*</code> (Pointer)</td><td><code>T*</code></td><td><code>ptr</code></td><td>8 (on 64-bit)</td><td>8 (on 64-bit)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4.2 Struct Memory Layout and Padding</h3>
+<p>Struct fields are laid out in source declaration order. The compiler inserts padding bytes between fields to ensure each field starts at an address aligned to its natural alignment:</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Struct Memory Layout Example</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">struct Node {
+    flag: bool     // 1 byte offset 0, followed by 3 bytes padding
+    id: int        // 4 bytes offset 4
+    ptr: void*     // 8 bytes offset 8
+}
+// Total size: 16 bytes, alignment: 8 bytes</code></pre></div>
+
+<h3>4.3 Single Inheritance Layout (Prefix Subtyping)</h3>
+<p>When an <code>object</code> inherits from another <code>object</code> or <code>struct</code>, the parent's fields are embedded at the very beginning of the child struct (offset 0):</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Prefix Subtyping</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Entity {
+    id: int
+    active: bool
+}
+
+object Player : Entity {
+    health: int
+    score: int
 }</code></pre></div>
 
-<p>In Rook, uninitialized local variables are automatically initialized to zero:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Rook (Zero-Initialized)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int compute() {
-    int counter; // Lowered to: int counter = {0};
-    printf("%d
-", counter); // Prints 0
-    return 0;
-}</code></pre></div>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Offset (Bytes)</th><th>Field</th><th>Type</th><th>Size</th><th>Belongs To</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>0</td><td><code>id</code></td><td><code>int</code></td><td>4</td><td><code>Entity</code> (Parent)</td></tr>
+    <tr><td>4</td><td><code>active</code></td><td><code>bool</code></td><td>1</td><td><code>Entity</code> (Parent)</td></tr>
+    <tr><td>5..7</td><td><em>Padding</em></td><td>—</td><td>3</td><td>Alignment padding</td></tr>
+    <tr><td>8</td><td><code>health</code></td><td><code>int</code></td><td>4</td><td><code>Player</code> (Child)</td></tr>
+    <tr><td>12</td><td><code>score</code></td><td><code>int</code></td><td>4</td><td><code>Player</code> (Child)</td></tr>
+  </tbody>
+</table>
+</div>
 
-<h3>4.2 Heap Allocations and defer</h3>
-<p>Heap memory in Rook is explicit. Programs allocate memory using functions like <code>malloc</code>, <code>calloc</code>, or custom allocators (such as <code>std/mem</code> arenas). Rook has no garbage collector.</p>
-
-<p>The <code>defer</code> statement ensures resources are released when exiting scope:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Deterministic Scope Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int process_file(const char* path) {
-    FILE* fp = fopen(path, "rb");
-    if (!fp) return -1;
-    defer fclose(fp); // Guaranteed to execute on function return
-
-    char* buffer = (char*)malloc(4096);
-    if (!buffer) return -2;
-    defer free(buffer); // Executes before fclose(fp)
-
-    return 0;
-}</code></pre></div>
-
-<h3>4.3 Object Memory Layout</h3>
-<p>Rook's object inheritance embeds the parent type as the first struct member named <code>_base</code>. There are no virtual method tables (vtables), runtime type identifiers, or hidden pointer indirections. A pointer to a derived object is binary-compatible with a pointer to its base type under standard C layout rules.</p>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="installation">
-  <div class="chapter-header">
-    <h2 class="chapter-title">5. Installation, Setup & Diagnostics</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rook can be built from source and installed into your user directory without root privileges.</p>
-
-<h3>5.1 Prerequisites</h3>
-<ul>
-  <li><strong>C Compiler:</strong> <code>gcc</code> (version 9 or higher) or <code>clang</code> (version 10 or higher)</li>
-  <li><strong>Build Tool:</strong> <code>cmake</code> (version 3.16 or higher)</li>
-  <li><strong>Language Server (optional):</strong> <code>cargo</code> (required only if building <code>rook-lsp</code>)</li>
-</ul>
-
-<h3>5.2 Installation Steps</h3>
-<p><strong>Linux and macOS:</strong></p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Linux / macOS Install</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash">git clone https://github.com/bknsehan/Rook.git
-cd Rook
-./install.sh --prefix=$HOME/.local/rook --with-zed</code></pre></div>
-
-<p>Add the installation directory to your <code>PATH</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Shell Configuration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash">export PATH="$HOME/.local/rook/bin:$PATH"</code></pre></div>
-
-<p><strong>Windows (PowerShell):</strong></p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Windows Install</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-powershell">git clone https://github.com/bknsehan/Rook.git
-cd Rook
-.\install.ps1 -WithZed</code></pre></div>
-
-<h3>5.3 Diagnostics with rokade doctor</h3>
-<p>Rokade includes a diagnostics command that checks your compiler, paths, standard library, and dependencies:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Run Diagnostics</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash">rokade doctor</code></pre></div>
-
-<p>Sample output:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">rokade doctor Output</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">=== Rokade System Diagnostics ===
-[PASS] Host OS: linux (x86_64)
-[PASS] C Compiler: /usr/bin/gcc (GNU 13.2.0)
-[PASS] Standard Library: /home/user/.local/rook/std/std.rook
-[PASS] Include Jail: secure sandboxing active
-[PASS] pkg-config: /usr/bin/pkg-config (found)
-[PASS] LLVM Backend: enabled (LLVM 18.1.3)
-[PASS] LSP Server: /home/user/.local/rook/bin/rook-lsp
-11 checks passed, 0 warnings, 0 failures. System ready.</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="quickstart">
-  <div class="chapter-header">
-    <h2 class="chapter-title">6. Project Lifecycle & Quickstart</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rokade provides commands for creating, building, and running projects.</p>
-
-<h3>6.1 Creating Projects</h3>
-<p>To create a new executable application:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">New Application</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash">rokade new my_service
-cd my_service</code></pre></div>
-
-<p>To create a library project:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">New Library</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash">rokade new --lib math_utils</code></pre></div>
-
-<h3>6.2 Project Layout</h3>
-<p>A standard Rook project directory contains:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Project Structure</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">my_service/
-├── rokade.toml          # Project configuration and dependencies
-├── src/
-│   └── main.rook        # Entry point
-├── vendor/              # Vendored dependencies
-└── build/               # Generated output
-    ├── generated/
-    │   └── main.c       # Emitted C source
-    └── linux/
-        └── my_service   # Executable binary</code></pre></div>
-
-<h3>6.3 Common Commands</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">CLI Workflow</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash"># Build the project
-rokade build
-
-# Build and run immediately
-rokade run
-
-# Print generated C code to stdout
-rokade --emit-c src/main.rook
-
-# Run in memory with the experimental LLVM JIT
-rokade run --jit</code></pre></div>
+<p>Because the parent struct is at byte offset 0, casting a child pointer to a parent pointer requires no pointer arithmetic:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Zero-Offset Upcasting</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">Player p;
+Entity* e = (Entity*)&amp;p; // Exact same memory address, zero adjustment</code></pre></div>
 
   </div>
 </section>
@@ -1176,132 +946,36 @@ rokade run --jit</code></pre></div>
 
 <section class="chapter" id="variables">
   <div class="chapter-header">
-    <h2 class="chapter-title">7. Variables, Types & Invariants</h2>
+    <h2 class="chapter-title">5. Type System & Semantic Analysis</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook is statically typed. Variables can be declared with inferred types, explicit types, or C-style syntax.</p>
+<p>Rook utilizes a static, nominal type system with strict type checking and automated C typedef resolution.</p>
 
-<h3>7.1 Variable Declaration Forms</h3>
-<p>Rook supports three declaration forms:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Variable Declarations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+<h3>5.1 Variable Declarations and Type Inference</h3>
+<p>Variables can be declared with an explicit type or inferred using the <code>let</code> keyword:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Variable Declarations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int count = 10;          // Explicit scalar
+let score = 250;         // Inferred as int
+let ptr = &amp;count;        // Inferred as int*
+int uninitialized_val;   // Automatically initialized to 0</code></pre></div>
 
-int main() {
-    // 1. Inferred type with 'let'
-    let count = 42;             // Inferred as int
-    let greeting = "Hello";     // Inferred as const char*
-
-    // 2. Explicit type with 'let'
-    let threshold: int = 100;
-    let ratio: float = 3.14159f;
-
-    // 3. C-style declaration
-    int limit = 500;
-    const char* user = "admin";
-
-    printf("%s: count=%d, limit=%d
-", greeting, count, limit);
-    return 0;
-}</code></pre></div>
-
-<div class="callout callout-ban"><div class="callout-title">Variable Declaration Syntax</div><div class="callout-body">
-Variables must be declared with <code>let</code> (e.g. <code>let x = 10;</code> or <code>let x: int = 10;</code>) or with C-style syntax (<code>int x = 10;</code>). Bare colon declarations without <code>let</code> (such as <code>x: int = 10;</code>) are rejected to prevent ambiguity with labels, conditionals, and struct field definitions.
-</div></div>
-
-<h3>7.2 Primitive Types</h3>
-<div class="table-container">
-<table>
-  <thead>
-    <tr><th>Type</th><th>Description</th><th>Size (x86_64)</th><th>C Equivalent</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>int</code></td><td>Signed 32-bit integer</td><td>4 bytes</td><td><code>int32_t</code> / <code>int</code></td></tr>
-    <tr><td><code>unsigned int</code></td><td>Unsigned 32-bit integer</td><td>4 bytes</td><td><code>uint32_t</code> / <code>unsigned int</code></td></tr>
-    <tr><td><code>short</code> / <code>long</code></td><td>Short / long integer</td><td>2 / 8 bytes</td><td><code>short</code> / <code>long</code></td></tr>
-    <tr><td><code>size_t</code></td><td>Unsigned size type</td><td>8 bytes</td><td><code>size_t</code></td></tr>
-    <tr><td><code>float</code></td><td>Single-precision float</td><td>4 bytes</td><td><code>float</code></td></tr>
-    <tr><td><code>double</code></td><td>Double-precision float</td><td>8 bytes</td><td><code>double</code></td></tr>
-    <tr><td><code>char</code></td><td>Character or byte</td><td>1 byte</td><td><code>char</code> / <code>int8_t</code></td></tr>
-    <tr><td><code>const char*</code></td><td>Null-terminated string pointer</td><td>8 bytes</td><td><code>const char*</code></td></tr>
-    <tr><td><code>bool</code></td><td>Boolean flag</td><td>1 byte</td><td><code>bool</code></td></tr>
-    <tr><td><code>void</code></td><td>Absence of value</td><td>-</td><td><code>void</code></td></tr>
-  </tbody>
-</table>
-</div>
-
-<h3>7.3 Fixed-Size Arrays</h3>
-<p>Array declarations match C layout. Uninitialized arrays are automatically zeroed:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Arrays and Iteration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int values[4]; // Lowered to: int values[4] = {0};
-values[0] = 10;
-values[1] = 20;
-
-// Iterating over elements with for-in
-for item in [100, 200, 300] {
-    printf("item: %d
-", item);
-}</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="pointers">
-  <div class="chapter-header">
-    <h2 class="chapter-title">8. Pointers & Pointer Safety</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Pointers in Rook provide direct memory manipulation with compile-time checks that prevent syntax ambiguities and unsafe arithmetic.</p>
-
-<h3>8.1 Postfix Pointer Notation</h3>
-<p>Rook standardizes on postfix notation (<code>Type*</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Pointer Syntax</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int* ptr = &amp;x;     // Postfix notation
-const char* name;  // Postfix notation</code></pre></div>
-
-<div class="callout callout-ban"><div class="callout-title">Prefix Pointer Syntax Banned</div><div class="callout-body">
-Prefix notation like <code>*int ptr;</code> is rejected by the parser:
-<pre><code>error: invalid pointer syntax '*Type'; Rook standardizes on postfix 'Type*'</code></pre>
-</div></div>
-
-<h3>8.2 Pointer Operations</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Address-of and Dereference</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-void swap(int* a, int* b) {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-int main() {
-    int x = 10;
-    int y = 20;
-    swap(&amp;x, &amp;y);
-    printf("x=%d, y=%d
-", x, y); // x=20, y=10
-    return 0;
-}</code></pre></div>
-
-<h3>8.3 Pointer Arithmetic Rules</h3>
-<p>Rook enforces specific rules on pointer calculations:</p>
+<h3>5.2 Pointer Semantics and Void Pointers</h3>
+<p>Pointers in Rook use standard C syntax (<code>T*</code>, <code>T**</code>). The type system enforces:</p>
 <ul>
-  <li><strong>Typed pointer offsets:</strong> Adding or subtracting integers from typed pointers (<code>p + 1</code>, <code>p++</code>) steps memory by <code>sizeof(*p)</code> bytes.</li>
-  <li><strong>Prohibition on void* arithmetic:</strong> Arithmetic on <code>void*</code> is rejected at compile time. Cast explicitly to byte pointers (<code>char*</code> or <code>uint8_t*</code>):
-<div class="code-block"><div class="code-header"><span class="code-lang">void* Arithmetic Check</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">void* buf = get_buffer();
-// Compile error: pointer arithmetic on 'void*' is invalid
-void* next = buf + 8; 
-
-// Correct:
-uint8_t* byte_ptr = (uint8_t*)buf;
-uint8_t* next_byte = byte_ptr + 8;</code></pre></div>
-  </li>
-  <li><strong>Prohibition on non-additive operations:</strong> Multiplying, dividing, modulo-ing, or bitwise-shifting pointers is rejected at compile time:
-<div class="code-block"><div class="code-header"><span class="code-lang">Invalid Pointer Operations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int* p = &amp;x;
-p = p * 2;    // Compile error: invalid operand to binary operator
-p = p &amp; 0xFF; // Compile error: invalid operand to binary operator</code></pre></div>
-  </li>
+  <li><code>void*</code> is compatible with any pointer type (allowing standard memory allocators like <code>malloc</code> without explicit casts).</li>
+  <li>Arithmetic on <code>void*</code> is prohibited at compile time; pointers must be cast to <code>char*</code> or <code>uint8_t*</code> before applying byte offsets.</li>
+  <li>Pointer indirection is performed using either unary <code>*ptr</code> or member arrow <code>ptr->field</code> / dot <code>ptr.field</code>.</li>
 </ul>
+
+<h3>5.3 Dynamic Typedef Unwrapping (<code>ck_unwrap_typedef</code>)</h3>
+<p>When external C headers are included, the semantic analyzer indexes all typedef aliases (such as <code>uint32_t</code>, <code>size_t</code>, <code>gchar</code>, <code>gboolean</code>, or <code>HWND</code>). During type checking, <code>ck_unwrap_typedef</code> recursively resolves typedef chains to verify structural equivalence:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">C Typedef Resolution</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;gtk/gtk.h&gt;
+
+// gtk_window_get_title returns 'const gchar*'
+// In GLib, 'typedef char gchar;'
+// The compiler unwraps 'gchar' to 'char', verifying exact compatibility:
+const char* title = gtk_window_get_title(win);</code></pre></div>
 
   </div>
 </section>
@@ -1309,265 +983,71 @@ p = p &amp; 0xFF; // Compile error: invalid operand to binary operator</code></p
 
 <section class="chapter" id="control-flow">
   <div class="chapter-header">
-    <h2 class="chapter-title">9. Control Flow & Branching</h2>
+    <h2 class="chapter-title">6. Control Flow & Evaluation Rules</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook provides standard control flow constructs with compile-time checks to prevent common logic errors.</p>
+<p>Control flow structures in Rook provide strict compile-time invariants to eliminate common C logic bugs.</p>
 
-<h3>9.1 Conditionals: if and else</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Conditional Branches</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">if (status == 200) {
-    printf("OK
-");
-} else if (status &gt;= 400 &amp;&amp; status &lt; 500) {
-    printf("Client Error
-");
-} else {
-    printf("Other
-");
+<h3>6.1 Conditionals &amp; Assignment Rejection</h3>
+<p>Condition expressions in <code>if</code> and <code>while</code> statements must evaluate to boolean or numeric truth values. Assignment operators (<code>=</code>, <code>+=</code>, etc.) are syntactically rejected inside conditions:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Condition Invariant</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int x = 0;
+if (x == 5) {
+    // Valid equality check
+}
+
+// if (x = 5) { } // Hard compile-time error: assignment not allowed in condition</code></pre></div>
+
+<h3>6.2 Guaranteed Short-Circuit Evaluation</h3>
+<p>In both the C and LLVM2 backends, logical AND (<code>&&</code>) and logical OR (<code>||</code>) operators guarantee short-circuit evaluation. The right-hand operand is never evaluated if the left-hand operand determines the result:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Short-Circuit Guard</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int* ptr = NULL;
+if (ptr != NULL &amp;&amp; *ptr == 10) {
+    // Safe: '*ptr' is never evaluated when ptr is NULL
 }</code></pre></div>
 
-<div class="callout callout-ban"><div class="callout-title">Assignment in Condition Banned</div><div class="callout-body">
-Rook's semantic analyzer rejects assignment expressions inside condition blocks:
-<ul>
-  <li><code>if (cond)</code></li>
-  <li><code>while (cond)</code></li>
-  <li><code>for (...; cond; ...)</code></li>
-  <li><code>switch (cond)</code></li>
-  <li>Ternary operators: <code>(cond) ? a : b</code></li>
-</ul>
-<pre><code>error: assignment used as condition; did you mean '=='?</code></pre>
-</div></div>
+<p>In the LLVM2 backend, short-circuiting is lowered using explicit basic blocks (<code>land.rhs</code>, <code>land.merge</code>) and PHI nodes:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">LLVM2 Lowering of &&</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-llvm">%lhs_val = icmp ne ptr %ptr, null
+  br i1 %lhs_val, label %land.rhs, label %land.merge
 
-<h3>9.2 Loops: while, do-while, for, and for-in</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Looping Constructs</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// 1. while loop
-int i = 0;
-while (i &lt; 5) {
-    i++;
+land.rhs:
+  %deref = load i32, ptr %ptr, align 4
+  %rhs_val = icmp eq i32 %deref, 10
+  br label %land.merge
+
+land.merge:
+  %result = phi i1 [ false, %entry ], [ %rhs_val, %land.rhs ]</code></pre></div>
+
+<h3>6.3 Loops</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Loops in Rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Standard while loop
+while (condition) {
+    step();
 }
 
-// 2. Standard for loop
-for (int idx = 0; idx &lt; 10; idx++) {
-    if (idx == 3) continue;
-    if (idx == 8) break;
+// Three-clause for loop
+for (int i = 0; i &lt; 10; i++) {
+    printf("%d\n", i);
 }
 
-// 3. for-in loop over array
-for score in [95, 88, 72, 100] {
-    printf("score: %d
-", score);
+// Array iteration (for-in)
+int values[4] = { 10, 20, 30, 40 };
+for item in values {
+    printf("%d\n", item);
 }</code></pre></div>
 
-<h3>9.3 Scalar Branching: switch</h3>
-<p>For dispatch on integer and enum values using jump tables, Rook supports standard C <code>switch</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Standard switch</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">switch (opcode) {
-    case 1:
-        execute_add();
-        break;
-    case 2:
-        execute_sub();
-        break;
-    default:
-        handle_unknown();
-        break;
-}</code></pre></div>
+<h3>6.4 Deterministic Cleanup with <code>defer</code></h3>
+<p>The <code>defer</code> statement registers a statement or block to be executed upon leaving the current enclosing scope. Multiple <code>defer</code> statements execute in reverse declaration order (Last-In, First-Out / LIFO):</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Deterministic Resource Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">FILE* f = fopen("data.bin", "rb");
+if (!f) return -1;
+defer fclose(f); // Guaranteed to execute on any exit path
 
-<div class="callout callout-note"><div class="callout-title">switch and match</div><div class="callout-body">
-The <code>switch</code> statement is intended for scalar values with case labels and explicit <code>break</code>. For pattern matching, destructuring, and sum types, use the <code>match</code> construct (see Chapter 13).
-</div></div>
+void* buf = malloc(1024);
+defer free(buf); // Executes before fclose(f)
 
-<h3>9.4 Prohibition of goto</h3>
-<p>Rook bans the <code>goto</code> keyword. Control flow must use structured constructs (<code>if</code>, <code>while</code>, <code>for</code>, <code>switch</code>, <code>match</code>, <code>break</code>, <code>continue</code>, and <code>return</code>).</p>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="functions">
-  <div class="chapter-header">
-    <h2 class="chapter-title">10. Functions & Call Semantics</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Functions in Rook follow standard C declaration syntax without extra keywords.</p>
-
-<h3>10.1 Function Declarations</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Function Definitions</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int multiply(int a, int b) {
-    return a * b;
+if (error_condition()) {
+    return -2; // buf is freed, then f is closed
 }
-
-void log_message(const char* tag, const char* msg) {
-    printf("[%s] %s
-", tag, msg);
-}
-
-int main() {
-    let result = multiply(6, 7);
-    log_message("INFO", "Calculation complete");
-    return 0;
-}</code></pre></div>
-
-<h3>10.2 Compiler Validations</h3>
-<ul>
-  <li><strong>Return validation:</strong> Non-void functions must return a value across all control paths. A path that reaches the end of the function without returning causes a compile error.</li>
-  <li><strong>Arity and type verification:</strong> Function calls are statically verified against declarations. Missing or excess arguments produce compile errors.</li>
-  <li><strong>Scope rules:</strong> Functions must be declared at the file level. Nested function definitions are rejected.</li>
-</ul>
-
-<h3>10.3 External C Functions (extern)</h3>
-<p>When calling C functions without including their header file, declare their signature with <code>extern</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">extern Declarations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">extern int puts(const char* s);
-extern void* memcpy(void* dest, const void* src, size_t n);
-
-int main() {
-    puts("Direct C linkage");
-    return 0;
-}</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="structs">
-  <div class="chapter-header">
-    <h2 class="chapter-title">11. Structs & Memory Layout</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Structs in Rook represent plain data records that map directly to C struct layout, matching memory alignment, size, and field offsets.</p>
-
-<h3>11.1 Definition and Initialization</h3>
-<p>Fields can be declared using either C-style (<code>Type name;</code>) or let-style (<code>let name: Type;</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Struct Definitions and Initialization</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// 1. C-style field definitions
-struct Vector2 {
-    float x;
-    float y;
-};
-
-// 2. Let-style field definitions
-struct Vector2Let {
-    let x: float;
-    let y: float;
-};
-
-int main() {
-    // Positional initialization
-    Vector2 v1 = {10.0f, 20.0f};
-
-    // Designated named initialization
-    let v2 = Vector2{ y: 50.0f, x: 25.0f };
-
-    printf("v1: (%.1f, %.1f)
-", v1.x, v1.y);
-    printf("v2: (%.1f, %.1f)
-", v2.x, v2.y);
-    return 0;
-}</code></pre></div>
-
-<h3>11.2 Field Access</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Field Access Operators</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">Vector2 v = Vector2{ x: 1.0f, y: 2.0f };
-Vector2* ptr = &amp;v;
-
-// Value field access uses '.'
-v.x = 5.0f;
-
-// Pointer field access uses '-&gt;'
-ptr-&gt;y = 10.0f;</code></pre></div>
-
-<div class="callout callout-spec"><div class="callout-title">Transpilation to Compound Literals</div><div class="callout-body">
-Designated initializers like <code>Vector2{ y: 50.0f, x: 25.0f }</code> transpile directly to C99 designated compound literals:
-<pre><code>((Vector2){.y = 50.0f, .x = 25.0f})</code></pre>
-</div></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="objects">
-  <div class="chapter-header">
-    <h2 class="chapter-title">12. Objects, Methods & Single Inheritance</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rook supports single inheritance and method dispatch without virtual method tables (vtables) or runtime type information (RTTI).</p>
-
-<h3>12.1 Defining Objects</h3>
-<p>An <code>object</code> defines a record type that can inherit from another object. Fields support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Object Inheritance</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Entity {
-    int id;
-    float x;
-    float y;
-}
-
-// Player inherits all fields from Entity
-object Player : Entity {
-    int health;
-    const char* username;
-}</code></pre></div>
-
-<h3>12.2 Memory Layout</h3>
-<p>When transpiling <code>object Player : Entity</code>, Rook embeds the base object as the first member named <code>_base</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Generated C Struct</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">// Generated C representation
-typedef struct Entity {
-    int id;
-    float x;
-    float y;
-} Entity;
-
-typedef struct Player {
-    struct Entity _base; // Embedded at offset 0
-    int health;
-    const char* username;
-} Player;</code></pre></div>
-
-<p>Because <code>_base</code> is located at offset 0, a pointer to <code>Player</code> can be converted directly to a pointer to <code>Entity</code> under standard C ABI rules.</p>
-
-<h3>12.3 Methods with impl</h3>
-<p>Methods are attached to an object using an <code>impl</code> block:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Methods and Inheritance</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-object Shape {
-    float x;
-    float y;
-}
-
-impl Shape {
-    void translate(Shape* self, float dx, float dy) {
-        self-&gt;x += dx;
-        self-&gt;y += dy;
-    }
-}
-
-object Circle : Shape {
-    float radius;
-}
-
-impl Circle {
-    void describe(self) { // 'self' infers Circle*
-        printf("Circle at (%.1f, %.1f) radius %.1f
-", self.x, self.y, self.radius);
-    }
-}
-
-int main() {
-    let c = Circle{ x: 10.0f, y: 15.0f, radius: 5.0f };
-    c.describe();
-
-    // Call inherited method
-    c.translate(5.0f, -5.0f);
-    c.describe();
-    return 0;
-}</code></pre></div>
-
-<div class="callout callout-tip"><div class="callout-title">Static Method Dispatch</div><div class="callout-body">
-Method calls like <code>c.describe()</code> lower to direct C function calls: <code>Circle_describe(&c)</code>. Inherited calls like <code>c.translate(...)</code> lower to <code>Shape_translate(&c._base, ...)</code>. Dispatch is static and resolved at compile time.
-</div></div>
+return 0;      // buf is freed, then f is closed</code></pre></div>
 
   </div>
 </section>
@@ -1575,274 +1055,63 @@ Method calls like <code>c.describe()</code> lower to direct C function calls: <c
 
 <section class="chapter" id="sum-match">
   <div class="chapter-header">
-    <h2 class="chapter-title">13. Algebraic Data Types: sum, enum & match</h2>
+    <h2 class="chapter-title">7. Algebraic Data Types: sum, enum & match</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook provides <code>sum</code> types (tagged unions) and pattern matching via <code>match</code> for data that can take one of multiple variant shapes.</p>
+<p>Rook provides first-class Algebraic Data Types (ADTs) through <code>sum</code> and <code>enum</code> declarations, accompanied by compile-time exhaustive <code>match</code> statements.</p>
 
-<h3>13.1 Enumerations: enum</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Enum Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete
+<h3>7.1 Simple Enums</h3>
+<p>A simple <code>enum</code> defines named numeric constants matching C enum semantics:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Simple Enum</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">enum Direction {
+    North,
+    East,
+    South,
+    West
 }</code></pre></div>
 
-<h3>13.2 Sum Types (Tagged Unions)</h3>
-<p>A <code>sum</code> type defines a value that can hold one of several variant shapes. Variant payloads support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum Node {
-    Leaf { int value; };
-    Branch { Node* left; Node* right; };
-    Empty;
+<h3>7.2 Sum Types (Tagged Unions)</h3>
+<p>A <code>sum</code> type represents a value that can take one of several variant shapes, each optionally carrying payload data:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum Shape {
+    Circle { radius: float },
+    Rectangle { width: float, height: float },
+    Point
 }</code></pre></div>
 
-<p>In memory, Rokade lowers a <code>sum</code> type into a C struct containing an integer discriminator tag and an anonymous union for variant payloads:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Lowered C Tagged Union</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-c">typedef struct Node {
-    int tag; // Identifies active variant
-    union {
-        struct { int value; } Leaf;
-        struct { struct Node* left; struct Node* right; } Branch;
-    };
-} Node;</code></pre></div>
-
-<h3>13.3 Pattern Matching with match</h3>
-<p>The <code>match</code> construct provides destructuring for sum types, enums, and scalar values in both statement and expression forms.</p>
-
-<h4>Statement Form:</h4>
-<div class="code-block"><div class="code-header"><span class="code-lang">Statement match</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">void print_node(Node* n) {
-    match (*n) {
-        Leaf { value }         =&gt; printf("Leaf: %d
-", value),
-        Branch { left, right } =&gt; printf("Branch
-"),
-        Empty                  =&gt; printf("Empty
-"),
-        _                      =&gt; printf("Unknown
-")
-    }
-}</code></pre></div>
-
-<h4>Expression Form:</h4>
-<div class="code-block"><div class="code-header"><span class="code-lang">Expression match</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum Shape {
-    Circle { float radius; };
-    Rectangle { float width; float height; };
-    Point;
-}
-
-float calculate_area(Shape s) {
-    return match (s) {
-        Circle { radius }        =&gt; 3.14159f * radius * radius,
-        Rectangle { width, height } =&gt; width * height,
-        Point                    =&gt; 0.0f,
-        _                        =&gt; 0.0f
-    };
-}</code></pre></div>
-
-<h3>13.4 Instantiating Sum Types</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Instantiating Sum Variants</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-sum Shape {
-    Circle { float r; };
-    Rect { float w; float h; };
-    Point;
-}
-
-impl Shape {
-    float area(Shape* self) {
-        return match (*self) {
-            Circle { r }  =&gt; 3.14159f * r * r,
-            Rect { w, h } =&gt; w * h,
-            Point         =&gt; 0.0f,
-            _             =&gt; 0.0f,
-        };
-    }
-}
-
-int main() {
-    Shape a = Circle{ r: 2.0f };
-    Shape b = Rect{ w: 3.0f, h: 4.0f };
-    Shape c = Point;
-
-    printf("Circle area: %f
-", a.area());
-    printf("Rect area:   %f
-", b.area());
-    printf("Point area:  %f
-", c.area());
-    return 0;
-}</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="cleanup-defer">
-  <div class="chapter-header">
-    <h2 class="chapter-title">14. Deterministic Cleanup: defer</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>The <code>defer</code> statement schedules cleanup code to execute at the end of the enclosing lexical scope.</p>
-
-<h3>14.1 Execution Order</h3>
-<p>Multiple deferred statements execute in Last-In, First-Out (LIFO) order:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">LIFO Execution</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-void trace_lifo() {
-    defer printf("1 (runs last)
-");
-    defer printf("2 (runs middle)
-");
-    printf("Body execution
-");
-    defer printf("3 (runs first)
-");
-}
-
-int main() {
-    trace_lifo();
-    return 0;
-}</code></pre></div>
-
-<p>Output:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Execution Output</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">Body execution
-3 (runs first)
-2 (runs middle)
-1 (runs last)</code></pre></div>
-
-<h3>14.2 Managing Resources with defer</h3>
-<p>Place <code>defer</code> immediately after acquiring a resource to ensure cleanup regardless of exit path:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Resource Management with defer</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
-
-int process_data(const char* filename) {
-    FILE* f = fopen(filename, "r");
-    if (!f) return -1;
-    defer fclose(f); // Guaranteed close
-
-    int* data = (int*)malloc(1000 * sizeof(int));
-    if (!data) return -2;
-    defer free(data); // Guaranteed free
-
-    return 0;
-}</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="modules">
-  <div class="chapter-header">
-    <h2 class="chapter-title">15. Modules, Namespaces & Directives</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rook eliminates C header files (<code>.h</code>) for Rook code while maintaining clear rules for importing external C libraries.</p>
-
-<h3>15.1 Directives Overview</h3>
+<p>In memory, a <code>sum</code> is represented as a tagged struct containing an integer discriminator tag followed by a union buffer sized to the largest variant:</p>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Directive</th><th>Usage</th><th>Behavior</th></tr>
+    <tr><th>Offset</th><th>Member</th><th>Description</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>#comprise module</code></td><td>Import local Rook source file</td><td>Parsed into the AST; diamond dependencies deduplicated automatically.</td></tr>
-    <tr><td><code>#comprise &lt;std/io&gt;</code></td><td>Import Rook standard library module</td><td>Resolves against the standard library path; deduplicated.</td></tr>
-    <tr><td><code>#include &lt;header.h&gt;</code></td><td>Import system C header</td><td>Passed through to generated C output.</td></tr>
-    <tr><td><code>#include "header.h"</code></td><td>Import project C header</td><td>Validated against sandbox boundaries.</td></tr>
+    <tr><td>0..3</td><td><code>tag: int32_t</code></td><td>Numeric variant index (0 = Circle, 1 = Rectangle, 2 = Point)</td></tr>
+    <tr><td>4..7</td><td><em>Padding</em></td><td>Natural alignment padding</td></tr>
+    <tr><td>8..15</td><td><code>payload: union</code></td><td>Sized to <code>max(sizeof(Circle), sizeof(Rectangle))</code> = 8 bytes</td></tr>
   </tbody>
 </table>
 </div>
 
-<h3>15.2 Multi-File Modules</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">src/math.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/math.rook
-int add(int a, int b) {
-    return a + b;
-}
-
-int sub(int a, int b) {
-    return a - b;
+<h3>7.3 Pattern Matching and Exhaustiveness</h3>
+<p>The <code>match</code> construct tests a sum type against its possible variants. The compiler enforces that all variants are handled:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Pattern Matching</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">float get_area(Shape s) {
+    match (s) {
+        Circle(c) =&gt; return 3.14159 * c.radius * c.radius;
+        Rectangle(r) =&gt; return r.width * r.height;
+        Point =&gt; return 0.0;
+    }
 }</code></pre></div>
 
-<div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/main.rook
-#include &lt;stdio.h&gt;
-#comprise math // Imports src/math.rook
+<h3>7.4 Error Handling with <code>Result</code> and <code>?</code> Operator</h3>
+<p>The standard library provides <code>Result</code> and <code>Option</code> sum types. The postfix <code>?</code> operator unwraps a successful value or early-returns the error variant from the enclosing function:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Error Propagation with ?</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#comprise std/io
 
-int main() {
-    printf("add: %d
-", add(10, 5));
-    return 0;
-}</code></pre></div>
-
-<div class="callout callout-tip"><div class="callout-title">Automatic Deduplication</div><div class="callout-body">
-Unlike C where headers require include guards, <code>#comprise</code> deduplicates modules automatically. If multiple modules comprise the same source file, it is parsed and compiled once.
-</div></div>
-
-<h3>15.3 Include Sandboxing</h3>
-<p>To prevent directory traversal during compilation, Rokade enforces path validation on inclusion directives:</p>
-<ul>
-  <li>Paths must reside within the project root, the standard library installation, vendored directories, or system include directories.</li>
-  <li>Relative traversal attempts (such as <code>#include "../../../etc/passwd"</code>) are rejected at compile time.</li>
-</ul>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="dependencies">
-  <div class="chapter-header">
-    <h2 class="chapter-title">16. Vendored Dependencies & Packages</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rokade manages project dependencies through the <code>vendor/</code> directory and <code>rokade.toml</code>.</p>
-
-<h3>16.1 Declaring Dependencies</h3>
-<p>Declare local path dependencies in the <code>[dependencies]</code> table of <code>rokade.toml</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Dependencies in rokade.toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[package]
-name = "my_game"
-version = "0.1.0"
-
-[build]
-kind = "exe"
-targets = ["linux"]
-
-[dependencies]
-engine = { path = "vendor/engine" }
-physics = { path = "vendor/physics" }</code></pre></div>
-
-<h3>16.2 The vendor/ Directory</h3>
-<p>Vendored dependencies are self-contained Rook packages placed in <code>vendor/</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Vendored Project Layout</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">my_game/
-├── rokade.toml
-├── src/
-│   └── main.rook
-└── vendor/
-    └── engine/
-        ├── rokade.toml
-        └── src/
-            └── engine.rook</code></pre></div>
-
-<h3>16.3 Dependency Resolution</h3>
-<p>When compiling, Rokade traverses the dependency graph:</p>
-<ol>
-  <li>Inspects declared dependencies in <code>rokade.toml</code>.</li>
-  <li>Parses each dependency's configuration.</li>
-  <li>Resolves transitive dependencies recursively.</li>
-  <li>Passes include paths and source files to the compiler command.</li>
-</ol>
-
-<p>In source code, comprise the dependency by name:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Comprising Vendored Libraries</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#comprise engine
-
-int main() {
-    engine_init();
-    return 0;
+Result&lt;int, IOError&gt; read_config() {
+    File f = File::open("config.json", "r")?; // Early return if Err
+    defer f.close();
+    int val = f.read_int()?;
+    return Result::Ok(val);
 }</code></pre></div>
 
   </div>
@@ -1851,66 +1120,48 @@ int main() {
 
 <section class="chapter" id="c-interop">
   <div class="chapter-header">
-    <h2 class="chapter-title">17. C Interoperability & Integration</h2>
+    <h2 class="chapter-title">8. Zero-Overhead C Interoperability & Libclang Integration</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook is designed for direct interoperability with C. Because Rook code transpiles to standard C with identical memory layouts and calling conventions, you can call C libraries directly without foreign function interface (FFI) bindings or wrapper code.</p>
+<p>Rook interfaces directly with standard C libraries without manual foreign function interface (FFI) bindings or glue code.</p>
 
-<h3>17.1 Integrating System Libraries via pkg-config</h3>
-<p>Specify system libraries in the <code>pkg-config</code> array of <code>rokade.toml</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml with pkg-config</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[package]
-name = "raylib_demo"
-version = "0.1.0"
+<h3>8.1 Dynamic Header Compilation with Libclang</h3>
+<p>When Rook encounters <code>#include &lt;header.h&gt;</code> in a source file, <code>c_import.c</code> invokes the libclang parser. It traverses the Clang Translation Unit AST in memory, extracting:</p>
+<ul>
+  <li>Function declarations, return types, and parameter signatures.</li>
+  <li>Struct and union definitions with exact byte offsets and padding.</li>
+  <li>Typedef aliases and underlying canonical types.</li>
+  <li>Preprocessor enum constants and global variables.</li>
+</ul>
 
-[build]
-kind = "exe"
-pkg-config = ["raylib"]</code></pre></div>
+<h3>8.2 Function Pointer Callbacks</h3>
+<p>Rook functions matching C callback prototypes can be passed directly as function pointers:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Passing Function Pointers to C Callbacks</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;Elementary.h&gt;
 
-<p>Rokade calls <code>pkg-config</code> to discover the compiler and linker flags for the library.</p>
-
-<h3>17.2 Raylib Example</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Raylib Window in Rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-#include &lt;raylib.h&gt;
+void on_click(void* data, Evas_Object* obj, void* event_info) {
+    printf("Button clicked!\n");
+}
 
 int main() {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
-    InitWindow(screenWidth, screenHeight, "Rook + Raylib Demo");
-    defer CloseWindow();
-
-    SetTargetFPS(60);
-
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-
-        DrawText("Welcome to Rook systems programming!", 160, 200, 20, DARKGRAY);
-        DrawFPS(10, 10);
-
-        EndDrawing();
-    }
-
+    elm_init(0, NULL);
+    Evas_Object* win = elm_win_util_standard_add("main", "Demo");
+    Evas_Object* btn = elm_button_add(win);
+    evas_object_smart_callback_add(btn, "clicked", on_click, NULL);
+    evas_object_show(win);
+    elm_run();
     return 0;
 }</code></pre></div>
 
-<h3>17.3 Embedding Raw C Declarations</h3>
-<p>You can embed C declarations, typedefs, and inline helper functions directly in a <code>.rook</code> file:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Direct C Declarations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">typedef struct {
-    int code;
-    char detail[64];
-} ErrorContext;
-
-int calculate_hash(const char* str) {
-    int hash = 5381;
-    int c;
-    while ((c = *str++)) {
-        hash = ((hash &lt;&lt; 5) + hash) + c;
-    }
-    return hash;
-}</code></pre></div>
+<h3>8.3 Managing C Dependencies via <code>rokade.toml</code></h3>
+<p>Project dependencies on system libraries are declared in <code>rokade.toml</code> under <code>pkg-config</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[project]
+name = "gui_app"
+version = "0.1.0"
+pkg-config = ["raylib", "elementary", "sqlite3"]</code></pre></div>
+<p>The compiler automatically queries <code>pkg-config --cflags</code> and <code>pkg-config --libs</code> during build execution.</p>
 
   </div>
 </section>
@@ -1918,286 +1169,48 @@ int calculate_hash(const char* str) {
 
 <section class="chapter" id="stdlib">
   <div class="chapter-header">
-    <h2 class="chapter-title">18. Standard Library Reference (std/)</h2>
+    <h2 class="chapter-title">9. Standard Library (std/) Architecture</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Rook includes a modern, high-performance standard library in the <code>std/</code> directory. Modules can be imported individually via <code>#comprise &lt;std/name&gt;</code> or together via <code>#comprise &lt;std&gt;</code>.</p>
+<p>Rook's standard library resides in <code>std/</code> and provides fundamental primitives implemented directly in Rook.</p>
 
-<h3>18.1 std/io: Safe, Idiomatic Console I/O</h3>
-<p>Import with <code>#comprise &lt;std/io&gt;</code>. Rook provides first-class, type-safe output and safe line/token input without requiring raw C <code>printf</code> or vulnerable <code>scanf</code> format strings:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">std/io Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Typed Output
-println("Rook standard I/O");     // Prints string + newline
-print("Value: ");                  // Prints string without newline
-println_int(42);                   // Prints integer + newline
-println_float(3.14159f);           // Prints float (default precision)
-println_float_prec(3.14159f, 2);   // Prints float with 2 decimal places
-println_bool(true);                // Prints 'true' or 'false'
-println_char('A');                 // Prints single character
-io_flush();                        // Flushes stdout
-
-// Standard Error Output
-eprintln("Fatal error occurred!"); // Prints to stderr + newline
-eprintln_int(err_code);            // Prints int to stderr
-
-// Safe Interactive Input
-char buf[128];
-print("Enter name: ");
-io_flush();
-size_t len = scanln(buf, sizeof(buf)); // Reads line, strips \r/\n, drains overflow
-
-print("Enter age: ");
-io_flush();
-int age = scan_int();             // Parses next integer safely
-
-print("Enter score: ");
-io_flush();
-float score = scan_float();       // Parses next float safely</code></pre></div>
-
-<h3>18.2 std/str: String Slices &amp; Classification</h3>
-<p>Import with <code>#comprise &lt;std/str&gt;</code>. <code>Str</code> is a non-owning string view containing a pointer and a length (<code>const char* data; size_t len;</code>):</p>
+<h3>9.1 Modules Overview</h3>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Function / Method</th><th>Description</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>str_from_cstr(s)</code></td><td>Creates a <code>Str</code> slice from a null-terminated C string.</td></tr>
-    <tr><td><code>s.is_empty()</code></td><td>Returns true if <code>s.len == 0</code>.</td></tr>
-    <tr><td><code>s.slice(start, len)</code></td><td>Returns a subslice without allocating new memory.</td></tr>
-    <tr><td><code>s.equals(other)</code></td><td>Returns true if both string slices match in content.</td></tr>
-    <tr><td><code>s.compare(other)</code></td><td>Lexicographically compares two string slices (-1, 0, 1).</td></tr>
-    <tr><td><code>s.starts_with(prefix)</code></td><td>Checks for matching prefix.</td></tr>
-    <tr><td><code>s.ends_with(suffix)</code></td><td>Checks for matching suffix.</td></tr>
-    <tr><td><code>s.trim()</code></td><td>Returns a subslice with leading and trailing whitespace stripped.</td></tr>
-    <tr><td><code>s.find(sub)</code></td><td>Returns byte offset of substring, or -1 if not found.</td></tr>
-    <tr><td><code>s.contains(sub)</code></td><td>Returns true if substring is present.</td></tr>
-    <tr><td><code>s.to_int()</code></td><td>Parses ASCII digits into an integer.</td></tr>
-    <tr><td><code>s.to_float()</code></td><td>Parses ASCII string slice into a float.</td></tr>
-    <tr><td><code>s.to_bool()</code></td><td>Returns true for "true" or "1".</td></tr>
-    <tr><td><code>s.to_cstr(buf, cap)</code></td><td>Copies string slice into buffer and null-terminates.</td></tr>
-    <tr><td><code>s.clone()</code></td><td>Duplicates string slice into a heap-allocated null-terminated C string.</td></tr>
-    <tr><td><code>char_is_digit(c)</code> / <code>char_is_alpha(c)</code> / <code>char_is_space(c)</code></td><td>Character classification functions.</td></tr>
-  </tbody>
-</table>
-</div>
-
-<h3>18.3 std/vec: Dynamic Vector &amp; StringBuilder</h3>
-<p>Import with <code>#comprise &lt;std/vec&gt;</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">std/vec Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Dynamic Vector of pointers
-Vec v = vec_new(8);
-defer v.destroy();
-
-v.push(&amp;item1);
-v.insert_at(0, &amp;item0); // Insert at index
-void* removed = v.remove_at(0); // Remove at index
-void* val = v.pop();
-
-// Dynamic String Builder
-StringBuilder sb = sb_new(64);
-defer sb.destroy();
-
-sb.append_cstr("Latency: ");
-sb.append_int(42);
-sb.append_cstr(" ms, status: ");
-sb.append_bool(true);
-sb.println(); // Prints builder content with newline directly</code></pre></div>
-
-<h3>18.4 std/mem: Arena Allocator</h3>
-<p>Import with <code>#comprise &lt;std/mem&gt;</code>. The <code>Arena</code> allocator allocates sequentially from a contiguous memory block, allowing batch deallocation with <code>reset()</code> or <code>destroy()</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Arena Allocator Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">Arena arena = arena_new(65536); // 64 KB memory pool
-defer arena.destroy();
-
-void* block1 = arena.alloc(128);
-int* zeroed_array = (int*)arena.alloc_zero(10 * sizeof(int));
-
-arena.reset(); // Resets allocation offset</code></pre></div>
-
-<h3>18.5 std/test: Lightweight Testing Framework</h3>
-<p>Import with <code>#comprise &lt;std/test&gt;</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">std/test Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">TestSuite t = test_new();
-
-t.assert_true(1 + 1 == 2, "math_addition");
-t.assert_false(false, "boolean_check");
-t.assert_eq_int(42, calculate(), "calc_check");
-t.assert_eq_float(3.14f, get_pi(), 0.01f, "pi_approx");
-t.assert_eq_str("hello", greeting, "str_match");
-t.assert_not_null(ptr, "ptr_allocated");
-
-return t.finish(); // Prints summary and returns 0 if all passed, 1 on failure</code></pre></div>
-
-<h3>18.6 std/fs: File System &amp; Paths</h3>
-<p>Import with <code>#comprise &lt;std/fs&gt;</code>:</p>
-<ul>
-  <li><code>fs_read_to_string(path, out_size)</code> — Reads entire file into heap buffer.</li>
-  <li><code>fs_write_file(path, data, size)</code> — Overwrites file with buffer.</li>
-  <li><code>fs_append_file(path, data, size)</code> — Appends buffer to file.</li>
-  <li><code>fs_exists(path)</code>, <code>fs_is_file(path)</code>, <code>fs_is_dir(path)</code> — Path queries.</li>
-  <li><code>fs_create_dir(path)</code> — Creates directory with 0755 permissions.</li>
-  <li><code>fs_copy_file(src, dst)</code> — Copies file content.</li>
-  <li><code>path_basename(path)</code>, <code>path_dirname(path)</code>, <code>path_extension(path)</code> — Path parsing.</li>
-</ul>
-
-<h3>18.7 std/log: Leveled Structured Logging</h3>
-<p>Import with <code>#comprise &lt;std/log&gt;</code>. Routes <code>Debug</code> and <code>Info</code> to stdout, and <code>Warn</code> and <code>Error</code> to stderr with configurable log level thresholds:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">std/log Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Instance logger
-Logger log = log_new(LogLevel.Info);
-log.info("Server listening on port 8080");
-log.info_int("active_connections", 12);
-log.warn("High memory consumption detected");
-log.error("Failed to connect to upstream service");
-
-// Package-level global logger
-log_set_global_level(LogLevel.Debug);
-log_debug("Cache initialized");
-log_info("Worker ready");</code></pre></div>
-
-<h3>18.8 std/json: High-Performance Zero-Allocation JSON</h3>
-<p>Import with <code>#comprise &lt;std/json&gt;</code>. Provides streaming zero-copy field and array getters (string, integer, float, boolean) and builders without heap parsing overhead:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">std/json Usage</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">const char* json = "{\"host\": \"127.0.0.1\", \"port\": 5432, \"ratio\": 0.95, \"nodes\": [\"db1\", \"db2\"]}";
-
-char host[64];
-json_get_string(json, "host", host, sizeof(host));
-
-int port = 0;
-json_get_int(json, "port", &amp;port);
-
-float ratio = 0.0f;
-json_get_float(json, "ratio", &amp;ratio);
-
-int node_count = json_get_array_len(json, "nodes");
-char first_node[32];
-json_array_get_string(json, "nodes", 0, first_node, sizeof(first_node));
-
-// Generating JSON
-StringBuilder sb = sb_new(128);
-defer sb.destroy();
-sb.append_char('{');
-json_write_key_string(&amp;sb, "status", "ok");
-sb.append_char(',');
-json_write_key_int(&amp;sb, "code", 200);
-sb.append_char(',');
-json_write_key_float(&amp;sb, "latency_ms", 1.45f);
-sb.append_char('}');</code></pre></div>
-
-<h3>18.9 Additional Modules: std/math, std/os &amp; std/result</h3>
-<ul>
-  <li><strong>std/math:</strong> Vector math (<code>Vec2</code>, <code>Vec3</code>), rectangles (<code>Rect</code>), clamping, <code>lerpf</code>, <code>signi</code>, <code>signf</code>, <code>powi</code>, <code>math_round</code>, <code>math_floor</code>, <code>math_ceil</code>, <code>math_pow</code>.</li>
-  <li><strong>std/os:</strong> System utilities (<code>os_getenv</code>, <code>os_setenv</code>, <code>os_cwd</code>, <code>os_pid</code>, <code>os_time_sec</code>, <code>os_time_ms</code>, <code>os_sleep_ms</code>, <code>panic</code>, <code>exit_with</code>).</li>
-  <li><strong>std/result:</strong> Monadic types (<code>Result</code> and <code>Option</code>).</li>
-</ul>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="safety">
-  <div class="chapter-header">
-    <h2 class="chapter-title">19. Safety Invariants & Compile-Time Checks</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rook checks source code at compile time to eliminate common classes of undefined behavior and bugs found in C.</p>
-
-<div class="table-container">
-<table>
-  <thead>
-    <tr><th>Check</th><th>Standard C Behavior</th><th>Rook Behavior</th><th>Rationale</th></tr>
+    <tr><th>Module</th><th>Header</th><th>Primary Capabilities</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Assignment in condition</strong></td>
-      <td>Silently assigns variable and tests truthiness (<code>if (x = 5)</code>).</td>
-      <td>Compile error (including with parentheses: <code>if ((x = 5))</code>)</td>
-      <td>Almost always a typo for <code>==</code> that introduces logic bugs.</td>
+      <td><strong><code>std/io</code></strong></td>
+      <td><code>#comprise std/io</code></td>
+      <td>Buffered stream I/O, file handle abstraction, line-by-line reading, binary read/write operations.</td>
     </tr>
     <tr>
-      <td><strong>Uninitialized locals</strong></td>
-      <td>Contains arbitrary stack data (undefined behavior).</td>
-      <td>Initialized to zero (<code>= 0</code>)</td>
-      <td>Prevents non-deterministic bugs and uninitialized memory reads.</td>
+      <td><strong><code>std/math</code></strong></td>
+      <td><code>#comprise std/math</code></td>
+      <td>Arithmetic utility routines: <code>min</code>, <code>max</code>, <code>clamp</code>, <code>abs</code>, power functions, floating-point comparisons.</td>
     </tr>
     <tr>
-      <td><strong>void* pointer arithmetic</strong></td>
-      <td>Compiler extension or undefined behavior.</td>
-      <td>Compile error</td>
-      <td>The size of <code>void</code> is not defined in standard C; cast to <code>char*</code> or <code>uint8_t*</code>.</td>
+      <td><strong><code>std/json</code></strong></td>
+      <td><code>#comprise std/json</code></td>
+      <td>Lightweight recursive descent JSON parser and serializer with zero external dependencies.</td>
     </tr>
     <tr>
-      <td><strong>Invalid pointer operations</strong></td>
-      <td>Permitted in some expressions (e.g. <code>ptr * 2</code>).</td>
-      <td>Compile error</td>
-      <td>Multiplication, division, modulo, and bitwise operations have no meaning on addresses.</td>
+      <td><strong><code>std/log</code></strong></td>
+      <td><code>#comprise std/log</code></td>
+      <td>Structured leveled logging (<code>DEBUG</code>, <code>INFO</code>, <code>WARN</code>, <code>ERROR</code>) with ISO-8601 timestamps and terminal styling.</td>
     </tr>
     <tr>
-      <td><strong>Pointer syntax ambiguity</strong></td>
-      <td>Permits multiple formats (<code>int *p</code>, <code>int* p</code>).</td>
-      <td>Enforces postfix (<code>int* p</code>; bans <code>*int p</code>)</td>
-      <td>Ensures consistent parsing.</td>
-    </tr>
-    <tr>
-      <td><strong>Division by zero</strong></td>
-      <td>Hardware fault (SIGFPE) or undefined behavior.</td>
-      <td>Compile error for literal zero divisors (e.g. <code>x / 0</code>)</td>
-      <td>Catches obvious zero division at compile time.</td>
-    </tr>
-    <tr>
-      <td><strong>Arbitrary jumps (goto)</strong></td>
-      <td>Permitted within function scope.</td>
-      <td>Banned</td>
-      <td>Ensures structured control flow and deterministic cleanup for <code>defer</code>.</td>
-    </tr>
-    <tr>
-      <td><strong>Comma operator in expressions</strong></td>
-      <td>Discards first expression and evaluates second.</td>
-      <td>Banned in expression context</td>
-      <td>Reserves commas for argument and element separators.</td>
-    </tr>
-    <tr>
-      <td><strong>Include jail violation</strong></td>
-      <td>Allows arbitrary path traversal (e.g. <code>#include "../../../etc/passwd"</code>).</td>
-      <td>Compile error</td>
-      <td>Restricts file inclusion to the project tree, standard library, and dependencies.</td>
+      <td><strong><code>std/test</code></strong></td>
+      <td><code>#comprise std/test</code></td>
+      <td>Unit testing framework: assertion macros (<code>assert_eq</code>, <code>assert_true</code>), test harness, and failure reports.</td>
     </tr>
   </tbody>
 </table>
 </div>
-
-<h3>19.1 Compiler Diagnostic Examples</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Compiler Diagnostics</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// 1. Assignment in condition
-if ((x = 5)) { }
-// error: assignment used as condition; did you mean '=='?
-
-// 2. Prefix pointer syntax
-*int ptr;
-// error: invalid pointer syntax '*Type'; Rook standardizes on postfix 'Type*'
-
-// 3. void* pointer arithmetic
-void* buffer = get_raw();
-void* next = buffer + 4;
-// error: pointer arithmetic on 'void*' is invalid
-
-// 4. Invalid pointer operations
-int* p = &amp;value;
-p = p * 2;
-// error: invalid operand to binary operator
-
-// 5. Literal division by zero
-int a = 10 / 0;
-// error: division or modulo by zero
-
-// 6. goto keyword
-goto exit_label;
-// error: 'goto' is not supported in Rook
-
-// 7. Non-void function missing return
-int calculate(int x) {
-    if (x &gt; 0) return x * 2;
-    // Missing return on else branch
-}
-// error: control reaches end of non-void function</code></pre></div>
 
   </div>
 </section>
@@ -2205,107 +1218,36 @@ int calculate(int x) {
 
 <section class="chapter" id="config">
   <div class="chapter-header">
-    <h2 class="chapter-title">20. Configuration & Multi-Target Builds (rokade.toml)</h2>
+    <h2 class="chapter-title">10. Configuration, Multi-Target Builds & Toolchains</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Projects are configured using a declarative <code>rokade.toml</code> file.</p>
+<p>The Rokade build system manages compilation, cross-compilation, and language server diagnostics.</p>
 
-<h3>20.1 Schema Example</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml Schema</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[package]
-name = "service_engine"
-version = "0.5.2"
-authors = ["Engineering Team &lt;dev@example.com&gt;"]
-description = "Telemetry daemon"
+<h3>10.1 CLI Commands</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Common CLI Commands</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash"># Compile and run project
+rokade run [path] [--backend=c|llvm|llvm2]
 
-[build]
-kind = "exe"                   # "exe", "shared-lib", or "static-lib"
-standard = "c2x"               # "c11", "c17", "c2x", "gnu23"
-backend = "c"                  # "c" (default) or "llvm"
-targets = ["linux", "windows"] # Active targets
-pkg-config = ["sqlite3"]       # System library dependencies
+# Build release binary
+rokade build [path] [--backend=c|llvm|llvm2]
 
-[dependencies]
-network_core = { path = "vendor/network_core" }
+# Run one-shot health and toolchain verification
+rokade doctor
 
-[target.linux]
-kind = "exe"
-cflags = "-O3 -march=native"
+# Query or modify toolchain overrides
+rokade toolchain
+rokade toolchain set cc /usr/bin/clang</code></pre></div>
 
-[target.windows]
-kind = "exe"
-cflags = "-O2"
-
-[target.android]
-kind = "shared-lib"
-api = 24
-arch = ["arm64-v8a", "x86_64"]
-cflags = "-fPIC -O3"</code></pre></div>
-
-<h3>20.2 Cross-Compilation Targets</h3>
-<p>Rokade supports cross-compilation targets:</p>
+<h3>10.2 Cross-Compilation</h3>
+<p>Rokade supports cross-compilation targets out of the box:</p>
 <ul>
-  <li><strong>Linux:</strong> Compiles with the host <code>gcc</code> or <code>clang</code>.</li>
-  <li><strong>Windows:</strong> Cross-compiles using MinGW (<code>x86_64-w64-mingw32-gcc</code>), producing a Windows <code>.exe</code>.</li>
-  <li><strong>Android:</strong> Uses installed Android NDK toolchains to compile shared libraries (<code>.so</code>) for specified architectures (e.g. <code>arm64-v8a</code>, <code>x86_64</code>).</li>
+  <li><strong>Windows (x86_64-w64-mingw32):</strong> Compiles via MinGW-w64 GCC toolchain.</li>
+  <li><strong>Android (aarch64-linux-android):</strong> Cross-compiles using the Android NDK Clang toolchain and target sysroot.</li>
 </ul>
 
-<div class="code-block"><div class="code-header"><span class="code-lang">Target Build Commands</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash"># Build Windows target
-rokade build --target=windows
-
-# Build Android target
-rokade build --target=android
-
-# Build all configured targets
-rokade build --all</code></pre></div>
-
-  </div>
-</section>
-
-
-<section class="chapter" id="cli">
-  <div class="chapter-header">
-    <h2 class="chapter-title">21. Compiler CLI & Architecture Reference</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>The <code>rokade</code> executable is a command-line tool that handles project scaffolding, compilation, testing, and diagnostics.</p>
-
-<h3>21.1 Command-Line Reference</h3>
-<div class="table-container">
-<table>
-  <thead>
-    <tr><th>Command / Option</th><th>Description</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>rokade new [--lib] &lt;name&gt;</code></td><td>Creates a new application or library project.</td></tr>
-    <tr><td><code>rokade build [--all] [--target=T]</code></td><td>Builds the project according to <code>rokade.toml</code>.</td></tr>
-    <tr><td><code>rokade run [--jit] [file.rook]</code></td><td>Compiles and runs the project or a single file. <code>--jit</code> runs in memory.</td></tr>
-    <tr><td><code>rokade doctor</code></td><td>Runs environment and toolchain checks.</td></tr>
-    <tr><td><code>rokade toolchain</code></td><td>Displays detected C compiler, version, and default flags.</td></tr>
-    <tr><td><code>rokade --emit-c &lt;file.rook&gt;</code></td><td>Transpiles file and prints C code to stdout.</td></tr>
-    <tr><td><code>rokade --emit-llvm &lt;file.rook&gt;</code></td><td>Emits LLVM Intermediate Representation (LLVM IR).</td></tr>
-    <tr><td><code>rokade --emit-obj &lt;file.rook&gt;</code></td><td>Compiles directly to native object file (<code>.o</code>) via LLVM.</td></tr>
-    <tr><td><code>rokade --ast &lt;file.rook&gt;</code></td><td>Prints AST for debugging.</td></tr>
-    <tr><td><code>rokade fmt [--check|--write] &lt;path&gt;</code></td><td>Formats Rook source files in-place with AST equality verification.</td></tr>
-    <tr><td><code>rokade --check &lt;file.rook&gt;</code></td><td>Performs parser verification.</td></tr>
-    <tr><td><code>rokade --check-dir &lt;dir&gt;</code></td><td>Validates all <code>.rook</code> files within a directory.</td></tr>
-    <tr><td><code>rokade --diagnostics &lt;file.rook&gt;</code></td><td>Emits JSON diagnostics for editor integration.</td></tr>
-    <tr><td><code>rokade --def-at &lt;file&gt; &lt;line&gt; &lt;col&gt;</code></td><td>Finds symbol definition location.</td></tr>
-    <tr><td><code>rokade --symbols &lt;file.rook&gt;</code></td><td>Emits JSON list of top-level functions, structs, and objects.</td></tr>
-  </tbody>
-</table>
-</div>
-
-<h3>21.2 Process Execution Model</h3>
-<p>When invoking compilers and linkers, Rokade avoids shell execution (such as <code>system()</code> or <code>popen("sh -c ...")</code>):</p>
-<ul>
-  <li>Commands and arguments are passed directly as structured argument arrays (<code>char* argv[]</code>) to POSIX <code>fork()</code> and <code>execv()</code>.</li>
-  <li>Shell metacharacters in flags or paths are treated as literal strings and cannot execute shell commands.</li>
-  <li>Process return codes are checked directly, aborting on non-zero exit codes.</li>
-</ul>
+<h3>10.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
+<p>The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via <code>rokade --diagnostics</code>, jump-to-definition (<code>--def-at</code>), and document outlines (<code>--symbols</code>).</p>
 
   </div>
 </section>
@@ -2327,930 +1269,300 @@ rokade build --all</code></pre></div>
     </header>
 
     
-<section class="chapter beginner-chapter" id="b1-how-computers-work">
+<section class="chapter beginner-chapter" id="b1-hardware-memory">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 1: How Computers Work</h2>
+    <h2 class="chapter-title">Module B1: Hardware Architecture & Memory Hierarchy</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Before writing code, it helps to understand how computers run programs and manage data. A computer relies on three main physical components: storage, memory, and the processor.</p>
+<p>To write reliable systems code, you must understand how software interacts directly with physical hardware: the processor, memory, and permanent storage.</p>
 
-<h3>1.1 Hardware Basics: Storage, RAM, and CPU</h3>
-<p>Every computer relies on three main components to run software:</p>
-
+<h3>1.1 Hardware Components: Storage, RAM, and the CPU</h3>
 <div class="arch-diagram">
-  <div class="arch-box"><strong>Storage (SSD / Hard Drive)</strong><br>Permanent storage<br>Holds files when powered off</div>
+  <div class="arch-box"><strong>Permanent Storage (SSD / NVMe)</strong><br>Terabytes capacity<br>~10–50 microseconds latency</div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box"><strong>RAM (Working Memory)</strong><br>Temporary workspace<br>Fast access, cleared on shutdown</div>
+  <div class="arch-box"><strong>Main Memory (RAM)</strong><br>Gigabytes capacity<br>~50–100 nanoseconds latency</div>
   <div class="arch-arrow">➔</div>
-  <div class="arch-box"><strong>CPU (Processor)</strong><br>Calculation engine<br>Executes instructions sequentially</div>
+  <div class="arch-box"><strong>CPU Registers &amp; Caches</strong><br>Kilobytes / Megabytes<br>~0.5–5 nanoseconds latency</div>
 </div>
 
 <ul>
-  <li><strong>Storage (SSD or Hard Drive):</strong> Holds data permanently. When you shut down your computer, your files, operating system, and programs remain intact on disk. Storage has high capacity, but the CPU cannot access it directly at memory speeds.</li>
-  <li><strong>RAM (Random Access Memory):</strong> The working memory where active programs run. When you launch a program, the operating system copies it from storage into RAM. The CPU reads and writes RAM in nanoseconds. RAM is volatile: when the computer turns off, all data in RAM is cleared.</li>
-  <li><strong>CPU (Central Processing Unit):</strong> The processor that executes program instructions. The CPU fetches an instruction from RAM, executes it (such as adding two numbers or checking a condition), and moves to the next instruction.</li>
+  <li><strong>Permanent Storage:</strong> Retains data when powered down. Executable binary files are stored on disk. The CPU cannot execute instructions directly from an SSD.</li>
+  <li><strong>RAM (Random Access Memory):</strong> A vast array of byte storage cells indexed by numerical addresses. When an application runs, its machine code and active data are mapped into RAM.</li>
+  <li><strong>CPU Registers:</strong> Small, high-speed storage slots inside the processor core (such as <code>RAX</code>, <code>RSP</code>, <code>RIP</code> on x86-64). Operations like addition and comparisons execute directly inside registers.</li>
 </ul>
 
-<h3>1.2 Bits and Bytes: How Hardware Represents Data</h3>
-<p>At the hardware level, digital circuits store and transmit information using voltages that represent two states: 0 and 1.</p>
-<ul>
-  <li>A single 0 or 1 is called a <strong>bit</strong> (binary digit).</li>
-  <li>Computers group bits into sets of eight. A group of 8 bits is called a <strong>byte</strong>.</li>
-</ul>
-
-<div class="callout callout-note"><div class="callout-title">Why 8 Bits Make a Byte</div><div class="callout-body">
-An 8-bit byte can represent 256 distinct patterns (from <code>00000000</code> to <code>11111111</code>, or 0 through 255 in decimal). Historically, 256 values were sufficient to map every English letter, digit, and punctuation mark in the standard ASCII character set.
-</div></div>
-
-<h3>1.3 Source Code, Machine Code, and Compilers</h3>
-<p>Processors only execute machine code: numeric binary instructions tailored to the processor architecture. Because writing machine code directly is impractical, programmers write source code in human-readable text files using languages like Rook or C.</p>
-
-<p>A <strong>compiler</strong> translates source code into machine code:</p>
-<ol>
-  <li><strong>Write source code:</strong> Instructions saved in a text file (such as <code>main.rook</code>).</li>
-  <li><strong>Compile the code:</strong> The compiler checks syntax, validates types, enforces safety rules, and generates native machine code.</li>
-  <li><strong>Run the executable:</strong> The resulting binary runs directly on the CPU.</li>
-</ol>
-
-<h3>1.4 Low-Level and High-Level Languages</h3>
-<p>Programming languages differ in how closely they expose hardware details:</p>
-<ul>
-  <li><strong>Low-level languages</strong> (such as Assembly and C) provide direct control over memory addresses, data layout, and hardware registers. This allows fine-tuned performance, but requires developers to handle memory allocation and types manually.</li>
-  <li><strong>High-level languages</strong> (such as Python, JavaScript, and Ruby) abstract away memory management and hardware specifics. They emphasize rapid development, but introduce runtime interpreters or garbage collectors.</li>
-</ul>
-<p>Rook bridges these two styles: it retains C-level control and memory layout predictability, while adding compile-time checks that prevent common memory and syntax mistakes.</p>
-
-<h3>1.5 Compiled, Interpreted, and Transpiled Languages</h3>
-<p>Languages take different paths to turn source text into execution:</p>
-
+<h3>1.2 The Stack vs. The Heap</h3>
+<p>When an operating system executes a Rook binary, the process memory space is partitioned into distinct functional segments:</p>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Approach</th><th>How it works</th><th>When translation happens</th><th>Examples</th></tr>
+    <tr><th>Memory Segment</th><th>Allocation Mechanism</th><th>Lifetime</th><th>Speed</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong>Compiled</strong></td>
-      <td>A compiler translates the entire source program into machine code ahead of time, creating a native binary.</td>
-      <td>Once, before execution</td>
-      <td>C, C++, Rook, Rust, Go</td>
+      <td><strong>Call Stack</strong></td>
+      <td>Automatic: Adjusting the Stack Pointer register (<code>RSP</code>).</td>
+      <td>Scoped: Deallocated automatically when the function returns.</td>
+      <td>Instantaneous (a single CPU subtraction instruction).</td>
     </tr>
     <tr>
-      <td><strong>Interpreted</strong></td>
-      <td>An interpreter program reads and executes source instructions line by line at runtime.</td>
-      <td>During program execution</td>
-      <td>Python, Ruby, Bash</td>
-    </tr>
-    <tr>
-      <td><strong>Transpiled</strong></td>
-      <td>A source-to-source translator converts code written in one language into another high-level language, which is then compiled or interpreted.</td>
-      <td>Before compilation or execution</td>
-      <td>TypeScript (to JS), Rook C-backend (to C)</td>
+      <td><strong>The Heap</strong></td>
+      <td>Manual: Managed by an allocator (<code>malloc</code> / <code>free</code>).</td>
+      <td>Dynamic: Persists until explicitly released by the programmer.</td>
+      <td>Requires allocator search algorithms and operating system page mapping.</td>
     </tr>
   </tbody>
 </table>
 </div>
-<div class="callout callout-note"><div class="callout-title">Where Rook Fits</div><div class="callout-body">
-Rook is a compiled systems language. The <code>rokade</code> compiler translates Rook source code into clean C code (default backend) or LLVM IR (LLVM backend), which is then compiled into a standalone native executable. It requires no virtual machine or runtime interpreter.
-</div></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 1</div><div class="callout-body">
-<ul>
-  <li>Storage holds files permanently, RAM provides fast working memory, and the CPU executes instructions.</li>
-  <li>Digital data is stored as bits (0 and 1) grouped into 8-bit bytes.</li>
-  <li>Source code is human-readable text; compilers convert it into machine code for the CPU.</li>
-  <li>Compiled programs run as native binaries without requiring a runtime interpreter.</li>
-</ul>
-</div></div>
+
   </div>
 </section>
 
 
 <section class="chapter beginner-chapter" id="b2-first-program">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 2: Your First Program</h2>
+    <h2 class="chapter-title">Module B2: Your First Program & Execution Lifecycle</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>A standard introduction to any language is printing text to the terminal. Here is a minimal program in Rook:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Your First Program (src/main.rook)</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+<p>In Rook, every executable program begins execution at the <code>main</code> function.</p>
+
+<h3>2.1 Anatomy of a Rook Program</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
 int main() {
-    printf("Hello, World!
-");
-    return 0;
+    printf("Hello from Rook systems code!\n");
+    return 0; // Return code 0 indicates success to the operating system
 }</code></pre></div>
-<h3>2.1 Code Structure</h3>
+
+<h3>2.2 The Compilation and Execution Flow</h3>
+<p>When you run <code>rokade run</code>, three concrete actions occur:</p>
 <ol>
-  <li><strong><code>#include &lt;stdio.h&gt;</code></strong><br>
-  Tells the compiler to include declarations from the C standard input/output library, which defines the <code>printf</code> function.</li>
-  
-  <li><strong><code>int main()</code></strong><br>
-  The program entry point. When the operating system runs an application, execution begins at <code>main</code>. The <code>int</code> return type means the function returns an integer exit code to the operating system.</li>
-
-  <li><strong>Braces <code>{ ... }</code></strong><br>
-  Curly braces delimit a block of code. Statements inside these braces belong to the <code>main</code> function.</li>
-
-  <li><strong><code>printf("Hello, World!
-");</code></strong><br>
-  Calls <code>printf</code> to print text to standard output. The escape sequence <code>
-</code> outputs a newline character.</li>
-
-  <li><strong>Semicolon <code>;</code></strong><br>
-  Each statement in Rook ends with a semicolon.</li>
-
-  <li><strong><code>return 0;</code></strong><br>
-  Exits the program and returns status code <code>0</code> to the operating system, indicating that the program ran without errors.</li>
+  <li><strong>Translation &amp; Assembly:</strong> The compiler translates <code>main.rook</code> into machine instructions.</li>
+  <li><strong>Linking:</strong> The object file is combined with system libraries (like the C standard runtime <code>libc</code>) to produce a standalone executable binary.</li>
+  <li><strong>Process Spawning:</strong> The operating system kernel creates a new process, allocates virtual memory, loads the binary instructions, and points the Instruction Pointer register to <code>main</code>.</li>
 </ol>
 
-<h3>2.2 Compiling and Running</h3>
-<div class="arch-diagram">
-  <div class="arch-box">1. Source File<br><code>src/main.rook</code></div>
-  <div class="arch-arrow">➔</div>
-  <div class="arch-box">2. Compiler<br><code>rokade build</code></div>
-  <div class="arch-arrow">➔</div>
-  <div class="arch-box">3. Executable<br><code>./build/linux/my_project</code></div>
-</div>
-
-<p>Running <code>rokade run</code> compiles the project and executes the resulting binary in one step.</p>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 2</div><div class="callout-body">
-<ul>
-  <li>Execution starts in the <code>main()</code> function.</li>
-  <li>Statements end with semicolons (<code>;</code>), and blocks use curly braces (<code>{ ... }</code>).</li>
-  <li><code>printf()</code> writes text to the terminal, and <code>
-</code> starts a new line.</li>
-  <li>Returning <code>0</code> indicates successful execution.</li>
-</ul>
-</div></div>
   </div>
 </section>
 
 
-<section class="chapter beginner-chapter" id="b3-variables-types">
+<section class="chapter beginner-chapter" id="b3-bits-bytes">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 3: Storing Information: Variables and Types</h2>
+    <h2 class="chapter-title">Module B3: Bits, Bytes, and Integer Widths</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Programs store data in variables. A variable is a named location in memory that holds a value of a specific data type.</p>
+<p>In systems programming, data types represent concrete physical bit patterns in hardware.</p>
 
-<h3>3.1 Understanding Variables</h3>
-<p>A variable has three key properties:</p>
-<ul>
-  <li><strong>Name (Identifier):</strong> How you reference the variable in code (such as <code>health</code> or <code>count</code>).</li>
-  <li><strong>Type:</strong> The kind of data it stores, determining how much memory it uses and which operations are valid.</li>
-  <li><strong>Value:</strong> The current data stored in that memory location.</li>
-</ul>
-
-<h3>3.2 Common Primitive Types</h3>
+<h3>3.1 Scalar Types and Hardware Bit Widths</h3>
+<p>Rook provides fixed-width integers so memory footprints remain exact across different processor targets:</p>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Type</th><th>Purpose</th><th>Size (x86_64)</th><th>Example</th></tr>
+    <tr><th>Type</th><th>Bit Width</th><th>Byte Size</th><th>Signed Range</th><th>Unsigned Equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>int8_t</code></td><td>8 bits</td><td>1 byte</td><td>-128 to 127</td><td><code>uint8_t</code> (0 to 255)</td></tr>
+    <tr><td><code>int16_t</code></td><td>16 bits</td><td>2 bytes</td><td>-32,768 to 32,767</td><td><code>uint16_t</code> (0 to 65,535)</td></tr>
+    <tr><td><code>int32_t</code> (<code>int</code>)</td><td>32 bits</td><td>4 bytes</td><td>~-2.14 billion to ~2.14 billion</td><td><code>uint32_t</code> (0 to ~4.29 billion)</td></tr>
+    <tr><td><code>int64_t</code></td><td>64 bits</td><td>8 bytes</td><td>-9.22 &times; 10<sup>18</sup> to 9.22 &times; 10<sup>18</sup></td><td><code>uint64_t</code> (0 to 1.84 &times; 10<sup>19</sup>)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3.2 Two's Complement and Integer Overflow</h3>
+<p>Signed integers are stored in <strong>Two's Complement</strong> representation. The highest bit represents the sign bit. If an 8-bit signed integer holding <code>127</code> (binary <code>01111111</code>) is incremented by 1, it overflows to <code>-128</code> (binary <code>10000000</code>). Understanding bit representations prevents integer wraparound vulnerabilities.</p>
+
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b4-pointers">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module B4: Memory Addresses & The Pointer Mental Model</h2>
+    <a href="#top-beginner" class="back-to-top">Top ↑</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>A pointer is not an abstract reference; a pointer is simply an integer whose value is a physical address in memory.</p>
+
+<h3>4.1 Address-Of (<code>&amp;</code>) and Dereferencing (<code>*</code>)</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Pointer Operations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int target = 42;
+int* ptr = &amp;target; // ptr stores the numerical memory address of 'target'
+
+printf("Address of target: %p\n", (void*)ptr);
+printf("Value via pointer: %d\n", *ptr); // Reads the 4 bytes stored at that address
+
+*ptr = 99; // Writes 99 to the memory address stored in 'ptr'
+printf("New target value:  %d\n", target); // Prints 99</code></pre></div>
+
+<h3>4.2 Pointer Arithmetic</h3>
+<p>When you add an integer <code>n</code> to a typed pointer <code>T*</code>, the hardware memory address increases by <code>n * sizeof(T)</code> bytes:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Pointer Arithmetic Mechanics</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int numbers[3] = { 100, 200, 300 };
+int* p = &amp;numbers[0]; // Address: 0x1000
+
+p = p + 1; // Increases by 1 * sizeof(int) (4 bytes) -&gt; Address: 0x1004
+printf("%d\n", *p); // Prints 200</code></pre></div>
+
+<div class="callout callout-warn"><div class="callout-title">Null Pointers</div><div class="callout-body">
+A pointer containing address <code>0</code> (<code>NULL</code>) points to an unmapped virtual memory address. Attempting to dereference a null pointer (<code>*ptr</code> when <code>ptr == NULL</code>) causes an immediate Segmentation Fault (SIGSEGV) triggered by the CPU Memory Management Unit (MMU).
+</div></div>
+
+  </div>
+</section>
+
+
+<section class="chapter beginner-chapter" id="b5-structs">
+  <div class="chapter-header">
+    <h2 class="chapter-title">Module B5: Structs & Memory Layout in Practice</h2>
+    <a href="#top-beginner" class="back-to-top">Top ↑</a>
+  </div>
+  <div class="chapter-body">
+    
+<p>Structures allow grouping heterogeneous data fields into contiguous memory blocks.</p>
+
+<h3>5.1 Defining and Initializing Structs</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Struct Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">struct Vector3 {
+    x: float
+    y: float
+    z: float
+}
+
+int main() {
+    Vector3 v = { 1.0, 2.0, 3.0 };
+    printf("Vector: (%.1f, %.1f, %.1f)\n", v.x, v.y, v.z);
+    return 0;
+}</code></pre></div>
+
+<h3>5.2 Passing by Value vs. Passing by Pointer</h3>
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Strategy</th><th>Syntax</th><th>Hardware Cost</th><th>Mutation Allowed?</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><code>int</code></td>
-      <td>Signed whole numbers</td>
-      <td>4 bytes</td>
-      <td><code>0</code>, <code>42</code>, <code>-15</code></td>
+      <td><strong>Pass by Value</strong></td>
+      <td><code>void process(Vector3 v)</code></td>
+      <td>Copies all 12 bytes of the struct onto the new stack frame.</td>
+      <td>No: modifications affect only the local copy.</td>
     </tr>
     <tr>
-      <td><code>float</code></td>
-      <td>Single-precision decimal numbers</td>
-      <td>4 bytes</td>
-      <td><code>3.14f</code>, <code>-0.5f</code></td>
-    </tr>
-    <tr>
-      <td><code>double</code></td>
-      <td>Double-precision decimal numbers</td>
-      <td>8 bytes</td>
-      <td><code>2.718281828459</code></td>
-    </tr>
-    <tr>
-      <td><code>char</code></td>
-      <td>Single character or byte</td>
-      <td>1 byte</td>
-      <td><code>'A'</code>, <code>'z'</code>, <code>'!'</code></td>
-    </tr>
-    <tr>
-      <td><code>bool</code></td>
-      <td>Boolean truth value</td>
-      <td>1 byte</td>
-      <td><code>true</code>, <code>false</code></td>
-    </tr>
-    <tr>
-      <td><code>const char*</code></td>
-      <td>Pointer to a null-terminated string</td>
-      <td>8 bytes</td>
-      <td><code>"Hello, World!"</code></td>
+      <td><strong>Pass by Pointer</strong></td>
+      <td><code>void process(Vector3* v)</code></td>
+      <td>Passes a single 8-byte memory address in a CPU register.</td>
+      <td>Yes: modifications directly mutate the original caller memory.</td>
     </tr>
   </tbody>
 </table>
 </div>
 
-<h3>3.3 Declaring and Modifying Variables</h3>
-<p>Rook supports both C-style declarations and <code>let</code> declarations:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Declaring and Using Variables</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    // C-style declarations
-    int player_health = 100;
-    float walking_speed = 4.5f;
-    char rank_letter = 'A';
-    bool is_alive = true;
-
-    // let-style declarations
-    let score = 50;              // Type inferred as int
-    let player_name: const char* = "Arthur";
-
-    printf("Player: %s
-", player_name);
-    printf("Health: %d, Score: %d
-", player_health, score);
-
-    // Reassignment
-    player_health = 85;
-    printf("Updated Health: %d
-", player_health);
-
-    return 0;
-}</code></pre></div>
-<div class="callout callout-note"><div class="callout-title">Automatic Zero-Initialization</div><div class="callout-body">
-In standard C, declaring an uninitialized local variable (such as <code>int x;</code>) leaves it containing whatever random data was in that stack location. Rook automatically initializes uninitialized variables to zero (<code>= {0}</code>), preventing undefined reads.
-</div></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 3</div><div class="callout-body">
-<ul>
-  <li>Variables are named memory locations holding typed values.</li>
-  <li>Primitive types include <code>int</code> for integers, <code>float</code> for decimals, <code>char</code> for characters, and <code>bool</code> for booleans.</li>
-  <li>Variables can be declared using C style (<code>int x = 1;</code>) or let style (<code>let x = 1;</code>).</li>
-  <li>Uninitialized local variables in Rook default safely to zero.</li>
-</ul>
-</div></div>
   </div>
 </section>
 
 
-<section class="chapter beginner-chapter" id="b4-math-operators">
+<section class="chapter beginner-chapter" id="b6-arrays">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 4: Doing Math & Making Comparisons</h2>
+    <h2 class="chapter-title">Module B6: Arrays, Buffers, and Bounds Safety</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Programs compute results and evaluate conditions using operators.</p>
+<p>An array is a fixed-size sequence of elements stored contiguously in memory with zero padding between items.</p>
 
-<h3>4.1 Arithmetic Operators</h3>
-<ul>
-  <li><code>+</code> (Addition): <code>10 + 5</code> evaluates to <code>15</code></li>
-  <li><code>-</code> (Subtraction): <code>10 - 5</code> evaluates to <code>5</code></li>
-  <li><code>*</code> (Multiplication): <code>10 * 5</code> evaluates to <code>50</code></li>
-  <li><code>/</code> (Division): <code>10 / 5</code> evaluates to <code>2</code></li>
-  <li><code>%</code> (Modulo / Remainder): <code>10 % 3</code> evaluates to <code>1</code></li>
-</ul>
+<h3>6.1 Stack-Allocated Arrays</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">Array Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int buffer[5]; // 5 integers * 4 bytes = 20 contiguous bytes on the stack
+buffer[0] = 10;
+buffer[1] = 20;
 
-<div class="callout callout-warn"><div class="callout-title">Integer Division</div><div class="callout-body">
-Dividing two integers performs integer division, which truncates the fractional portion. For example, <code>7 / 2</code> evaluates to <code>3</code>. To obtain a decimal result, use floating-point numbers: <code>7.0f / 2.0f</code> evaluates to <code>3.5f</code>.
-</div></div>
+// Iterating over items
+for item in buffer {
+    printf("%d\n", item);
+}</code></pre></div>
 
-<h3>4.2 Comparison Operators</h3>
-<p>Comparison operators compare two values and produce a boolean result (<code>true</code> or <code>false</code>):</p>
-<ul>
-  <li><code>==</code> (Equal to): checks if two values are equal. Note that <code>==</code> compares values, while <code>=</code> assigns them.</li>
-  <li><code>!=</code> (Not equal to): checks if two values differ.</li>
-  <li><code>&gt;</code> and <code>&lt;</code>: greater than, less than.</li>
-  <li><code>&gt;=</code> and <code>&lt;=</code>: greater than or equal, less than or equal.</li>
-</ul>
+<h3>6.2 Runtime Bounds Checking (<code>-b</code> flag)</h3>
+<p>In standard C, indexing out of bounds (such as <code>buffer[10]</code> on a 5-element array) silently reads or corrupts adjacent stack memory. In Rook, compiling with the bounds-checking flag (<code>rokade build -b</code>) emits runtime checks that safely abort execution if an out-of-bounds index is accessed.</p>
 
-<h3>4.3 Logical Operators</h3>
-<ul>
-  <li><code>&amp;&amp;</code> (Logical AND): true only if both operands are true.</li>
-  <li><code>||</code> (Logical OR): true if at least one operand is true.</li>
-  <li><code>!</code> (Logical NOT): inverts a boolean value (e.g. <code>!true</code> is <code>false</code>).</li>
-</ul>
-
-<div class="code-block"><div class="code-header"><span class="code-lang">Operators in Action</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    int age = 20;
-    bool has_id = true;
-
-    if (age &gt;= 18 &amp;&amp; has_id) {
-        printf("Admission granted.
-");
-    }
-
-    int items = 14;
-    int pack_size = 4;
-    int leftover = items % pack_size;
-    printf("Remaining items: %d
-", leftover); // Prints 2
-
-    return 0;
-}</code></pre></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 4</div><div class="callout-body">
-<ul>
-  <li>Use <code>==</code> to compare values, and <code>=</code> to assign values.</li>
-  <li>Integer division discards remainders; use floating-point numbers when decimal precision is needed.</li>
-  <li>Combine conditions using <code>&&</code> (AND), <code>||</code> (OR), and <code>!</code> (NOT).</li>
-</ul>
-</div></div>
   </div>
 </section>
 
 
-<section class="chapter beginner-chapter" id="b5-control-flow">
+<section class="chapter beginner-chapter" id="b7-defer">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 5: Making Choices: Control Flow</h2>
+    <h2 class="chapter-title">Module B7: Resource Management & Avoiding Leaks</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Control flow structures allow programs to execute different code blocks based on conditions.</p>
+<p>Systems software must manage system resources (file handles, network sockets, heap memory) with deterministic lifetimes.</p>
 
-<h3>5.1 The if, else if, and else Construct</h3>
-<p>An <code>if</code> statement evaluates a condition. If the condition is <code>true</code>, the corresponding block executes; otherwise, execution continues to the next branch.</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Branching Evaluation</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+<h3>7.1 The Resource Leak Problem</h3>
+<p>When resources are acquired, every possible exit path (early returns, error branches) must release that resource. In traditional C, missing a <code>free</code> or <code>fclose</code> creates a resource leak.</p>
 
-int main() {
-    int score = 85;
+<h3>7.2 Scope-Bound Cleanup with <code>defer</code></h3>
+<p>Rook's <code>defer</code> statement registers cleanup actions that execute automatically whenever the current block exits:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Guaranteed Resource Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
 
-    if (score &gt;= 90) {
-        printf("Grade: A
-");
-    } else if (score &gt;= 80) {
-        printf("Grade: B
-");
-    } else if (score &gt;= 70) {
-        printf("Grade: C
-");
-    } else {
-        printf("Grade: F
-");
+int process_data(const char* filename) {
+    FILE* f = fopen(filename, "r");
+    if (!f) return -1;
+    defer fclose(f); // Guaranteed to execute when function returns
+
+    char* buf = (char*)malloc(1024);
+    if (!buf) return -2;
+    defer free(buf); // Guaranteed to execute before fclose(f)
+
+    if (fread(buf, 1, 1024, f) &lt;= 0) {
+        return -3; // Both 'buf' is freed and 'f' is closed
     }
 
-    return 0;
+    return 0;     // Both 'buf' is freed and 'f' is closed
 }</code></pre></div>
-<p>Evaluation steps:</p>
-<ol>
-  <li>The program checks <code>score &gt;= 90</code>. Because 85 is less than 90, it proceeds to the next check.</li>
-  <li>It checks <code>score &gt;= 80</code>. This is <code>true</code>.</li>
-  <li>The program prints <code>Grade: B</code> and skips the remaining branches.</li>
-</ol>
 
-<h3>5.2 Compile-Time Enforcement: Assignments in Conditions</h3>
-<p>In standard C, accidentally writing <code>if (score = 100)</code> instead of <code>if (score == 100)</code> assigns 100 to <code>score</code> and treats the result as true. Rook checks condition expressions at compile time and rejects assignments inside conditions:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Compile Error on Assignment in Condition</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Compile error in Rook:
-// error: assignment used as condition; did you mean '=='?
-if (score = 100) {
-    printf("Perfect
-");
-}</code></pre></div>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 5</div><div class="callout-body">
-<ul>
-  <li>Use <code>if</code> and <code>else if</code> to branch based on conditions.</li>
-  <li>Only the first matching branch in an <code>if/else if</code> chain is executed.</li>
-  <li>Assignments inside conditional expressions are compile-time errors in Rook.</li>
-</ul>
-</div></div>
   </div>
 </section>
 
 
-<section class="chapter beginner-chapter" id="b6-loops-repetition">
+<section class="chapter beginner-chapter" id="b8-real-projects">
   <div class="chapter-header">
-    <h2 class="chapter-title">Module 6: Repetition: Automating with Loops</h2>
+    <h2 class="chapter-title">Module B8: Building Real Projects & C Library Integration</h2>
     <a href="#top-beginner" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
     
-<p>Loops repeat a block of code as long as a condition is met, or across a specific count.</p>
+<p>Rook integrates into multi-file projects and uses external C libraries directly through <code>rokade.toml</code>.</p>
 
-<h3>6.1 The while Loop</h3>
-<p>A <code>while</code> loop continues executing its body as long as the condition remains true:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Countdown with while</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+<h3>8.1 Project Configuration (<code>rokade.toml</code>)</h3>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[project]
+name = "graphics_demo"
+version = "0.1.0"
+pkg-config = ["raylib"]</code></pre></div>
+
+<h3>8.2 Integrating Foreign C Libraries Directly</h3>
+<p>Because Rook compiles with full C ABI compatibility, C functions can be called directly without bindings or glue code:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Raylib Integration Example</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;raylib.h&gt;
 
 int main() {
-    int countdown = 5;
+    InitWindow(640, 480, "Rook Raylib Window");
+    SetTargetFPS(60);
 
-    while (countdown &gt; 0) {
-        printf("%d...
-", countdown);
-        countdown = countdown - 1;
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Native C Library Called from Rook!", 100, 200, 20, DARKGRAY);
+        EndDrawing();
     }
 
-    printf("Done.
-");
+    CloseWindow();
     return 0;
 }</code></pre></div>
-<div class="callout callout-warn"><div class="callout-title">Infinite Loops</div><div class="callout-body">
-If the loop condition never becomes false (for example, if <code>countdown</code> is not decremented), the loop will run indefinitely. Ensure that the loop body makes progress toward terminating the condition.
-</div></div>
 
-<h3>6.2 The for Loop</h3>
-<p>When iterating a specific number of times, a <code>for</code> loop groups the initialization, condition, and step in one place:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Counting with for</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    for (int i = 1; i &lt;= 5; i++) {
-        printf("Iteration: %d
-", i);
-    }
-    return 0;
-}</code></pre></div>
-<ul>
-  <li><code>int i = 1;</code>: initializes the loop counter once at the start.</li>
-  <li><code>i &lt;= 5;</code>: checked before each iteration. When false, the loop ends.</li>
-  <li><code>i++</code>: increments the counter after each iteration.</li>
-</ul>
-
-<h3>6.3 Loop Control: break and continue</h3>
-<ul>
-  <li><code>break</code> exits the enclosing loop immediately.</li>
-  <li><code>continue</code> skips the rest of the current iteration and begins the next cycle.</li>
-</ul>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 6</div><div class="callout-body">
-<ul>
-  <li>Use <code>while</code> when the number of iterations depends on runtime state.</li>
-  <li>Use <code>for</code> when counting or iterating a known number of steps.</li>
-  <li>Use <code>break</code> to exit early and <code>continue</code> to skip to the next iteration.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b7-functions">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 7: Functions: Reusable Building Blocks</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Functions organize code into named, modular units that take inputs, perform computations, and return results.</p>
-
-<h3>7.1 Function Structure</h3>
-<p>A function definition specifies its return type, name, parameters, and body:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Defining and Calling Functions</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-// Takes two integers, returns their sum
-int add(int a, int b) {
-    return a + b;
-}
-
-// Takes a string, returns nothing (void)
-void greet(const char* name) {
-    printf("Hello, %s!
-", name);
-}
-
-int main() {
-    greet("Alice");
-    greet("Bob");
-
-    int sum = add(15, 25);
-    printf("15 + 25 = %d
-", sum);
-
-    return 0;
-}</code></pre></div>
-<h3>7.2 Variable Scope</h3>
-<p>Variables declared inside a function are local to that function. They are created when the function executes and discarded when it returns. Functions cannot directly read or modify local variables defined in other functions.</p>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 7</div><div class="callout-body">
-<ul>
-  <li>Functions divide logic into named, reusable components.</li>
-  <li>Parameters receive input arguments; the <code>return</code> statement sends back a result.</li>
-  <li>Functions that return no value use the <code>void</code> return type.</li>
-  <li>Local variables are scoped to the function in which they are declared.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b8-structs">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 8: Grouping Data: Structures</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>A <code>struct</code> (structure) groups related variables under a single custom data type.</p>
-
-<h3>8.1 Defining and Instantiating a Struct</h3>
-<p>In Rook, fields can be declared using either C style (<code>Type name;</code>) or let style (<code>let name: Type;</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Struct Definition and Field Access</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-// C-style field definitions
-struct Player {
-    const char* name;
-    int health;
-    int score;
-};
-
-// Equivalent let-style field definitions
-struct PlayerLet {
-    let name: const char*;
-    let health: int;
-    let score: int;
-};
-
-int main() {
-    // Initializing with named fields
-    Player hero = Player{
-        name: "Arthur",
-        health: 100,
-        score: 0
-    };
-
-    // Accessing fields with dot notation
-    printf("Player: %s
-", hero.name);
-    printf("Health: %d HP
-", hero.health);
-
-    // Updating a field
-    hero.score += 500;
-    printf("Updated Score: %d
-", hero.score);
-
-    return 0;
-}</code></pre></div>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 8</div><div class="callout-body">
-<ul>
-  <li>Structs bundle multiple related variables into a single record.</li>
-  <li>Field declarations support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>).</li>
-  <li>Fields are accessed and modified using the dot operator (<code>hero.health</code>).</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b9-memory-pointers">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 9: Demystifying Memory: Pointers</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>In systems programming, programs interact directly with computer memory. A <strong>pointer</strong> is a variable that stores the memory address of another value.</p>
-
-<h3>9.1 Addresses and Pointers</h3>
-<p>Every variable resides at a distinct location in RAM, identified by its memory address:</p>
-<ul>
-  <li>The <strong>variable</strong> holds the actual data value.</li>
-  <li>The <strong>pointer</strong> holds the numerical memory address where that variable is located.</li>
-</ul>
-
-<h3>9.2 The Address-Of (&amp;) and Dereference (*) Operators</h3>
-<ul>
-  <li><code>&amp;</code> (Address-of): returns the memory address of a variable (e.g. <code>&amp;x</code>).</li>
-  <li><code>*</code> (Dereference): accesses the value stored at the address a pointer holds (e.g. <code>*ptr</code>).</li>
-</ul>
-<div class="code-block"><div class="code-header"><span class="code-lang">Pointers and Dereferencing</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    int value = 42;
-    int* ptr = &amp;value; // ptr stores the address of value
-
-    printf("Value: %d
-", value);
-    printf("Address: %p
-", (void*)ptr);
-
-    // Modify value through the pointer
-    *ptr = 100;
-    printf("New Value: %d
-", value); // Prints 100
-
-    return 0;
-}</code></pre></div>
-<h3>9.3 Common Uses for Pointers</h3>
-<ul>
-  <li><strong>Modifying values across function calls:</strong> When arguments are passed by value, the function receives a copy. Passing a pointer allows a function to update the caller's original data.</li>
-  <li><strong>Passing large structures efficiently:</strong> Passing a pointer copies an 8-byte memory address rather than duplicating entire structs in memory.</li>
-</ul>
-
-<h3>9.4 Null Pointers</h3>
-<p>A pointer with an address of <code>0</code> is called a null pointer. It indicates that the pointer does not reference valid memory. Attempting to dereference a null pointer causes an immediate operating system crash (segmentation fault). Check pointers before dereferencing when an address may be absent.</p>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 9</div><div class="callout-body">
-<ul>
-  <li>A pointer stores the memory address of another variable.</li>
-  <li>Use <code>&</code> to get a variable's address, and <code>*</code> to access the value at that address.</li>
-  <li>Pointers allow functions to mutate caller values and avoid copying large data structures.</li>
-  <li>Dereferencing a null pointer causes a segmentation fault.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b10-arrays">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 10: Working with Lists: Arrays</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>An array stores a fixed-size sequence of elements of the same data type in contiguous memory.</p>
-
-<h3>10.1 Declaring and Indexing Arrays</h3>
-<p>Array indices in Rook and C are zero-based, representing an offset from the start of the array:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Array Declaration and Indexing</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    int scores[5] = {95, 88, 72, 99, 84};
-
-    // Reading elements by index
-    printf("First: %d
-", scores[0]); // Index 0
-    printf("Third: %d
-", scores[2]); // Index 2
-
-    // Modifying an element
-    scores[2] = 78;
-
-    // Summing elements with a loop
-    int total = 0;
-    for (int i = 0; i &lt; 5; i++) {
-        total += scores[i];
-    }
-
-    printf("Total: %d
-", total);
-    printf("Average: %.1f
-", (float)total / 5.0f);
-
-    return 0;
-}</code></pre></div>
-<div class="callout callout-warn"><div class="callout-title">Array Bounds</div><div class="callout-body">
-An array with 5 elements has valid indices from 0 to 4. Accessing <code>scores[5]</code> or higher is out of bounds. In standard C, out-of-bounds access reads or overwrites adjacent memory. In Rokade, compiling with the <code>-b</code> flag enables runtime bounds checking that stops execution if an index is out of range.
-</div></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 10</div><div class="callout-body">
-<ul>
-  <li>Arrays hold a fixed number of elements of the same type stored contiguously.</li>
-  <li>Indices start at <code>0</code> and end at <code>length - 1</code>.</li>
-  <li>Use the <code>-b</code> compiler flag to detect out-of-bounds errors at runtime.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b11-multi-file">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 11: Building Real Projects</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>As applications grow, organizing code across multiple files becomes essential for maintainability.</p>
-
-<h3>11.1 Project Structure</h3>
-<p>Running <code>rokade new my_project</code> creates a standardized project directory:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Project Directory Layout</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">my_project/
-├── rokade.toml          # Project configuration, name, version, and dependencies
-├── src/
-│   ├── main.rook        # Application entry point containing main()
-│   └── math_utils.rook  # Utility functions module
-└── build/               # Generated binaries and intermediate files</code></pre></div>
-<h3>11.2 Importing Modules with #comprise</h3>
-<p>In standard C, splitting code across files requires creating <code>.h</code> header files with include guards. Rook replaces this with the <code>#comprise</code> directive:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Modular Multi-File Code</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/math_utils.rook
-int square(int x) {
-    return x * x;
-}
-
-// src/main.rook
-#comprise math_utils
-#include &lt;stdio.h&gt;
-
-int main() {
-    int val = 8;
-    printf("%d squared is %d
-", val, square(val));
-    return 0;
-}</code></pre></div>
-<p>When Rokade builds the project, it parses <code>math_utils.rook</code>, verifies types, and compiles both modules into a single binary without duplicate symbol errors.</p>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 11</div><div class="callout-body">
-<ul>
-  <li>Organize code into separate files by function or module.</li>
-  <li><code>rokade.toml</code> configures project settings and dependencies.</li>
-  <li>Use <code>#comprise filename</code> to import local Rook source files directly without header files.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b12-debugging-thinking">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 12: How to Think Like a Programmer</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Programming centers on problem solving: decomposing tasks into small, verifiable steps and locating errors methodically.</p>
-
-<h3>12.1 Problem Decomposition</h3>
-<p>When solving an unfamiliar problem, avoid writing everything at once:</p>
-<ol>
-  <li>Break the task into smaller subtasks until each subtask has a straightforward solution.</li>
-  <li>Write and verify each component independently.</li>
-  <li>Compose the tested components into the complete solution.</li>
-</ol>
-
-<h3>12.2 Reading Compiler Errors</h3>
-<p>Compiler errors provide actionable diagnostics when code violates syntax or type rules:</p>
-<ol>
-  <li><strong>Check the file and line number:</strong> An error like <code>src/main.rook:14:5: error</code> points to line 14, column 5.</li>
-  <li><strong>Read the error description:</strong> Common errors include missing semicolons, unrecognized identifiers, or type mismatches.</li>
-  <li><strong>Fix the top error first:</strong> A single error near the top of a file can trigger several downstream warnings. Address the first error and recompile.</li>
-</ol>
-
-<h3>12.3 Print Debugging</h3>
-<p>When a program compiles but produces unexpected output, adding <code>printf</code> statements lets you inspect values as execution proceeds:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Tracing Values with printf</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int calculate_discount(int price, int customer_years) {
-    printf("[DEBUG] price=%d, years=%d
-", price, customer_years);
-    
-    int discount = 0;
-    if (customer_years &gt; 5) {
-        discount = 20;
-    }
-    printf("[DEBUG] calculated discount=%d
-", discount);
-    
-    return price - discount;
-}</code></pre></div>
-<p>Examining intermediate outputs clarifies where execution diverges from expectations.</p>
-<div class="callout callout-tip"><div class="callout-title">Summary of Module 12</div><div class="callout-body">
-<ul>
-  <li>Decompose complex requirements into small, testable steps.</li>
-  <li>Read compiler messages carefully, starting with the first reported error.</li>
-  <li>Trace program state with print statements to diagnose logic errors.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b13-objects-impl">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 13: Objects and Methods</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>In addition to plain structs, Rook provides <code>object</code> and <code>impl</code> for organizing state and associated methods together. This model supports single inheritance with static dispatch.</p>
-
-<h3>13.1 Defining an Object</h3>
-<p>An <code>object</code> defines data fields. Fields support both C-style (<code>Type name;</code>) and let-style (<code>let name: Type;</code>):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Defining an Object</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-object Animal {
-    const char* name;
-    int legs;
-}</code></pre></div>
-<h3>13.2 Attaching Methods with impl</h3>
-<p>Methods are defined in an <code>impl</code> block. Each method takes a pointer to the instance as its first argument, conventionally named <code>self</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Attaching Methods to Objects</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-object Animal {
-    const char* name;
-    int legs;
-}
-
-impl Animal {
-    void speak(Animal* self) {
-        printf("%s
-", self.name);
-    }
-    int legs_count(Animal* self) {
-        return self.legs;
-    }
-}
-
-int main() {
-    Animal dog;
-    dog.name = "Rex";
-    dog.legs = 4;
-
-    dog.speak();
-    printf("Legs: %d
-", dog.legs_count());
-    return 0;
-}</code></pre></div>
-<h3>13.3 Single Inheritance</h3>
-<p>An object can extend a base object using a colon (<code>:</code>). The child object inherits the parent object's fields and methods:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Single Inheritance</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Cat : Animal {
-    int lives;
-}
-
-impl Cat {
-    void meow(Cat* self) {
-        self.speak(); // Calls inherited Animal.speak
-    }
-}
-
-int main() {
-    Cat c;
-    c.name = "Tom";
-    c.legs = 4;
-    c.lives = 9;
-
-    c.speak();
-    c.meow();
-    printf("Lives: %d
-", c.lives);
-    return 0;
-}</code></pre></div><div class="callout callout-note"><div class="callout-title">Language Comparison</div><div class="callout-body">
-Object-oriented concepts appear across many languages. C++, Java, and Python use classes with methods. Rust uses structs with <code>impl</code> blocks. Other languages, like C and Go, avoid class inheritance in favor of composition or interface tables. Rook provides single inheritance lowered statically to nested C structs with zero vtable overhead.
-</div></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 13</div><div class="callout-body">
-<ul>
-  <li><code>object</code> defines records with named fields in C-style or let-style.</li>
-  <li><code>impl</code> binds methods to an object, taking an explicit <code>self</code> pointer.</li>
-  <li><code>object Child : Parent</code> establishes single inheritance.</li>
-  <li>Method dispatch is static and maps directly to C function calls without virtual tables.</li>
-</ul>
-</div></div>
-  </div>
-</section>
-
-
-<section class="chapter beginner-chapter" id="b14-match-patterns">
-  <div class="chapter-header">
-    <h2 class="chapter-title">Module 14: Pattern Matching</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    
-<p>Rook provides a <code>match</code> construct that compares values against patterns and executes the matching arm. It supports scalar values, enums, and sum types (tagged unions).</p>
-
-<h3>14.1 Value Matching</h3>
-<p>The simplest form matches integers or enums against constant patterns:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Basic Pattern Match</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-int main() {
-    int code = 2;
-
-    match (code) {
-        1 =&gt; printf("One
-"),
-        2 =&gt; printf("Two
-"),
-        3 =&gt; printf("Three
-"),
-        _ =&gt; printf("Other
-"),
-    }
-    return 0;
-}</code></pre></div>
-<p>The underscore <code>_</code> acts as a wildcard pattern that matches any value not matched by prior arms.</p>
-
-<h3>14.2 Pattern Matching on Sum Types</h3>
-<p>A <code>sum</code> type represents a value that can hold one of several variant shapes. A <code>match</code> expression inspects the variant and destructures its payload fields:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Matching on Sum Types</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-
-sum Shape {
-    Circle { float r; };
-    Rect   { float w; float h; };
-    Point;
-}
-
-impl Shape {
-    float area(Shape* self) {
-        return match (*self) {
-            Circle { r }    =&gt; 3.14159f * r * r,
-            Rect   { w, h } =&gt; w * h,
-            Point           =&gt; 0.0f,
-            _               =&gt; 0.0f,
-        };
-    }
-}
-
-int main() {
-    Shape a = Circle { r: 2.0f };
-    Shape b = Rect { w: 3.0f, h: 4.0f };
-    Shape c = Point;
-
-    printf("Circle area: %f
-", a.area());
-    printf("Rect area:   %f
-", b.area());
-    printf("Point area:  %f
-", c.area());
-    return 0;
-}</code></pre></div><div class="callout callout-note"><div class="callout-title">Language Comparison</div><div class="callout-body">
-Pattern matching on tagged unions is common in languages like Rust, Swift, and Haskell. Traditional C offers <code>switch</code> on integers without payload destructuring, requiring manual union tagging. Rook provides tagged unions and pattern matching directly in the grammar.
-</div></div><div class="callout callout-tip"><div class="callout-title">Summary of Module 14</div><div class="callout-body">
-<ul>
-  <li><code>match</code> compares values against patterns and executes the first matching arm.</li>
-  <li>The <code>_</code> pattern serves as the fallback arm.</li>
-  <li>Sum types represent values that can take one of multiple variant shapes.</li>
-  <li>Pattern matching destructures sum type variant payloads in a single step.</li>
-</ul>
-</div></div>
   </div>
 </section>
 

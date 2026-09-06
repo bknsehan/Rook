@@ -68,6 +68,7 @@ const char* sema_type_cname(Sema* s, AstType* t);
 const char* sema_mangle_method(Sema* s, const char* type_name, const char* method_name);
 
 const char* sema_lookup_cfunc(const char* name);
+const char* sema_cfunc_ret(const char* name);
 const char* sema_lookup_cfunc_param(const char* name, int pidx);
 int sema_cfunc_nparams(const char* name);
 int sema_cfunc_is_variadic(const char* name);
