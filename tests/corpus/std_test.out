@@ -1,0 +1,7 @@
+PASS true_passes
+PASS int_eq
+PASS str_eq
+PASS null_eq
+PASS suite_passing
+PASS total_5
+test: 6 passed, 0 failed, 6 total

@@ -6,3 +6,4 @@
 #comprise <std/mem>
 #comprise <std/fs>
 #comprise <std/vec>
+#comprise <std/test>

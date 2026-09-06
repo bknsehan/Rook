@@ -1,0 +1,18 @@
+#comprise <std/test>
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    TestSuite t = test_new();
+    t.assert_true(true, "true_passes");
+    t.assert_eq_int(4, add(2, 2), "int_eq");
+    t.assert_eq_str("rook", "rook", "str_eq");
+    t.assert_eq_str(NULL, NULL, "null_eq");
+    bool ok = t.passed();
+    t.assert_true(ok, "suite_passing");
+    int n = t.total();
+    t.assert_eq_int(5, n, "total_5");
+    return t.finish();
+}

@@ -1,0 +1,71 @@
+// Rook Standard Library - std/test.rook
+// Minimal test assertions for rokade test suites and corpus tests.
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#comprise <std/io>
+
+object TestSuite {
+    pass: int
+    fail: int
+}
+
+TestSuite test_new() {
+    return TestSuite { pass: 0, fail: 0 };
+}
+
+impl TestSuite {
+    void assert_true(TestSuite* self, bool cond, const char* name) {
+        if (cond) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s\n", name);
+        }
+    }    void assert_eq_int(TestSuite* self, int expected, int actual, const char* name) {
+        if (expected == actual) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected %d, got %d\n", name, expected, actual);
+        }
+    }    void assert_eq_str(TestSuite* self, const char* expected, const char* actual, const char* name) {
+        bool eq = false;
+        if (expected == NULL && actual == NULL) {
+            eq = true;
+        } else if (expected != NULL && actual != NULL) {
+            if (strcmp(expected, actual) == 0) {
+                eq = true;
+            }
+        }
+        if (eq) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            const char* exp_show = "(null)";
+            const char* act_show = "(null)";
+            if (expected != NULL) {
+                exp_show = expected;
+            }
+            if (actual != NULL) {
+                act_show = actual;
+            }
+            printf("FAIL %s: expected '%s', got '%s'\n", name, exp_show, act_show);
+        }
+    }    int total(TestSuite* self) {
+        return self->pass + self->fail;
+    }    bool passed(TestSuite* self) {
+        return self->fail == 0;
+    }    void summary(TestSuite* self) {
+        printf("test: %d passed, %d failed, %d total\n", self->pass, self->fail, self->pass + self->fail);
+    }    int finish(TestSuite* self) {
+        self.summary();
+        if (self->fail == 0) {
+            return 0;
+        }
+        return 1;
+    }}
