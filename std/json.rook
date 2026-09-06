@@ -1,0 +1,274 @@
+// Rook Standard Library - std/json.rook
+// Minimal flat-object JSON: field getters (string/int/bool/has) and writers.
+// Top-level value must be an object. v1 limits: no \u decoding (kept literally),
+// integers only (no decimals/exponents), nested values are skipped, not parsed.
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#comprise <std/vec>
+
+const char* json_skip_ws(const char* p) {
+    while (true) {
+        char c = p[0];
+        if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+            break;
+        }
+        p = p + 1;
+    }
+    return p;
+}
+
+const char* json_skip_string(const char* p) {
+    p = p + 1;
+    while (p[0] != '\0') {
+        if (p[0] == '\\') {
+            p = p + 2;
+        } else if (p[0] == '"') {
+            return p + 1;
+        } else {
+            p = p + 1;
+        }
+    }
+    return p;
+}
+
+const char* json_skip_value(const char* p) {
+    p = json_skip_ws(p);
+    char c = p[0];
+    if (c == '"') {
+        return json_skip_string(p);
+    }
+    if (c == '{' || c == '[') {
+        int depth = 1;
+        p = p + 1;
+        while (p[0] != '\0') {
+            char d = p[0];
+            if (d == '"') {
+                p = json_skip_string(p);
+            } else {
+                if (d == '{' || d == '[') {
+                    depth = depth + 1;
+                }
+                if (d == '}' || d == ']') {
+                    depth = depth - 1;
+                    if (depth == 0) {
+                        return p + 1;
+                    }
+                }
+                p = p + 1;
+            }
+        }
+        return p;
+    }
+    while (p[0] != '\0' && p[0] != ',' && p[0] != '}' && p[0] != ']') {
+        p = p + 1;
+    }
+    return p;
+}
+
+const char* json_find(const char* json, const char* key) {
+    const char* p = json_skip_ws(json);
+    if (p[0] != '{') {
+        return NULL;
+    }
+    p = p + 1;
+    size_t klen = strlen(key);
+    while (true) {
+        p = json_skip_ws(p);
+        if (p[0] == '}') {
+            return NULL;
+        }
+        if (p[0] != '"') {
+            return NULL;
+        }
+        const char* ks = p + 1;
+        p = json_skip_string(p);
+        bool hit = false;
+        if (strncmp(ks, key, klen) == 0 && ks[klen] == '"') {
+            hit = true;
+        }
+        p = json_skip_ws(p);
+        if (p[0] != ':') {
+            return NULL;
+        }
+        p = json_skip_ws(p + 1);
+        if (hit) {
+            return p;
+        }
+        p = json_skip_value(p);
+        p = json_skip_ws(p);
+        if (p[0] == ',') {
+            p = p + 1;
+        } else {
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+bool json_has_key(const char* json, const char* key) {
+    return json_find(json, key) != NULL;
+}
+
+bool json_get_string(const char* json, const char* key, char* out, size_t cap) {
+    const char* p = json_find(json, key);
+    if (p == NULL) {
+        return false;
+    }
+    if (p[0] != '"') {
+        return false;
+    }
+    if (cap == 0) {
+        return false;
+    }
+    p = p + 1;
+    size_t n = 0;
+    while (p[0] != '\0' && p[0] != '"') {
+        char c = p[0];
+        if (c == '\\') {
+            p = p + 1;
+            char e = p[0];
+            if (e == '\0') {
+                break;
+            }
+            if (e == 'n') {
+                c = '\n';
+            } else if (e == 'r') {
+                c = '\r';
+            } else if (e == 't') {
+                c = '\t';
+            } else if (e == 'b') {
+                c = '\b';
+            } else if (e == 'f') {
+                c = '\f';
+            } else {
+                c = e;
+            }
+            p = p + 1;
+        } else {
+            p = p + 1;
+        }
+        if (n + 1 >= cap) {
+            return false;
+        }
+        out[n] = c;
+        n = n + 1;
+    }
+    if (p[0] != '"') {
+        return false;
+    }
+    out[n] = '\0';
+    return true;
+}
+
+bool json_get_int(const char* json, const char* key, int* out) {
+    const char* p = json_find(json, key);
+    if (p == NULL) {
+        return false;
+    }
+    int sign = 1;
+    if (p[0] == '-') {
+        sign = -1;
+        p = p + 1;
+    }
+    int val = 0;
+    bool any = false;
+    while (p[0] >= '0' && p[0] <= '9') {
+        any = true;
+        int digit = p[0] - '0';
+        if (val > (2147483647 - digit) / 10) {
+            if (out) {
+                if (sign == 1) {
+                    *out = 2147483647;
+                } else {
+                    *out = -2147483647 - 1;
+                }
+            }
+            return true;
+        }
+        val = val * 10 + digit;
+        p = p + 1;
+    }
+    if (!any) {
+        return false;
+    }
+    if (out) {
+        *out = val * sign;
+    }
+    return true;
+}
+
+bool json_get_bool(const char* json, const char* key, bool* out) {
+    const char* p = json_find(json, key);
+    if (p == NULL) {
+        return false;
+    }
+    if (strncmp(p, "true", 4) == 0) {
+        char t = p[4];
+        if (t == ' ' || t == '\t' || t == '\n' || t == '\r' || t == ',' || t == '}' || t == ']' || t == '\0') {
+            if (out) {
+                *out = true;
+            }
+            return true;
+        }
+        return false;
+    }
+    if (strncmp(p, "false", 5) == 0) {
+        char f = p[5];
+        if (f == ' ' || f == '\t' || f == '\n' || f == '\r' || f == ',' || f == '}' || f == ']' || f == '\0') {
+            if (out) {
+                *out = false;
+            }
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
+
+void json_write_string(StringBuilder* sb, const char* s) {
+    if (!s) {
+        sb.append_cstr("null");
+        return;
+    }
+    sb.append_char('"');
+    size_t n = strlen(s);
+    for (size_t i = 0; i < n; i = i + 1) {
+        char c = s[i];
+        if (c == '"') {
+            sb.append_cstr("\\\"");
+        } else if (c == '\\') {
+            sb.append_cstr("\\\\");
+        } else if (c == '\n') {
+            sb.append_cstr("\\n");
+        } else if (c == '\r') {
+            sb.append_cstr("\\r");
+        } else if (c == '\t') {
+            sb.append_cstr("\\t");
+        } else if (c == '\b') {
+            sb.append_cstr("\\b");
+        } else if (c == '\f') {
+            sb.append_cstr("\\f");
+        } else {
+            sb.append_char(c);
+        }
+    }
+    sb.append_char('"');
+}
+
+void json_write_int(StringBuilder* sb, int n) {
+    sb.append_int(n);
+}
+
+void json_write_bool(StringBuilder* sb, bool b) {
+    if (b) {
+        sb.append_cstr("true");
+    } else {
+        sb.append_cstr("false");
+    }
+}
+
+void json_write_null(StringBuilder* sb) {
+    sb.append_cstr("null");
+}

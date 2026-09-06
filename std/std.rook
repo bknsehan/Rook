@@ -8,3 +8,4 @@
 #comprise <std/vec>
 #comprise <std/test>
 #comprise <std/log>
+#comprise <std/json>
