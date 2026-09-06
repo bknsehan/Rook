@@ -73,7 +73,7 @@ const char* json_find(const char* json, const char* key) {
         return NULL;
     }
     p = p + 1;
-    size_t klen = strlen(key);
+    size_t klen = (size_t)strlen(key);
     while (true) {
         p = json_skip_ws(p);
         if (p[0] == '}') {
@@ -233,7 +233,7 @@ void json_write_string(StringBuilder* sb, const char* s) {
         return;
     }
     sb.append_char('"');
-    size_t n = strlen(s);
+    size_t n = (size_t)strlen(s);
     for (size_t i = 0; i < n; i = i + 1) {
         char c = s[i];
         if (c == '"') {
