@@ -24,7 +24,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.5.2"
+#define ROKADE_VERSION "0.6.0"
 #endif
 
 #ifdef _WIN32
@@ -565,8 +565,10 @@ static char* resolve_includes(const char* src, int src_len, const char* basedir,
     return r;
 }
 
-/* Forward declaration: defined later in the test command section. */
+/* Forward declarations */
 static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet, const char* backend);
+static char* transpile_to_c(const char* path, int* out_len, int silent);
+static int write_all(const char* path, const char* data, int len);
 
 static void usage(void) {
     printf("rokade - the Rook compiler\n");
@@ -574,7 +576,7 @@ static void usage(void) {
     printf("  rokade <file>             lex/parse and emit Rook source to stdout\n");
     printf("  rokade --emit-c <file>    parse and emit C to stdout\n");
     printf("  rokade --emit-llvm <file> parse and emit LLVM IR to stdout\n");
-    printf("  rokade --emit-llvm2 <file> parse and emit LLVM2 (next-gen) IR to stdout\n");
+    printf("  rokade --emit-llvm2 <file> (alias for --emit-llvm)\n");
     printf("  rokade --emit-obj <file>  parse and emit native object (.o) via LLVM\n");
     printf("  rokade --ast <file>       dump the AST\n");
     printf("  rokade --check <file>     round-trip check (parse->emit->reparse, compare ASTs)\n");
@@ -1034,9 +1036,12 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
         free(vcopy);
     }
 
-    if (strcmp(cur_sec, "package") == 0 || cur_sec[0] == '\0') {
+    if (strcmp(cur_sec, "package") == 0 || strcmp(cur_sec, "project") == 0 || cur_sec[0] == '\0') {
         if (strcmp(key, "name") == 0) snprintf(cfg->name, sizeof(cfg->name), "%s", valbuf);
         else if (strcmp(key, "version") == 0) snprintf(cfg->version, sizeof(cfg->version), "%s", valbuf);
+        else if (strcmp(key, "backend") == 0) {
+            snprintf(cfg->backend, sizeof(cfg->backend), "%s", strcmp(valbuf, "llvm2") == 0 ? "llvm" : valbuf);
+        }
         else if (strcmp(key, "kind") == 0) {
             if (strcmp(valbuf, "lib") == 0 || strcmp(valbuf, "library") == 0) {
                 snprintf(cfg->build_kind, sizeof(cfg->build_kind), "static-lib");
@@ -1068,7 +1073,7 @@ static int parse_toml_line(const char* line, ProjectConfig* cfg, char* cur_sec, 
         }
         project_config_add_dependency(cfg, key, dep_path);
     }
-    if (strcmp(cur_sec, "build") == 0 || cur_sec[0] == '\0') {
+    if (strcmp(cur_sec, "build") == 0 || strcmp(cur_sec, "project") == 0 || cur_sec[0] == '\0') {
         if (strcmp(key, "kind") == 0) {
             if (strcmp(valbuf, "lib") == 0 || strcmp(valbuf, "library") == 0) {
                 snprintf(cfg->build_kind, sizeof(cfg->build_kind), "static-lib");
@@ -1509,6 +1514,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
     }
 
     const char* active_backend = (cli_backend && cli_backend[0]) ? cli_backend : (cfg.backend[0] ? cfg.backend : "c");
+    if (strcmp(active_backend, "llvm2") == 0) active_backend = "llvm";
 
     /* Determine list of targets to build */
     const char* targets_to_build[16];
@@ -1904,9 +1910,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                         else if (strstr(spec.cflags, "-O3")) opt_level = 3;
                         else if (strstr(spec.cflags, "-O2")) opt_level = 2;
                     }
-                    ret = (strcmp(active_backend, "llvm2") == 0)
-                        ? llvm2_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple)
-                        : llvm_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple);
+                    ret = llvm_backend_compile_ll_to_obj_target(c_file_paths[i], obj_path, opt_level, tc.target_triple);
 #else
                     ret = toolchain_compile_obj_target(&spec, &tc, obj_path, c_file_paths[i], inc_dirs, n_inc, NULL);
 #endif
@@ -2029,9 +2033,7 @@ static int run_single_file_jit(const char* path, const char* cli_backend) {
         return 1;
     }
 
-    int rc = (cli_backend && strcmp(cli_backend, "llvm2") == 0)
-        ? llvm2_backend_jit_run(sema, p, 0, NULL)
-        : llvm_backend_jit_run(sema, p, 0, NULL);
+    int rc = llvm_backend_jit_run(sema, p, 0, NULL);
 
     sema_free(sema);
     free(expanded);
@@ -2040,32 +2042,171 @@ static int run_single_file_jit(const char* path, const char* cli_backend) {
     return rc;
 }
 
+static int run_single_file_native(const char* path, const char* active_backend) {
+    char work[] = "/tmp/rokade_run_XXXXXX";
+    if (!mkdtemp(work)) {
+        fprintf(stderr, "rokade: cannot create temp dir\n");
+        return 1;
+    }
+    char exe_path[4096];
+    snprintf(exe_path, sizeof(exe_path), "%s/app", work);
+
+    int rc = 0;
+    if (strcmp(active_backend, "llvm") == 0 || strcmp(active_backend, "llvm2") == 0) {
+#ifdef ROKADE_HAS_LLVM
+        int slen = 0;
+        char* raw_src = util_read_file(path, &slen);
+        if (!raw_src) {
+            fprintf(stderr, "rokade: cannot read '%s'\n", path);
+            rmdir(work);
+            return 1;
+        }
+        char basedir[4096];
+        char* slash = strrchr(path, '/');
+        if (slash) snprintf(basedir, sizeof(basedir), "%.*s", (int)(slash - path), path);
+        else snprintf(basedir, sizeof(basedir), ".");
+
+        char* expanded = resolve_includes(raw_src, slen, basedir, NULL, 0, 0, path);
+        free(raw_src);
+        if (!expanded) {
+            fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
+            rmdir(work);
+            return 1;
+        }
+        int ntoks = 0;
+        Token* toks = lex_all(expanded, (int)strlen(expanded), &ntoks);
+        Program* p = parse_program(expanded, (int)strlen(expanded), toks, ntoks);
+        if (!p) {
+            print_diag_stderr(path, parse_error());
+            free(expanded); free(toks);
+            rmdir(work);
+            return 1;
+        }
+        Sema* sema = sema_new();
+        sema_set_source(sema, expanded, (int)strlen(expanded));
+        sema_load_commandlist(basedir, NULL);
+        c_import_scan_and_load(sema, expanded, (int)strlen(expanded), basedir, NULL, 0);
+        c_import_program_raw(sema, p, NULL, 0);
+        sema_collect(sema, p);
+        sema_check(sema, p);
+        if (sema->err) {
+            print_diag_stderr(path, sema->err);
+            sema_free(sema); program_free(p); free(expanded); free(toks);
+            rmdir(work);
+            return 1;
+        }
+        char obj_path[4096];
+        snprintf(obj_path, sizeof(obj_path), "%s/app.o", work);
+        int emit_rc = llvm_backend_emit_obj(sema, p, obj_path, 2);
+        sema_free(sema); program_free(p); free(expanded); free(toks);
+        if (emit_rc != 0) {
+            fprintf(stderr, "rokade: failed to emit object file\n");
+            rmdir(work);
+            return 1;
+        }
+        const char* link_args[] = { "clang", "-O2", obj_path, "-o", exe_path, "-lm", NULL };
+        if (util_exec(link_args) != 0) {
+            fprintf(stderr, "rokade: failed to link executable\n");
+            unlink(obj_path);
+            rmdir(work);
+            return 1;
+        }
+        unlink(obj_path);
+#else
+        fprintf(stderr, "rokade: LLVM backend not enabled in this build\n");
+        rmdir(work);
+        return 1;
+#endif
+    } else {
+        /* C backend */
+        int clen = 0;
+        char* c = transpile_to_c(path, &clen, 0);
+        if (!c) {
+            rmdir(work);
+            return 1;
+        }
+        char c_path[4096];
+        snprintf(c_path, sizeof(c_path), "%s/app.c", work);
+        if (write_all(c_path, c, clen)) {
+            free(c);
+            rmdir(work);
+            return 1;
+        }
+        free(c);
+        if (toolchain_compile_exe(exe_path, c_path) != 0) {
+            unlink(c_path);
+            rmdir(work);
+            return 1;
+        }
+        unlink(c_path);
+    }
+
+    const char* run_args[] = { exe_path, NULL };
+    rc = util_exec(run_args);
+
+    unlink(exe_path);
+    rmdir(work);
+    return rc;
+}
+
 static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
+    const char* default_proj_dir = ".";
+    if (proj_path) {
+        size_t plen = strlen(proj_path);
+        if (plen < 5 || strcmp(proj_path + plen - 5, ".rook") != 0) {
+            default_proj_dir = proj_path;
+        }
+    }
+    ProjectConfig probe_cfg;
+    const char* active_backend = "c";
+    if (cli_backend && cli_backend[0]) {
+        active_backend = cli_backend;
+    } else if (use_jit) {
+        active_backend = "llvm";
+    } else if (read_project_config(default_proj_dir, &probe_cfg)) {
+        if (probe_cfg.backend[0]) active_backend = probe_cfg.backend;
+        project_config_free(&probe_cfg);
+    }
+    if (strcmp(active_backend, "llvm2") == 0) active_backend = "llvm";
+
     if (proj_path) {
         size_t plen = strlen(proj_path);
         if (plen >= 5 && strcmp(proj_path + plen - 5, ".rook") == 0) {
-            return run_single_file_jit(proj_path, cli_backend);
+            if (use_jit) {
+                if (strcmp(active_backend, "c") == 0) {
+                    fprintf(stderr, "error: --jit is only supported with the llvm backend\n");
+                    return 1;
+                }
+                return run_single_file_jit(proj_path, active_backend);
+            }
+            return run_single_file_native(proj_path, active_backend);
         }
     }
     if (use_jit) {
+        if (strcmp(active_backend, "c") == 0) {
+            fprintf(stderr, "error: --jit is only supported with the llvm backend\n");
+            return 1;
+        }
         char main_path[4096];
         snprintf(main_path, sizeof(main_path), "%s/src/main.rook", proj_path ? proj_path : ".");
-        return run_single_file_jit(main_path, cli_backend);
+        return run_single_file_jit(main_path, active_backend);
     }
 
-    ProjectConfig probe_cfg;
     const char* run_target = "linux";
-    if (read_project_config(proj_path ? proj_path : ".", &probe_cfg)) {
-        if (probe_cfg.build_target[0]) run_target = probe_cfg.build_target;
-        project_config_free(&probe_cfg);
-    }
-    int ret = do_build(proj_path, run_target, cli_backend, 0);
-    if (ret != 0) return ret;
-
     ProjectConfig cfg;
-    if (!read_project_config(proj_path ? proj_path : ".", &cfg)) {
-        fprintf(stderr, "error: cannot read project config\n");
+    if (read_project_config(proj_path ? proj_path : ".", &cfg)) {
+        if (cfg.build_target[0]) run_target = cfg.build_target;
+        if (!cli_backend && cfg.backend[0]) active_backend = cfg.backend;
+        if (strcmp(active_backend, "llvm2") == 0) active_backend = "llvm";
+    } else {
+        fprintf(stderr, "error: %s/rokade.toml not found or invalid\n", proj_path ? proj_path : ".");
         return 1;
+    }
+
+    int ret = do_build(proj_path, run_target, active_backend, 0);
+    if (ret != 0) {
+        project_config_free(&cfg);
+        return ret;
     }
 
     if (strcmp(cfg.build_kind, "static-lib") == 0 || strcmp(cfg.build_kind, "lib") == 0 || strcmp(cfg.build_kind, "library") == 0) {
@@ -2487,9 +2628,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 }
                 char obj_path[4096];
                 snprintf(obj_path, sizeof(obj_path), "%s/%s.o", work, base);
-                int rc = (strcmp(backend, "llvm2") == 0)
-                    ? llvm2_backend_emit_obj(sema, p, obj_path, 2)
-                    : llvm_backend_emit_obj(sema, p, obj_path, 2);
+                int rc = llvm_backend_emit_obj(sema, p, obj_path, 2);
                 sema_free(sema); program_free(p); free(expanded); free(toks);
                 if (rc != 0) {
                     fail++; if (!quiet) printf("  FAIL (emit-obj) %s\n", base); continue;
@@ -3500,9 +3639,7 @@ int main(int argc, char** argv) {
             snprintf(out_obj, sizeof(out_obj), "%.*s.o", (int)(blen > 5 ? blen - 5 : blen), base);
         }
 
-        int rc = (strcmp(cli_backend, "llvm2") == 0)
-            ? llvm2_backend_emit_obj(sema, p, out_obj, opt_level > 0 ? opt_level : 2)
-            : llvm_backend_emit_obj(sema, p, out_obj, 2);
+        int rc = llvm_backend_emit_obj(sema, p, out_obj, opt_level > 0 ? opt_level : 2);
         if (rc == 0) {
             printf("emitted: %s\n", out_obj);
         }
@@ -3540,8 +3677,8 @@ int main(int argc, char** argv) {
             return 1;
         }
         char* c = NULL;
-        if (strcmp(bname, "llvm2") == 0 && opt_level > 0) {
-            c = llvm2_backend_emit_program_opt(sema, p, &elen, bounds_check, NULL, opt_level);
+        if ((strcmp(bname, "llvm") == 0 || strcmp(bname, "llvm2") == 0) && opt_level > 0) {
+            c = llvm_backend_emit_program_opt(sema, p, &elen, bounds_check, NULL, opt_level);
         } else if (be->emit_program_target) {
             c = be->emit_program_target(sema, p, &elen, bounds_check, NULL);
         } else {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rook Documentation &amp; Programming Foundations (v0.5.2)</title>
+<title>Rook Documentation &amp; Programming Foundations (v0.6.0)</title>
 <style>
   :root {
     --bg: #ffffff;
@@ -617,7 +617,7 @@
   <div class="sidebar-header">
     <div class="sidebar-title">
       <span>Rook Documentation</span>
-      <span class="sidebar-badge">v0.5.2</span>
+      <span class="sidebar-badge">v0.6.0</span>
     </div>
     <div class="sidebar-sub">Systems Programming &amp; Foundations</div>
   </div>
@@ -642,7 +642,7 @@
 
   <nav class="nav-list" id="nav-guide">
     <a href="#philosophy" class="nav-item nav-guide-item" data-id="philosophy">1. The Rook Philosophy & Technical Constraints</a>
-    <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & The Three Compiler Backends</a>
+    <a href="#architecture" class="nav-item nav-guide-item" data-id="architecture">2. Architecture & Compiler Backends</a>
     <a href="#c-comparison" class="nav-item nav-guide-item" data-id="c-comparison">3. Technical Comparison: C, Rust, Zig, and Rook</a>
     <a href="#mental-model" class="nav-item nav-guide-item" data-id="mental-model">4. Memory Layout & Storage Semantics</a>
     <a href="#variables" class="nav-item nav-guide-item" data-id="variables">5. Type System & Semantic Analysis</a>
@@ -722,7 +722,7 @@
 
 <section class="chapter" id="architecture">
   <div class="chapter-header">
-    <h2 class="chapter-title">2. Architecture & The Three Compiler Backends</h2>
+    <h2 class="chapter-title">2. Architecture & Compiler Backends</h2>
     <a href="#top-guide" class="back-to-top">Top ↑</a>
   </div>
   <div class="chapter-body">
@@ -754,19 +754,13 @@
       <td><strong>C Backend (<code>--backend=c</code>)</strong></td>
       <td><code>src/c_backend.c</code></td>
       <td>C11 / C23 Source (<code>.c</code>)</td>
-      <td>Default backend. Transpiles AST directly to clean C source and calls the system C compiler (GCC or Clang). Compatible with all C profiling, debugging (GDB/LLDB), and build systems.</td>
+      <td>Default portable backend. Transpiles AST directly to standard C source and drives the host compiler (GCC or Clang). Compatible with all C profiling, debugging (GDB/LLDB), and external build systems.</td>
     </tr>
     <tr>
       <td><strong>LLVM Backend (<code>--backend=llvm</code>)</strong></td>
       <td><code>src/llvm_backend.c</code></td>
-      <td>Native Object (<code>.o</code>) / JIT</td>
-      <td>Emits LLVM IR via LLVM-C API. Supports in-memory execution via <code>rokade run --jit</code>. Useful for rapid scripting and automated compiler tests without intermediate disk artifacts.</td>
-    </tr>
-    <tr>
-      <td><strong>LLVM2 Backend (<code>--backend=llvm2</code>)</strong></td>
-      <td><code>src/llvm2_backend.c</code></td>
-      <td>Direct LLVM IR (<code>.ll</code> / <code>.o</code>)</td>
-      <td>Next-generation native backend. Implements strict short-circuit control flow via basic blocks and PHI nodes, automated C typedef resolution, recursive struct sizing, union backing buffers, and zero-wrapper foreign function calls.</td>
+      <td>Native Object (<code>.o</code>) / Direct LLVM IR (<code>.ll</code>) / JIT</td>
+      <td>Production native LLVM backend. Implements strict short-circuit control flow via basic blocks and PHI nodes, automated C typedef resolution, recursive struct sizing, union backing buffers, in-memory JIT execution (<code>rokade run --jit</code>), and zero-wrapper foreign function calls. (<code>--backend=llvm2</code> is supported as an alias).</td>
     </tr>
   </tbody>
 </table>
@@ -802,7 +796,7 @@
       <th>Standard C (C11/C23)</th>
       <th>Rust (2024 Edition)</th>
       <th>Zig (0.13+)</th>
-      <th>Rook (v0.5.2)</th>
+      <th>Rook (v0.6.0)</th>
     </tr>
   </thead>
   <tbody>

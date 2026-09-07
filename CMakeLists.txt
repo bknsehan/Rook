@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(rokade VERSION 0.5.2 LANGUAGES C)
+project(rokade VERSION 0.6.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -19,7 +19,6 @@ add_executable(rokade
   src/config.c
   src/toolchain.c
   src/llvm_backend.c
-  src/llvm2_backend.c
   src/c_import.c
 )
 
@@ -28,7 +27,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # ─── Optional LLVM & libclang support ────────────────────────────────
-option(ROKADE_ENABLE_LLVM "Enable experimental LLVM backend and libclang C-interop" ON)
+option(ROKADE_ENABLE_LLVM "Enable native LLVM backend and libclang C-interop" ON)
 
 if(ROKADE_ENABLE_LLVM)
   find_package(LLVM CONFIG)

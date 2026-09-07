@@ -46,47 +46,49 @@ Rook adheres to five foundational engineering invariants:
 
 ---
 
-## 2. Compiler Pipeline & Multi-Backend Architecture
+## 2. Compiler Pipeline & Compiler Backends
 
-The `rokade` compiler converts Rook source code through a modular semantic pipeline into three distinct codegen backends selectable via `--backend=<target>`:
+The `rokade` compiler converts Rook source code through a modular semantic pipeline into two production compiler backends selectable via `--backend=<target>` (or via `backend = "..."` in `rokade.toml`):
 
 ```
 Source (.rook) ➔ Lexer / Parser (AST) ➔ Sema & Libclang AST Engine
                                                   │
-                ┌─────────────────────────────────┼─────────────────────────────────┐
-                ▼                                 ▼                                 ▼
-         C Backend Target                LLVM Backend Target               LLVM2 Backend Target
-         (--backend=c)                   (--backend=llvm)                  (--backend=llvm2)
-                │                                 │                                 │
-                ▼                                 ▼                                 ▼
-         C11/C23 Source                  LLVM-C Bitcode / JIT              Typed LLVM IR (.ll)
-                │                                 │                                 │
-                ▼                                 ▼                                 ▼
-      Host Compiler (GCC/Clang)           Direct Object (.o)                LLVM llc / Clang Linker
-                │                                 │                                 │
-                └─────────────────────────────────┴─────────────────────────────────┘
+                ┌─────────────────────────────────┴─────────────────────────────────┐
+                ▼                                                                   ▼
+         C Backend Target                                                  LLVM Backend Target
+         (--backend=c)                                                     (--backend=llvm)
+                │                                                                   │
+                ▼                                                                   ▼
+         C11/C23 Source                                                    Typed LLVM IR (.ll) / Object (.o)
+                │                                                                   │
+                ▼                                                                   ▼
+      Host Compiler (GCC/Clang)                                            LLVM TargetMachine / Clang Linker / JIT
+                │                                                                   │
+                └─────────────────────────────────┬─────────────────────────────────┘
                                                   ▼
                                        Native Binary Executable
 ```
 
 ### Backend Comparison
 
-| Dimension | C Backend (`--backend=c`) | LLVM Backend (`--backend=llvm`) | LLVM2 Backend (`--backend=llvm2`) |
-| :--- | :--- | :--- | :--- |
-| **Implementation** | `src/c_backend.c` | `src/llvm_backend.c` | `src/llvm2_backend.c` |
-| **Intermediate Output** | ISO C11 / C23 Source | In-memory LLVM-C Modules | Formatted LLVM IR (`.ll`) |
-| **Final Target** | Native executable via host CC | Native object file (`.o`) / JIT | Native object file (`.o`) via LLVM |
-| **Toolchain Dependency**| GCC or Clang on PATH | LLVM 15+ development libraries | LLVM 15+ development libraries |
-| **JIT Execution** | No (generates temporary executable)| **Yes** (`rokade run --jit`) | In development |
-| **Short-Circuit Lowering**| Emits native C `&&` / `||` | Eager / Instruction builder | **Conditional Basic Blocks + PHI Nodes** |
-| **Union & Typedef Lowering**| Native C struct / typedef emission | LLVM struct representations | **Recursive unwrapping + Backing Buffers** |
-| **Primary Use Cases** | Maximum portability, CMake integration, GDB debugging | Fast automated test cycles via JIT | Direct native compilation, cross-target IR emission |
+| Dimension | C Backend (`--backend=c`) | LLVM Backend (`--backend=llvm`) |
+| :--- | :--- | :--- |
+| **Implementation** | `src/c_backend.c` | `src/llvm_backend.c` *(formerly llvm2)* |
+| **Intermediate Output** | ISO C11 / C23 Source | Formatted Typed LLVM IR (`.ll`) |
+| **Final Target** | Native executable via host CC (GCC/Clang) | Native object file (`.o`) or In-memory JIT execution |
+| **Toolchain Dependency**| GCC or Clang on PATH | LLVM 15+ development libraries |
+| **JIT Execution** | No (compiles native binary to execute) | **Yes** (`rokade run --jit`) |
+| **Short-Circuit Lowering**| Emits native C `&&` / `||` | **Conditional Basic Blocks + PHI Nodes** |
+| **Union & Typedef Lowering**| Native C struct / typedef emission | **Recursive unwrapping + Backing Buffers** |
+| **Primary Use Cases** | Maximum portability, zero LLVM dependency, GDB debugging | Direct native compilation, fast JIT testing, optimization passes |
+
+*(Note: `--backend=llvm2` and `--emit-llvm2` are fully supported as transparent backwards-compatible aliases for `--backend=llvm`).*
 
 ---
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.5.2) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.0) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Management** | Manual (`malloc`/`free`), uninitialized stack by default. | Affine type system, compile-time borrow checker, static lifetimes. | Explicit allocators, manual management, no hidden control flow. | Manual explicit allocators, deterministic stack zero-initialization, optional bounds checks (`-b`). |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` declarations and external binding tools (`bindgen`). | Requires `@cImport` translation step. | Direct 1:1 ABI mapping; dynamic in-memory libclang C header parsing without wrappers. |
@@ -106,7 +108,7 @@ Rook statically rejects syntactic patterns that lead to undefined behavior or si
 | :--- | :--- | :--- |
 | **Assignment in Conditions** | `if (x = 5)` assigns value and tests truthiness | **Compile Error:** Assignments (`=`, `+=`, `-=`, etc.) are syntactically prohibited inside conditional expressions. |
 | **Uninitialized Stack Memory** | Reads indeterminate stack garbage (Undefined Behavior) | **Guaranteed Zero:** All stack variables declared without initializers are lowered to `= {0}`. |
-| **Short-Circuit Evaluation** | Guaranteed by C ISO standard | **Guaranteed in all backends:** Lowered to short-circuiting control-flow basic blocks with PHI nodes in `llvm2`. |
+| **Short-Circuit Evaluation** | Guaranteed by C ISO standard | **Guaranteed in all backends:** Lowered to short-circuiting control-flow basic blocks with PHI nodes in `llvm`. |
 | **`void*` Pointer Arithmetic** | Prohibited by ISO C; permitted by non-standard extensions | **Compile Error:** Pointer arithmetic on `void*` is strictly rejected. Explicit cast to `char*` or `uint8_t*` required. |
 | **Non-Additive Pointer Math** | Permitted via unchecked casting (`ptr * 2`, `ptr / 2`) | **Compile Error:** Multiplication, division, modulo, and bitwise operations on pointer types are rejected. |
 | **Pointer Syntax Format** | Ambiguous: `int *p`, `int* p`, `*int p` | **Standardized:** Postfix `Type*` syntax required (e.g., `int* p`). Prefix `*Type` is rejected. |
@@ -285,7 +287,7 @@ int main() {
 
 - **C Compiler:** GCC 11+ or Clang 14+
 - **Build Utilities:** CMake 3.16+ and Ninja or Make
-- **Optional LLVM Suite:** LLVM 15+ and libclang development headers (required for `--backend=llvm`, `--backend=llvm2`, and dynamic C header parsing)
+- **Optional LLVM Suite:** LLVM 15+ and libclang development headers (required for `--backend=llvm`, and dynamic C header parsing)
 - **Optional LSP Build:** Rust / Cargo (required to compile `rook-lsp`)
 
 ### 7.2 Building and Installing
@@ -354,7 +356,7 @@ Projects are configured using a `rokade.toml` file placed in the project root:
 [project]
 name = "engine_demo"
 version = "0.1.0"
-backend = "llvm2"                   # "c", "llvm", or "llvm2"
+backend = "llvm"                   # "c", "llvm", or "llvm2"
 pkg-config = ["raylib", "sqlite3"]  # Automated pkg-config link flags
 cflags = ["-O3"]
 ldflags = ["-lm"]
@@ -367,10 +369,10 @@ ldflags = ["-lm"]
 rokade new my_project
 
 # Compile the active project
-rokade build [path] [--backend=c|llvm|llvm2]
+rokade build [path] [--backend=c|llvm]
 
 # Compile and execute immediately
-rokade run [path] [--backend=c|llvm|llvm2]
+rokade run [path] [--backend=c|llvm]
 
 # Execute using LLVM in-memory JIT (requires --backend=llvm)
 rokade run --jit src/main.rook
@@ -379,7 +381,7 @@ rokade run --jit src/main.rook
 rokade --emit-c src/main.rook
 
 # Output typed LLVM IR to stdout
-rokade --emit-llvm2 src/main.rook
+rokade --emit-llvm src/main.rook
 
 # Format Rook source files
 rokade fmt src/main.rook

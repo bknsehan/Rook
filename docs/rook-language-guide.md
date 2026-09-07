@@ -1,4 +1,4 @@
-# Rook Language & Architecture Guide (v0.5.2)
+# Rook Language & Architecture Guide (v0.6.0)
 
 > **Specification & Reference Manual**  
 > Technical documentation covering Rook language mechanics, memory layouts, C ABI compatibility, compiler architecture, and systems programming foundations.
@@ -58,28 +58,26 @@ In standard C (ISO/IEC 9899), systems developers encounter recurring structural 
 
 ---
 
-## 2. Architecture & The Three Compiler Backends
+## 2. Architecture & Compiler Backends
 
-The `rokade` compiler features a modular, multi-backend pipeline:
+The `rokade` compiler features a modular multi-backend pipeline:
 
 ```
 Source (.rook) ➔ Lexer/Parser (AST) ➔ Sema & Libclang ➔ Codegen
-                                                    ├── C Backend (C11/C23)
-                                                    ├── LLVM Backend (LLVM-C JIT)
-                                                    └── LLVM2 Backend (Direct IR)
+                                                    ├── C Backend (C11/C23 Source)
+                                                    └── LLVM Backend (Native Object / Direct IR / JIT)
 ```
 
 | Backend | Implementation | Target Output | Characteristics |
 | :--- | :--- | :--- | :--- |
-| **C Backend (`--backend=c`)** | `src/c_backend.c` | C11 / C23 (`.c`) | Default backend. Transpiles AST directly to portable C source and invokes GCC or Clang. Compatible with existing Makefiles, CMake builds, GDB, and LLDB. |
-| **LLVM Backend (`--backend=llvm`)** | `src/llvm_backend.c` | Native Object (`.o`) / JIT | Emits LLVM IR via LLVM-C API. Supports in-memory execution (`rokade run --jit`) for rapid testing without disk artifacts. |
-| **LLVM2 Backend (`--backend=llvm2`)** | `src/llvm2_backend.c` | Direct LLVM IR (`.ll` / `.o`) | Next-generation backend. Direct typed LLVM IR codegen, short-circuit evaluation (`&&`, `||`) via PHI nodes, automated C typedef resolution, struct union backing buffers, and zero-wrapper foreign calls. |
+| **C Backend (`--backend=c`)** | `src/c_backend.c` | C11 / C23 (`.c`) | Default portable backend. Transpiles AST directly to standard C source and drives host GCC or Clang. Fully compatible with GDB/LLDB and native C build systems. |
+| **LLVM Backend (`--backend=llvm`)** | `src/llvm_backend.c` | Native Object (`.o`) / IR (`.ll`) / JIT | Production native LLVM backend. Direct typed LLVM IR codegen, conditional basic-block short-circuiting (`&&`, `||`) via PHI nodes, automated C typedef resolution, struct union backing buffers, in-memory JIT execution (`rokade run --jit`), and zero-wrapper foreign calls. (`--backend=llvm2` is supported as an alias). |
 
 ---
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.5.2) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.0) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Model** | Manual, uninitialized stack defaults, raw pointers. | Affine type system, borrow checker, compile-time lifetimes. | Manual with allocators, slices, no hidden control flow. | Manual, deterministic zero initialization, raw pointers, bounds checks. |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` blocks and binding tools (`bindgen`). | Requires `@cImport` and translated C type headers. | Native 1:1 ABI mapping, dynamic libclang header parsing without wrappers. |
@@ -190,7 +188,7 @@ if (ptr != NULL && *ptr == 10) {
 }
 ```
 
-In the `llvm2` backend, short-circuiting is lowered using basic blocks (`land.rhs`, `land.merge`) and PHI nodes:
+In the `llvm` backend, short-circuiting is lowered using basic blocks (`land.rhs`, `land.merge`) and PHI nodes:
 ```llvm
   %lhs_val = icmp ne ptr %ptr, null
   br i1 %lhs_val, label %land.rhs, label %land.merge

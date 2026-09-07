@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.5.2).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.6.0).
 Contains Chapters 1 to 21, written with strict technical accuracy and zero marketing language.
 """
 
@@ -76,19 +76,13 @@ def get_guide_chapters(make_code_box, make_callout):
       <td><strong>C Backend (<code>--backend=c</code>)</strong></td>
       <td><code>src/c_backend.c</code></td>
       <td>C11 / C23 Source (<code>.c</code>)</td>
-      <td>Default backend. Transpiles AST directly to clean C source and calls the system C compiler (GCC or Clang). Compatible with all C profiling, debugging (GDB/LLDB), and build systems.</td>
+      <td>Default portable backend. Transpiles AST directly to standard C source and drives the host compiler (GCC or Clang). Compatible with all C profiling, debugging (GDB/LLDB), and external build systems.</td>
     </tr>
     <tr>
       <td><strong>LLVM Backend (<code>--backend=llvm</code>)</strong></td>
       <td><code>src/llvm_backend.c</code></td>
-      <td>Native Object (<code>.o</code>) / JIT</td>
-      <td>Emits LLVM IR via LLVM-C API. Supports in-memory execution via <code>rokade run --jit</code>. Useful for rapid scripting and automated compiler tests without intermediate disk artifacts.</td>
-    </tr>
-    <tr>
-      <td><strong>LLVM2 Backend (<code>--backend=llvm2</code>)</strong></td>
-      <td><code>src/llvm2_backend.c</code></td>
-      <td>Direct LLVM IR (<code>.ll</code> / <code>.o</code>)</td>
-      <td>Next-generation native backend. Implements strict short-circuit control flow via basic blocks and PHI nodes, automated C typedef resolution, recursive struct sizing, union backing buffers, and zero-wrapper foreign function calls.</td>
+      <td>Native Object (<code>.o</code>) / Direct LLVM IR (<code>.ll</code>) / JIT</td>
+      <td>Production native LLVM backend. Implements strict short-circuit control flow via basic blocks and PHI nodes, automated C typedef resolution, recursive struct sizing, union backing buffers, in-memory JIT execution (<code>rokade run --jit</code>), and zero-wrapper foreign function calls. (<code>--backend=llvm2</code> is supported as an alias).</td>
     </tr>
   </tbody>
 </table>
@@ -103,7 +97,7 @@ def get_guide_chapters(make_code_box, make_callout):
   <li><strong>Code Generation:</strong> The selected backend walks the verified AST and generates target C code or LLVM IR.</li>
 </ol>
 """
-    add_ch("architecture", "2. Architecture & The Three Compiler Backends", ch2)
+    add_ch("architecture", "2. Architecture & Compiler Backends", ch2)
 
     # ==========================================
     # Chapter 3: Technical Comparison: C, Rust, Zig, and Rook
@@ -119,7 +113,7 @@ def get_guide_chapters(make_code_box, make_callout):
       <th>Standard C (C11/C23)</th>
       <th>Rust (2024 Edition)</th>
       <th>Zig (0.13+)</th>
-      <th>Rook (v0.5.2)</th>
+      <th>Rook (v0.6.0)</th>
     </tr>
   </thead>
   <tbody>
