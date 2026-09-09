@@ -1,0 +1,52 @@
+#include <stdio.h>
+#comprise <std/mem>
+
+object Particle {
+    x: float
+    y: float
+    id: int
+}
+
+int main() {
+    Arena arena = arena_new(1024);
+    defer arena.destroy();
+
+    // Test 1: alloc and SIMD alignment
+    void* p1 = arena.alloc(10);
+    void* p2 = arena.alloc_aligned(32, 16);
+    printf("aligned_16=%d\n", ((size_t)p2 % 16) == 0);
+
+    // Test 2: ArenaTemp scratchpad with defer
+    size_t before_offset = arena.used();
+    {
+        ArenaTemp scratch = arena_temp_begin(&arena);
+        defer arena_temp_end(&scratch);
+
+        void* temp_buf = arena.alloc(200);
+        printf("scratch used > before: %d\n", arena.used() > before_offset);
+    }
+    printf("scratch unwound: %d\n", arena.used() == before_offset);
+
+    // Test 3: ElementPool
+    ElementPool pool = pool_new(sizeof(Particle), 10);
+    defer pool.destroy();
+
+    Particle* part1 = (Particle*)pool.alloc();
+    part1->x = 1.5;
+    part1->y = 2.5;
+    part1->id = 101;
+
+    Particle* part2 = (Particle*)pool.alloc();
+    part2->id = 102;
+
+    printf("pool allocated=%zu\n", pool.count());
+    printf("part1 id=%d, part2 id=%d\n", part1->id, part2->id);
+
+    pool.free(part1);
+    printf("pool count after free=%zu\n", pool.count());
+
+    Particle* part3 = (Particle*)pool.alloc();
+    printf("recycled part3 matches part1 slot: %d\n", part3 == part1);
+
+    return 0;
+}

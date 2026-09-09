@@ -1,0 +1,76 @@
+#include <stdio.h>
+#comprise <std/atomic>
+#comprise <std/sync>
+
+object ThreadContext {
+    counter: AtomicInt
+    lock: Mutex
+    cv: CondVar
+    ready: bool
+}
+
+void* counter_worker(void* arg) {
+    ThreadContext* ctx = (ThreadContext*)arg;
+    for (int i = 0; i < 50; i = i + 1) {
+        ctx->lock.lock();
+        ctx->counter.fetch_add(1);
+        ctx->lock.unlock();
+    }
+    return (void*)123L;
+}
+
+void* cond_worker(void* arg) {
+    ThreadContext* ctx = (ThreadContext*)arg;
+    ctx->lock.lock();
+    ctx->ready = true;
+    ctx->cv.signal();
+    ctx->lock.unlock();
+    return NULL;
+}
+
+int main() {
+    // 1. Atomics test
+    AtomicInt ai = atomic_int_new(10);
+    ai.fetch_add(5);
+    int exp = 15;
+    bool cas_ok = ai.compare_exchange(&exp, 42);
+    printf("atomic cas_ok=%d val=%d\n", (int)cas_ok, ai.load());
+    int old_v = ai.exchange(100);
+    printf("exchange old=%d now=%d\n", old_v, ai.load());
+
+    AtomicBool ab = atomic_bool_new(false);
+    ab.store(true);
+    printf("atomic bool=%d\n", (int)ab.load());
+
+    // 2. Multi-threaded Mutex test
+    ThreadContext ctx;
+    ctx.counter = atomic_int_new(0);
+    ctx.lock.init();
+    defer ctx.lock.destroy();
+    ctx.cv.init();
+    defer ctx.cv.destroy();
+    ctx.ready = false;
+
+    Thread t1 = thread_spawn(counter_worker, &ctx);
+    Thread t2 = thread_spawn(counter_worker, &ctx);
+
+    void* r1 = NULL;
+    void* r2 = NULL;
+    t1.join(&r1);
+    t2.join(&r2);
+    printf("threads joined: counter=%d\n", ctx.counter.load());
+
+    // 3. CondVar wait/signal test
+    ctx.lock.lock();
+    Thread t3 = thread_spawn(cond_worker, &ctx);
+    while (!ctx.ready) {
+        ctx.cv.wait(&ctx.lock);
+    }
+    ctx.lock.unlock();
+
+    void* r3 = NULL;
+    t3.join(&r3);
+    printf("cond wait ready=%d\n", (int)ctx.ready);
+
+    return 0;
+}

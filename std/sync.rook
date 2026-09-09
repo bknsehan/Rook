@@ -1,0 +1,134 @@
+// Rook Standard Library - std/sync.rook
+// Multi-threading, mutual exclusion, and thread synchronization primitives.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <pthread.h>
+
+typedef void* (*ThreadWorkerFn)(void*);
+
+object Mutex {
+    handle: pthread_mutex_t
+    initialized: bool
+}
+
+Mutex mutex_new() {
+    Mutex m;
+    pthread_mutex_init(&m.handle, NULL);
+    m.initialized = true;
+    return m;
+}
+
+Mutex* mutex_alloc() {
+    Mutex* m = (Mutex*)malloc(sizeof(Mutex));
+    if (m) m.init();
+    return m;
+}
+
+void mutex_free(Mutex* m) {
+    if (m) {
+        m.destroy();
+        free(m);
+    }
+}
+
+impl Mutex {
+    void init(Mutex* self) {
+        pthread_mutex_init(&self->handle, NULL);
+        self->initialized = true;
+    }
+
+    void lock(Mutex* self) {
+        pthread_mutex_lock(&self->handle);
+    }
+
+    void unlock(Mutex* self) {
+        pthread_mutex_unlock(&self->handle);
+    }
+
+    bool try_lock(Mutex* self) {
+        return pthread_mutex_trylock(&self->handle) == 0;
+    }
+
+    void destroy(Mutex* self) {
+        if (self->initialized) {
+            pthread_mutex_destroy(&self->handle);
+            self->initialized = false;
+        }
+    }
+}
+
+object CondVar {
+    handle: pthread_cond_t
+    initialized: bool
+}
+
+CondVar cond_new() {
+    CondVar cv;
+    pthread_cond_init(&cv.handle, NULL);
+    cv.initialized = true;
+    return cv;
+}
+
+CondVar* cond_alloc() {
+    CondVar* cv = (CondVar*)malloc(sizeof(CondVar));
+    if (cv) cv.init();
+    return cv;
+}
+
+void cond_free(CondVar* cv) {
+    if (cv) {
+        cv.destroy();
+        free(cv);
+    }
+}
+
+impl CondVar {
+    void init(CondVar* self) {
+        pthread_cond_init(&self->handle, NULL);
+        self->initialized = true;
+    }
+
+    void wait(CondVar* self, Mutex* mutex) {
+        if (mutex) {
+            pthread_cond_wait(&self->handle, &mutex->handle);
+        }
+    }
+
+    void signal(CondVar* self) {
+        pthread_cond_signal(&self->handle);
+    }
+
+    void broadcast(CondVar* self) {
+        pthread_cond_broadcast(&self->handle);
+    }
+
+    void destroy(CondVar* self) {
+        if (self->initialized) {
+            pthread_cond_destroy(&self->handle);
+            self->initialized = false;
+        }
+    }
+}
+
+object Thread {
+    handle: pthread_t
+    alive: bool
+}
+
+Thread thread_spawn(ThreadWorkerFn worker, void* arg) {
+    Thread t;
+    int rc = pthread_create(&t.handle, NULL, worker, arg);
+    t.alive = (rc == 0);
+    return t;
+}
+
+impl Thread {
+    int join(Thread* self, void** out_ret) {
+        if (!self->alive) return -1;
+        int rc = pthread_join(self->handle, out_ret);
+        self->alive = false;
+        return rc;
+    }
+}

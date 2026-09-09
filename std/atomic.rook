@@ -1,0 +1,83 @@
+// Rook Standard Library - std/atomic.rook
+// High-performance machine-level atomic types and memory operations.
+
+#include <stdio.h>
+#include <stdbool.h>
+
+object AtomicInt {
+    value: int
+}
+
+AtomicInt atomic_int_new(int val) {
+    return AtomicInt { value: val };
+}
+
+impl AtomicInt {
+    int load(AtomicInt* self) {
+        return __atomic_load_n(&self->value, 5);
+    }
+
+    void store(AtomicInt* self, int val) {
+        __atomic_store_n(&self->value, val, 5);
+    }
+
+    int fetch_add(AtomicInt* self, int delta) {
+        return __atomic_fetch_add(&self->value, delta, 5);
+    }
+
+    int fetch_sub(AtomicInt* self, int delta) {
+        return __atomic_fetch_sub(&self->value, delta, 5);
+    }
+
+    int exchange(AtomicInt* self, int val) {
+        return __atomic_exchange_n(&self->value, val, 5);
+    }
+
+    bool compare_exchange(AtomicInt* self, int* expected, int desired) {
+        return __atomic_compare_exchange_n(&self->value, expected, desired, false, 5, 5);
+    }
+}
+
+object AtomicBool {
+    value: bool
+}
+
+AtomicBool atomic_bool_new(bool val) {
+    return AtomicBool { value: val };
+}
+
+impl AtomicBool {
+    bool load(AtomicBool* self) {
+        return __atomic_load_n(&self->value, 5);
+    }
+
+    void store(AtomicBool* self, bool val) {
+        __atomic_store_n(&self->value, val, 5);
+    }
+
+    bool exchange(AtomicBool* self, bool val) {
+        return __atomic_exchange_n(&self->value, val, 5);
+    }
+}
+
+object AtomicPtr {
+    value: void*
+}
+
+AtomicPtr atomic_ptr_new(void* ptr) {
+    return AtomicPtr { value: ptr };
+}
+
+impl AtomicPtr {
+    void* load(AtomicPtr* self) {
+        return (void*)__atomic_load_n(&self->value, 5);
+    }
+
+    void store(AtomicPtr* self, void* ptr) {
+        __atomic_store_n(&self->value, ptr, 5);
+    }
+
+    void* exchange(AtomicPtr* self, void* ptr) {
+        return (void*)__atomic_exchange_n(&self->value, ptr, 5);
+    }
+}

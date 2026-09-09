@@ -85,7 +85,7 @@ for src in "$CORPUS"/*.rook; do
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-$BACKEND) $base"
                 continue
             fi
-            if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm >/dev/null 2>&1; then
+            if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm -lpthread >/dev/null 2>&1; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (clang) $base"
                 continue
             fi
@@ -94,7 +94,7 @@ for src in "$CORPUS"/*.rook; do
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
                 continue
             fi
-            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm >/dev/null 2>&1; then
+            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm -lpthread >/dev/null 2>&1; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
                 continue
             fi

@@ -1,9 +1,10 @@
 // Rook Standard Library - std/mem.rook
-// Fast Arena Allocator and zero-cost memory management utilities.
+// Fast Linear Arena Allocator, Scoped Scratchpads, Element Pools, and memory utilities.
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 object Arena {
     buffer: char*
@@ -12,7 +13,7 @@ object Arena {
 }
 
 Arena arena_new(size_t capacity) {
-    char* buf = malloc(capacity);
+    char* buf = (char*)malloc(capacity);
     return Arena {
         buffer: buf,
         capacity: capacity,
@@ -28,9 +29,21 @@ impl Arena {
         if (self->offset + aligned > self->capacity) {
             return NULL;
         }
-        void* ptr = self->buffer + self->offset;
+        void* ptr = (void*)(self->buffer + self->offset);
         self->offset = self->offset + aligned;
         return ptr;
+    }
+
+    void* alloc_aligned(Arena* self, size_t size, size_t alignment) {
+        if (!self->buffer || alignment == 0) return NULL;
+        size_t mask = alignment - 1;
+        size_t current = self->offset;
+        size_t aligned_offset = (current + mask) & ~mask;
+        if (aligned_offset + size > self->capacity) {
+            return NULL;
+        }
+        self->offset = aligned_offset + size;
+        return (void*)(self->buffer + aligned_offset);
     }
 
     void* alloc_zero(Arena* self, size_t size) {
@@ -60,6 +73,102 @@ impl Arena {
     size_t available(Arena* self) {
         if (self->offset >= self->capacity) return 0;
         return self->capacity - self->offset;
+    }
+}
+
+// Scoped scratchpad allocator for fast temporary allocations
+object ArenaTemp {
+    arena: Arena*
+    prev_offset: size_t
+}
+
+ArenaTemp arena_temp_begin(Arena* arena) {
+    size_t prev = 0;
+    if (arena) prev = arena->offset;
+    return ArenaTemp {
+        arena: arena,
+        prev_offset: prev
+    };
+}
+
+void arena_temp_end(ArenaTemp* temp) {
+    if (temp && temp->arena) {
+        temp->arena->offset = temp->prev_offset;
+    }
+}
+
+// Fixed-size chunked slot allocator with free-list recycling (Element Pool)
+object ElementPool {
+    buffer: char*
+    slot_size: size_t
+    capacity: size_t
+    free_head: void*
+    allocated_count: size_t
+}
+
+ElementPool pool_new(size_t slot_size, size_t capacity) {
+    if (slot_size < sizeof(void*)) {
+        slot_size = sizeof(void*);
+    }
+    // 8-byte align slot_size
+    slot_size = (slot_size + 7) & ~7;
+    char* buf = (char*)malloc(slot_size * capacity);
+    void* head = NULL;
+    if (buf) {
+        for (size_t i = 0; i < capacity; i = i + 1) {
+            void* slot = (void*)(buf + i * slot_size);
+            void** next_ptr = (void**)slot;
+            *next_ptr = head;
+            head = slot;
+        }
+    }
+    return ElementPool {
+        buffer: buf,
+        slot_size: slot_size,
+        capacity: capacity,
+        free_head: head,
+        allocated_count: 0
+    };
+}
+
+impl ElementPool {
+    void* alloc(ElementPool* self) {
+        if (!self->free_head) return NULL;
+        void* slot = self->free_head;
+        void** next_ptr = (void**)slot;
+        self->free_head = *next_ptr;
+        self->allocated_count = self->allocated_count + 1;
+        return slot;
+    }
+
+    void free(ElementPool* self, void* ptr) {
+        if (!ptr || !self->buffer) return;
+        void** next_ptr = (void**)ptr;
+        *next_ptr = self->free_head;
+        self->free_head = ptr;
+        if (self->allocated_count > 0) {
+            self->allocated_count = self->allocated_count - 1;
+        }
+    }
+
+    size_t count(ElementPool* self) {
+        return self->allocated_count;
+    }
+
+    size_t available(ElementPool* self) {
+        if (self->allocated_count >= self->capacity) return 0;
+        return self->capacity - self->allocated_count;
+    }
+
+    void destroy(ElementPool* self) {
+        if (self->buffer) {
+            free(self->buffer);
+            self->buffer = NULL;
+        }
+        self->free_head = NULL;
+        self->allocated_count = 0;
+        self->capacity = 0;
+        self->slot_size = 0;
     }
 }
 

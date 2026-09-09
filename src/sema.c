@@ -742,6 +742,10 @@ static const char* const BUILTIN_NAMES[] = {
     "abs", "labs", "rand", "srand", "exit", "atoi", "atol", "atof",
     "pow", "sqrt", "sin", "cos", "tan", "fopen", "fclose", "fread",
     "fwrite", "fgets", "fgetc", "fputc", "getline",
+    "__atomic_load_n", "__atomic_store_n", "__atomic_fetch_add", "__atomic_fetch_sub",
+    "__atomic_compare_exchange_n", "__atomic_exchange_n",
+    "__ATOMIC_RELAXED", "__ATOMIC_CONSUME", "__ATOMIC_ACQUIRE",
+    "__ATOMIC_RELEASE", "__ATOMIC_ACQ_REL", "__ATOMIC_SEQ_CST",
     NULL
 };
 
@@ -1332,6 +1336,21 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             if (sym && sym->kind == SYM_FN && sym->fn && sym->fn->ret) {
                 return ck_clone_type(sym->fn->ret);
             }
+            if (fn && strncmp(fn, "__atomic_", 9) == 0) {
+                if (strcmp(fn, "__atomic_store_n") == 0) return ck_mk_type("void", 0);
+                if (strcmp(fn, "__atomic_compare_exchange_n") == 0) return ck_mk_type("bool", 0);
+                if (e->nitems > 0) {
+                    AstType* pt = ck_resolve_type(ck, e->items[0]);
+                    if (pt && pt->ptrs > 0) {
+                        AstType* r = ck_clone_type(pt);
+                        r->ptrs--;
+                        free(pt);
+                        return r;
+                    }
+                    if (pt) free(pt);
+                }
+                return ck_mk_type("int", 0);
+            }
             const char* c_ret = sema_lookup_cfunc(fn);
             if (c_ret) return ck_mk_type(c_ret, 0);
         }
@@ -1529,6 +1548,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
             }
             return;
         }
+        if (strncmp(fn, "__atomic_", 9) == 0) return;
         if (sema_is_cfunc(fn)) {
             int np = sema_cfunc_nparams(fn);
             if (!sema_cfunc_is_variadic(fn) && np >= 0 && x->nitems > np) {

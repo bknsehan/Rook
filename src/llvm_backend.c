@@ -627,17 +627,7 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             return gv;
         }
     } else if (e->kind == E_MEMBER || e->kind == E_ARROW) {
-        AstType* at = NULL;
-        int local_idx = -1;
-        if (e->a->kind == E_IDENT) {
-            local_idx = gen_find_local(g, e->a->str);
-            if (local_idx >= 0) at = g->local_ast_types[local_idx];
-        }
-        int allocated_at = 0;
-        if (!at) {
-            at = sema_resolve_type(g->sema, e->a);
-            allocated_at = 1;
-        }
+        AstType* at = llvm_resolve_expr_type(g, e->a);
         const char* st_name = at ? at->name : NULL;
         StructDef* st = st_name ? sema_lookup_struct(g->sema, st_name) : NULL;
         if (st) {
@@ -665,7 +655,6 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 if (found >= 0) {
                     LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, cur_st_ll, cur_ptr, found + offset, e->str);
                     if (out_type) *out_type = gen_llvm_type(g, cur_st->fields[found].type);
-                    if (allocated_at && at) free(at);
                     return fptr;
                 }
                 if (has_parent) {
@@ -676,7 +665,6 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 }
             }
         }
-        if (allocated_at && at) free(at);
     } else if (e->kind == E_INDEX) {
         LLVMTypeRef base_type = NULL;
         LLVMValueRef base_ptr = gen_expr(g, e->a, &base_type);
@@ -1294,17 +1282,8 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         char* method_owner = NULL;
         if (e->a->kind == E_IDENT) {
             snprintf(fn_name, sizeof(fn_name), "%s", e->a->str);
-        } else if (e->a->kind == E_MEMBER) {
-            AstType* at = NULL;
-            if (e->a->a->kind == E_IDENT) {
-                int local_idx = gen_find_local(g, e->a->a->str);
-                if (local_idx >= 0) at = g->local_ast_types[local_idx];
-            }
-            int allocated_at = 0;
-            if (!at) {
-                at = sema_resolve_type(g->sema, e->a->a);
-                allocated_at = 1;
-            }
+        } else if (e->a->kind == E_MEMBER || e->a->kind == E_ARROW) {
+            AstType* at = llvm_resolve_expr_type(g, e->a->a);
             if (at && at->name) {
                 method_owner = llvm_find_method_owner(g, at->name, e->a->str, &inherit_steps);
                 if (method_owner) {
@@ -1313,9 +1292,81 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                     snprintf(fn_name, sizeof(fn_name), "%s_%s", at->name, e->a->str);
                 }
             }
-            if (allocated_at && at) free(at);
         }
 
+        if (strncmp(fn_name, "__atomic_", 9) == 0) {
+            if (strcmp(fn_name, "__atomic_load_n") == 0 && e->nitems >= 1) {
+                LLVMTypeRef pt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                AstType* at = llvm_resolve_expr_type(g, e->items[0]);
+                AstType deref_at = {0};
+                if (at) {
+                    deref_at.qual = at->qual;
+                    deref_at.name = at->name;
+                    deref_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                }
+                LLVMTypeRef elem_t = at ? gen_llvm_type(g, &deref_at) : LLVMInt32TypeInContext(g->ctx);
+                LLVMValueRef l = LLVMBuildLoad2(g->builder, elem_t, ptr_val, "atomic_load");
+                LLVMSetOrdering(l, LLVMAtomicOrderingSequentiallyConsistent);
+                if (out_type) *out_type = elem_t;
+                return l;
+            }
+            if (strcmp(fn_name, "__atomic_store_n") == 0 && e->nitems >= 2) {
+                LLVMTypeRef pt = NULL, vt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                LLVMValueRef val_val = gen_expr(g, e->items[1], &vt);
+                LLVMValueRef s = LLVMBuildStore(g->builder, val_val, ptr_val);
+                LLVMSetOrdering(s, LLVMAtomicOrderingSequentiallyConsistent);
+                if (out_type) *out_type = LLVMVoidTypeInContext(g->ctx);
+                return NULL;
+            }
+            if (strcmp(fn_name, "__atomic_fetch_add") == 0 && e->nitems >= 2) {
+                LLVMTypeRef pt = NULL, vt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                LLVMValueRef val_val = gen_expr(g, e->items[1], &vt);
+                LLVMValueRef rmw = LLVMBuildAtomicRMW(g->builder, LLVMAtomicRMWBinOpAdd, ptr_val, val_val, LLVMAtomicOrderingSequentiallyConsistent, 0);
+                if (out_type) *out_type = vt;
+                return rmw;
+            }
+            if (strcmp(fn_name, "__atomic_fetch_sub") == 0 && e->nitems >= 2) {
+                LLVMTypeRef pt = NULL, vt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                LLVMValueRef val_val = gen_expr(g, e->items[1], &vt);
+                LLVMValueRef rmw = LLVMBuildAtomicRMW(g->builder, LLVMAtomicRMWBinOpSub, ptr_val, val_val, LLVMAtomicOrderingSequentiallyConsistent, 0);
+                if (out_type) *out_type = vt;
+                return rmw;
+            }
+            if (strcmp(fn_name, "__atomic_exchange_n") == 0 && e->nitems >= 2) {
+                LLVMTypeRef pt = NULL, vt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                LLVMValueRef val_val = gen_expr(g, e->items[1], &vt);
+                LLVMValueRef rmw = LLVMBuildAtomicRMW(g->builder, LLVMAtomicRMWBinOpXchg, ptr_val, val_val, LLVMAtomicOrderingSequentiallyConsistent, 0);
+                if (out_type) *out_type = vt;
+                return rmw;
+            }
+            if (strcmp(fn_name, "__atomic_compare_exchange_n") == 0 && e->nitems >= 3) {
+                LLVMTypeRef pt = NULL, et = NULL, dt = NULL;
+                LLVMValueRef ptr_val = gen_expr(g, e->items[0], &pt);
+                LLVMValueRef exp_ptr = gen_expr(g, e->items[1], &et);
+                LLVMValueRef desired = gen_expr(g, e->items[2], &dt);
+
+                AstType* at = llvm_resolve_expr_type(g, e->items[0]);
+                AstType deref_at = {0};
+                if (at) {
+                    deref_at.qual = at->qual;
+                    deref_at.name = at->name;
+                    deref_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                }
+                LLVMTypeRef elem_t = at ? gen_llvm_type(g, &deref_at) : dt;
+                LLVMValueRef old_expected = LLVMBuildLoad2(g->builder, elem_t, exp_ptr, "exp_load");
+                LLVMValueRef cx = LLVMBuildAtomicCmpXchg(g->builder, ptr_val, old_expected, desired, LLVMAtomicOrderingSequentiallyConsistent, LLVMAtomicOrderingSequentiallyConsistent, 0);
+                LLVMValueRef prev_val = LLVMBuildExtractValue(g->builder, cx, 0, "prev_val");
+                LLVMValueRef success_i1 = LLVMBuildExtractValue(g->builder, cx, 1, "success");
+                LLVMBuildStore(g->builder, prev_val, exp_ptr);
+                if (out_type) *out_type = LLVMInt1TypeInContext(g->ctx);
+                return success_i1;
+            }
+        }
         LLVMValueRef fn_val = LLVMGetNamedFunction(g->module, fn_name);
         LLVMTypeRef fn_type = NULL;
 
@@ -1404,22 +1455,13 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         }
 
         int nargs = e->nitems;
-        int is_method_call = (e->a->kind == E_MEMBER);
+        int is_method_call = (e->a->kind == E_MEMBER || e->a->kind == E_ARROW);
         int total_args = nargs + (is_method_call ? 1 : 0);
         LLVMValueRef* args = calloc(total_args > 0 ? total_args : 1, sizeof(LLVMValueRef));
 
         int arg_idx = 0;
         if (is_method_call) {
-            AstType* at = NULL;
-            if (e->a->a->kind == E_IDENT) {
-                int li = gen_find_local(g, e->a->a->str);
-                if (li >= 0) at = g->local_ast_types[li];
-            }
-            int allocated_at = 0;
-            if (!at) {
-                at = sema_resolve_type(g->sema, e->a->a);
-                allocated_at = 1;
-            }
+            AstType* at = llvm_resolve_expr_type(g, e->a->a);
             LLVMValueRef self_ptr = NULL;
             if (at && at->ptrs > 0) {
                 self_ptr = gen_expr(g, e->a->a, NULL);
@@ -1438,7 +1480,6 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 StructDef* cur_st = sema_lookup_struct(g->sema, cur_sname);
                 cur_sname = cur_st ? cur_st->parent : NULL;
             }
-            if (allocated_at && at) free(at);
             if (method_owner) free(method_owner);
             args[arg_idx++] = self_ptr;
         }

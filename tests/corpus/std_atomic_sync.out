@@ -1,0 +1,5 @@
+atomic cas_ok=1 val=42
+exchange old=42 now=100
+atomic bool=1
+threads joined: counter=100
+cond wait ready=1

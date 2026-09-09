@@ -193,7 +193,7 @@ static AstType* cg_resolve_type(CG* g, Expr* e) {
         if (strcmp(e->str, "self") == 0) return cg_lookup_local(g, "self");
         return cg_lookup_local(g, e->str);
     }
-    if (e->kind == E_MEMBER) {
+    if (e->kind == E_MEMBER || e->kind == E_ARROW) {
         AstType* bt = cg_resolve_type(g, e->a);
         if (!bt) return NULL;
         StructDef* st = lookup_struct(g, bt->name);
@@ -348,7 +348,7 @@ static void cg_expr(CG* g, Expr* x) {
         /* Inline a method call: `obj.method(args)` where obj is a known
            struct value/pointer. Resolve the owner (walking inheritance),
            then emit `Owner_method(&obj, args)`. */
-        if (x->a && x->a->kind == E_MEMBER) {
+        if (x->a && (x->a->kind == E_MEMBER || x->a->kind == E_ARROW)) {
             Expr* m = x->a;
             AstType* base = cg_resolve_type(g, m->a);
             char* owner = NULL;
@@ -706,7 +706,7 @@ static void cg_param(CG* g, Param* p, AstType* receiver) {
 }
 
 static void cg_call(CG* g, Expr* callee, Expr** args, int nargs) {
-    if (callee->kind == E_MEMBER) {
+    if (callee->kind == E_MEMBER || callee->kind == E_ARROW) {
         AstType* base_type = cg_resolve_type(g, callee->a);
         if (base_type) {
             int is_self = (callee->a->kind == E_IDENT &&

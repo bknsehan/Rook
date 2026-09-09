@@ -1,0 +1,7 @@
+aligned_16=1
+scratch used > before: 1
+scratch unwound: 1
+pool allocated=2
+part1 id=101, part2 id=102
+pool count after free=1
+recycled part3 matches part1 slot: 1
