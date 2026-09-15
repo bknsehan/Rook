@@ -5,8 +5,11 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include <io.h>
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#undef near
+#undef far
+#include <io.h>
 #ifndef R_OK
 #define R_OK 4
 #endif
@@ -1583,8 +1586,8 @@ static void ck_check_call(Checker* ck, Expr* x) {
             snprintf(msg, sizeof msg, "call to unknown function '%s'", fn);
             int rn = 0;
             const char** cands = collect_raw_names(&rn);
-            const char* near = lev_nearest(fn, cands, rn);
-            char* full = with_suggestion(msg, near);
+            const char* closest = lev_nearest(fn, cands, rn);
+            char* full = with_suggestion(msg, closest);
             free(cands);
             ck_err_expr(ck, callee, full);
             free(full);
@@ -1794,8 +1797,8 @@ static void ck_expr(Checker* ck, Expr* x) {
         snprintf(msg, sizeof msg, "use of undeclared identifier '%s'", x->str);
         int sn = 0;
         const char** sc = collect_scope_names(ck->locals, &sn);
-        const char* near = lev_nearest(x->str, sc, sn);
-        char* full = with_suggestion(msg, near);
+        const char* closest = lev_nearest(x->str, sc, sn);
+        char* full = with_suggestion(msg, closest);
         free(sc);
         ck_err_expr(ck, x, full);
         free(full);
@@ -2079,8 +2082,8 @@ static void ck_decl(Checker* ck, Decl* d) {
         snprintf(msg, sizeof msg, "unknown type '%s'", ts);
         int tn = 0;
         const char** tc = collect_type_names(ck->s->prog, &tn);
-        const char* near = lev_nearest(ts, tc, tn);
-        char* full = with_suggestion(msg, near);
+        const char* closest = lev_nearest(ts, tc, tn);
+        char* full = with_suggestion(msg, closest);
         free(tc);
         ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, full);
         free(full);
