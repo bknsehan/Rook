@@ -2510,18 +2510,18 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
     }
     *cur = '\0';
 
-    char c_tmp[] = "/tmp/rk_raw_XXXXXX.c";
-    int fd = mkstemps(c_tmp, 2);
-    if (fd < 0) { free(raw_c); return; }
-    FILE* fc = fdopen(fd, "w");
-    if (fc) {
-        fputs(raw_c, fc);
-        fclose(fc);
-    }
+    char work_dir[4096];
+    if (!rk_mktemp_dir(work_dir, sizeof(work_dir), "rk_raw")) { free(raw_c); return; }
+    char c_tmp[4096];
+    snprintf(c_tmp, sizeof(c_tmp), "%s/raw.c", work_dir);
+    FILE* fc = fopen(c_tmp, "w");
+    if (!fc) { free(raw_c); util_rm_rf(work_dir); return; }
+    fputs(raw_c, fc);
+    fclose(fc);
     free(raw_c);
 
-    char ll_tmp[sizeof(c_tmp) + 4];
-    snprintf(ll_tmp, sizeof(ll_tmp), "%.*s.ll", (int)(strlen(c_tmp) - 2), c_tmp);
+    char ll_tmp[4096];
+    snprintf(ll_tmp, sizeof(ll_tmp), "%s/raw.ll", work_dir);
 
     ArgVec av;
     argvec_init(&av);
@@ -2581,9 +2581,10 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
 #if !ROKADE_LLVM_OWNS_MEMBUF
             LLVMDisposeMemoryBuffer(mem);
 #endif
-            free(ll_content);
+        free(ll_content);
         }
     }
+    util_rm_rf(work_dir);
 }
 
 static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, Program* prog, int bounds_check, const char* target_triple) {
