@@ -121,3 +121,9 @@ jobs:
         run: |
           ./build/rokade.exe --version
           ./build/rokade.exe --help
+          ./build/rokade.exe new ci_sample_project
+          cd ci_sample_project
+          ../build/rokade.exe build
+          ../build/rokade.exe run
+          cd ..
+          rm -rf ci_sample_project

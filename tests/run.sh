@@ -86,12 +86,13 @@ for src in "$CORPUS"/*.rook; do
     out_ref="$CORPUS/$base.out"
     # ---- expected-output test ------------------------------------------------
     if [ -f "$out_ref" ]; then
+        BIN="$WORK/r.exe"
         if [ "$BACKEND" = "llvm" ] || [ "$BACKEND" = "llvm2" ]; then
             if ! emit "$src" "$WORK/t.ll"; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-$BACKEND) $base"
                 continue
             fi
-            if ! clang -Wno-override-module -o "$WORK/r.out" "$WORK/t.ll" -lm -lpthread >/dev/null 2>&1; then
+            if ! clang -Wno-override-module -o "$BIN" "$WORK/t.ll" -lm -lpthread >/dev/null 2>&1; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (clang) $base"
                 continue
             fi
@@ -100,18 +101,21 @@ for src in "$CORPUS"/*.rook; do
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
                 continue
             fi
-            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$WORK/r.out" "$WORK/t.c" -lm -lpthread >/dev/null 2>&1; then
+            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$BIN" "$WORK/t.c" -lm -lpthread >/dev/null 2>&1; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
                 continue
             fi
         fi
+        [ -f "$BIN.exe" ] && BIN="$BIN.exe"
         # optional stdin from a sibling <base>.in
         if [ -f "$CORPUS/$base.in" ]; then
-            "$WORK/r.out" <"$CORPUS/$base.in" >"$WORK/got" 2>"$WORK/err"
+            "$BIN" <"$CORPUS/$base.in" >"$WORK/got" 2>"$WORK/err"
         else
-            "$WORK/r.out" </dev/null >"$WORK/got" 2>"$WORK/err"
+            "$BIN" </dev/null >"$WORK/got" 2>"$WORK/err"
         fi
-        if diff -q --strip-trailing-cr "$WORK/got" "$out_ref" >/dev/null 2>&1 || diff -q "$WORK/got" "$out_ref" >/dev/null 2>&1; then
+        tr -d '\r' < "$WORK/got" > "$WORK/got.clean"
+        tr -d '\r' < "$out_ref" > "$WORK/ref.clean"
+        if diff -q "$WORK/got.clean" "$WORK/ref.clean" >/dev/null 2>&1; then
             PASS=$((PASS+1)); echo "  PASS $base"
         else
             FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (output) $base"

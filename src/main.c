@@ -1544,7 +1544,14 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         targets_to_build[n_targets_to_build++] = "windows";
         targets_to_build[n_targets_to_build++] = "macos";
     } else {
-        targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target : "linux";
+        targets_to_build[n_targets_to_build++] = cfg.build_target[0] ? cfg.build_target :
+#if defined(_WIN32)
+            "windows";
+#elif defined(__APPLE__)
+            "macos";
+#else
+            "linux";
+#endif
     }
 
     const char* default_triple = NULL;
@@ -2210,7 +2217,13 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
         return run_single_file_jit(main_path, active_backend);
     }
 
+#if defined(_WIN32)
+    const char* run_target = "windows";
+#elif defined(__APPLE__)
+    const char* run_target = "macos";
+#else
     const char* run_target = "linux";
+#endif
     ProjectConfig cfg;
     if (read_project_config(proj_path ? proj_path : ".", &cfg)) {
         if (cfg.build_target[0]) run_target = cfg.build_target;
@@ -2234,11 +2247,12 @@ static int do_run(const char* proj_path, const char* cli_backend, int use_jit) {
     }
 
     char exe_path[4096];
-    if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/linux/%s", proj_path, cfg.name);
-    else snprintf(exe_path, sizeof(exe_path), "build/linux/%s", cfg.name);
-    if (access(exe_path, X_OK) != 0) {
-        if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/%s", proj_path, cfg.name);
-        else snprintf(exe_path, sizeof(exe_path), "build/%s", cfg.name);
+    const char* ext = strcmp(run_target, "windows") == 0 ? ".exe" : "";
+    if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/%s/%s%s", proj_path, run_target, cfg.name, ext);
+    else snprintf(exe_path, sizeof(exe_path), "build/%s/%s%s", run_target, cfg.name, ext);
+    if (access(exe_path, F_OK) != 0) {
+        if (proj_path) snprintf(exe_path, sizeof(exe_path), "%s/build/%s%s", proj_path, cfg.name, ext);
+        else snprintf(exe_path, sizeof(exe_path), "build/%s%s", cfg.name, ext);
     }
     printf("running: %s\n", exe_path);
 
