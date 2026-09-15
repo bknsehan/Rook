@@ -39,9 +39,22 @@ if(ROKADE_ENABLE_LLVM)
       ROKADE_LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR}
     )
     target_include_directories(rokade PRIVATE ${LLVM_INCLUDE_DIRS})
-    find_library(LLVM_LIB NAMES LLVM libLLVM HINTS ${LLVM_LIBRARY_DIRS})
+    find_library(LLVM_LIB
+      NAMES
+        LLVM
+        libLLVM
+        LLVM-${LLVM_VERSION_MAJOR}
+        libLLVM-${LLVM_VERSION_MAJOR}
+        LLVM-C
+        libLLVM-C
+      HINTS
+        ${LLVM_LIBRARY_DIRS}
+    )
     if(LLVM_LIB)
+      message(STATUS "Found LLVM library: ${LLVM_LIB}")
       target_link_libraries(rokade PRIVATE ${LLVM_LIB})
+    elseif(TARGET LLVM)
+      target_link_libraries(rokade PRIVATE LLVM)
     endif()
 
     find_library(CLANG_LIB NAMES clang libclang HINTS ${LLVM_LIBRARY_DIRS})
