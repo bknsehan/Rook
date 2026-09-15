@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -13,7 +12,12 @@
 #ifdef _WIN32
 #include <process.h>
 #include <windows.h>
+#include <io.h>
+#include <direct.h>
+#define unlink _unlink
+#define rmdir _rmdir
 #else
+#include <unistd.h>
 #include <sys/wait.h>
 #endif
 
@@ -100,6 +104,56 @@ char* util_read_file(const char* path, int* out_len) {
 int util_endswith(const char* s, const char* suffix) {
     size_t ls = strlen(s), lf = strlen(suffix);
     return ls >= lf && memcmp(s + ls - lf, suffix, lf) == 0;
+}
+
+char* rk_realpath(const char* path, char* resolved) {
+    if (!path) return NULL;
+#ifdef _WIN32
+    char* target = resolved ? resolved : (char*)malloc(4096);
+    if (!target) return NULL;
+    if (_fullpath(target, path, 4096) == NULL) {
+        if (!resolved) free(target);
+        return NULL;
+    }
+    for (char* p = target; *p; p++) {
+        if (*p == '\\') *p = '/';
+    }
+    return target;
+#else
+    return realpath(path, resolved);
+#endif
+}
+
+char* rk_mktemp_dir(char* out, size_t out_cap, const char* prefix) {
+    if (!out || out_cap == 0) return NULL;
+#ifdef _WIN32
+    char temp_dir[MAX_PATH];
+    DWORD len = GetTempPathA(sizeof(temp_dir), temp_dir);
+    if (len == 0 || len >= sizeof(temp_dir)) {
+        const char* t = getenv("TEMP");
+        if (!t) t = getenv("TMP");
+        if (!t) t = ".";
+        snprintf(temp_dir, sizeof(temp_dir), "%s", t);
+    }
+    for (char* p = temp_dir; *p; p++) {
+        if (*p == '\\') *p = '/';
+    }
+    size_t tlen = strlen(temp_dir);
+    while (tlen > 0 && temp_dir[tlen - 1] == '/') {
+        temp_dir[--tlen] = '\0';
+    }
+    static unsigned long counter = 0;
+    counter++;
+    DWORD pid = GetCurrentProcessId();
+    for (int retry = 0; retry < 100; retry++) {
+        snprintf(out, out_cap, "%s/%s_%lu_%lu_%d", temp_dir, prefix ? prefix : "tmp", (unsigned long)pid, counter, retry);
+        if (_mkdir(out) == 0) return out;
+    }
+    return NULL;
+#else
+    snprintf(out, out_cap, "/tmp/%s_XXXXXX", prefix ? prefix : "tmp");
+    return mkdtemp(out);
+#endif
 }
 
 void argvec_init(ArgVec* v) {
@@ -194,9 +248,60 @@ int util_exec_capture(const char* const* argv, char* out_buf, size_t out_cap) {
     if (!argv || !argv[0] || !out_buf || out_cap == 0) return -1;
     out_buf[0] = '\0';
 #ifdef _WIN32
-    // Windows pipe capture using _pipe and _spawnvp or CreateProcess
-    // Fallback: spawn and read
-    return -1;
+    HANDLE h_read, h_write;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = NULL;
+
+    if (!CreatePipe(&h_read, &h_write, &sa, 0)) return -1;
+    SetHandleInformation(h_read, HANDLE_FLAG_INHERIT, 0);
+
+    SB cmd;
+    sb_init(&cmd);
+    for (size_t i = 0; argv[i]; i++) {
+        if (i > 0) sb_append(&cmd, " ");
+        int need_quote = (strchr(argv[i], ' ') != NULL || strchr(argv[i], '\t') != NULL || argv[i][0] == '\0');
+        if (need_quote) sb_append(&cmd, "\"");
+        sb_append(&cmd, argv[i]);
+        if (need_quote) sb_append(&cmd, "\"");
+    }
+
+    STARTUPINFOA si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdOutput = h_write;
+    si.hStdError = h_write;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
+
+    BOOL ok = CreateProcessA(NULL, cmd.data, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
+    sb_free(&cmd);
+    CloseHandle(h_write);
+
+    if (!ok) {
+        CloseHandle(h_read);
+        return -1;
+    }
+
+    size_t total = 0;
+    DWORD bytes_read = 0;
+    while (ReadFile(h_read, out_buf + total, (DWORD)(out_cap - 1 - total), &bytes_read, NULL) && bytes_read > 0) {
+        total += bytes_read;
+        if (total >= out_cap - 1) break;
+    }
+    out_buf[total] = '\0';
+    CloseHandle(h_read);
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exit_code = 0;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return (int)exit_code;
 #else
     int pfd[2];
     if (pipe(pfd) < 0) return -1;

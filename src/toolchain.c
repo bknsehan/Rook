@@ -5,7 +5,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <io.h>
+#include <direct.h>
+#define access _access
+#define mkdir(p, m) _mkdir(p)
+#if !defined(__MINGW32__)
+#define strtok_r strtok_s
+#endif
+#else
 #include <unistd.h>
+#endif
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,6 +27,11 @@ static const char* EXTRA_DIRS[] = {
     "/opt/homebrew/bin",
     "/opt/local/bin",
     "/mingw64/bin",
+    "/ucrt64/bin",
+    "/clang64/bin",
+    "C:/msys64/ucrt64/bin",
+    "C:/msys64/clang64/bin",
+    "C:/msys64/mingw64/bin",
     "/usr/bin",
     "/bin",
     NULL
@@ -30,13 +45,28 @@ static char* find_in_path(const char* name) {
     char* dup = strdup(path);
     if (!dup) return NULL;
     char* save = NULL;
-    char* dir = strtok_r(dup, ":", &save);
+#ifdef _WIN32
+    const char* delim = ";";
+#else
+    const char* delim = ":";
+#endif
+    char* dir = strtok_r(dup, delim, &save);
     char* found = NULL;
     while (dir && !found) {
         char buf[4096];
         snprintf(buf, sizeof buf, "%s/%s", dir, name);
+#ifdef _WIN32
+        if (access(buf, 0) == 0) {
+            found = strdup(buf);
+        } else {
+            char exe_buf[4096];
+            snprintf(exe_buf, sizeof exe_buf, "%s.exe", buf);
+            if (access(exe_buf, 0) == 0) found = strdup(exe_buf);
+        }
+#else
         if (access(buf, X_OK) == 0) found = strdup(buf);
-        dir = strtok_r(NULL, ":", &save);
+#endif
+        dir = strtok_r(NULL, delim, &save);
     }
     free(dup);
     if (found) return found;
@@ -45,7 +75,14 @@ static char* find_in_path(const char* name) {
     for (int i = 0; EXTRA_DIRS[i]; i++) {
         char buf[4096];
         snprintf(buf, sizeof buf, "%s/%s", EXTRA_DIRS[i], name);
+#ifdef _WIN32
+        if (access(buf, 0) == 0) return strdup(buf);
+        char exe_buf[4096];
+        snprintf(exe_buf, sizeof exe_buf, "%s.exe", buf);
+        if (access(exe_buf, 0) == 0) return strdup(exe_buf);
+#else
         if (access(buf, X_OK) == 0) return strdup(buf);
+#endif
     }
     return NULL;
 }
@@ -55,7 +92,17 @@ static char* find_in_path(const char* name) {
    well-known prefixes. Returns malloc'd path or NULL. */
 static char* resolve_exe(const char* name) {
     if (!name || !name[0]) return NULL;
-    if (strchr(name, '/')) return access(name, X_OK) == 0 ? strdup(name) : NULL;
+    if (strchr(name, '/') || strchr(name, '\\')) {
+#ifdef _WIN32
+        if (access(name, 0) == 0) return strdup(name);
+        char exe_buf[4096];
+        snprintf(exe_buf, sizeof(exe_buf), "%s.exe", name);
+        if (access(exe_buf, 0) == 0) return strdup(exe_buf);
+        return NULL;
+#else
+        return access(name, X_OK) == 0 ? strdup(name) : NULL;
+#endif
+    }
     return find_in_path(name);
 }
 

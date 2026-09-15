@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.6.0).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.6.1).
 Contains Chapters 1 to 21, written with strict technical accuracy and zero marketing language.
 """
 
@@ -113,7 +113,7 @@ def get_guide_chapters(make_code_box, make_callout):
       <th>Standard C (C11/C23)</th>
       <th>Rust (2024 Edition)</th>
       <th>Zig (0.13+)</th>
-      <th>Rook (v0.6.0)</th>
+      <th>Rook (v0.6.1)</th>
     </tr>
   </thead>
   <tbody>

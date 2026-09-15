@@ -33,9 +33,15 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 # ---- preflight --------------------------------------------------------------
+if [ ! -x "$ROKADE" ] && [ -x "$ROKADE.exe" ]; then
+    ROKADE="$ROKADE.exe"
+fi
 if [ ! -x "$ROKADE" ]; then
     echo "building rokade..."
     cmake --build "$ROOK_ROOT/build" >/dev/null 2>&1 || { echo "build failed"; exit 1; }
+    if [ ! -x "$ROKADE" ] && [ -x "$ROKADE.exe" ]; then
+        ROKADE="$ROKADE.exe"
+    fi
 fi
 if [ ! -f "$CORPUS/basic.rook" ]; then
     echo "corpus dir not found: $CORPUS"
@@ -105,7 +111,7 @@ for src in "$CORPUS"/*.rook; do
         else
             "$WORK/r.out" </dev/null >"$WORK/got" 2>"$WORK/err"
         fi
-        if diff -q "$WORK/got" "$out_ref" >/dev/null 2>&1; then
+        if diff -q --strip-trailing-cr "$WORK/got" "$out_ref" >/dev/null 2>&1 || diff -q "$WORK/got" "$out_ref" >/dev/null 2>&1; then
             PASS=$((PASS+1)); echo "  PASS $base"
         else
             FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (output) $base"

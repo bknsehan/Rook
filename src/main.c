@@ -6,7 +6,22 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <direct.h>
+#include <windows.h>
+#ifndef R_OK
+#define R_OK 4
+#endif
+#ifndef F_OK
+#define F_OK 0
+#endif
+#define access _access
+#define mkdir(p, m) _mkdir(p)
+#else
 #include <unistd.h>
+#endif
 
 #include "ast.h"
 #include "backend.h"
@@ -24,11 +39,10 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.6.0"
+#define ROKADE_VERSION "0.6.1"
 #endif
 
 #ifdef _WIN32
-#include <windows.h>
 #endif
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -154,22 +168,22 @@ static int try_candidate(char* out, size_t out_cap, const char* fmt, ...) {
 /* Verify that a candidate path resides inside an allowed directory root (project, std, or dependencies). */
 static int is_path_in_jail(const char* candidate, const char* basedir, const char** inc_dirs, size_t n_inc) {
     char real_cand[4096];
-    if (!realpath(candidate, real_cand)) return 0;
+    if (!rk_realpath(candidate, real_cand)) return 0;
 
     /* 1. Check against basedir and its project root basedir/.. */
     if (basedir) {
         char real_base[4096];
-        if (realpath(basedir, real_base)) {
+        if (rk_realpath(basedir, real_base)) {
             size_t blen = strlen(real_base);
-            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\0')) {
+            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
                 return 1;
             }
         }
         char parent_base[4096];
         snprintf(parent_base, sizeof(parent_base), "%s/..", basedir);
-        if (realpath(parent_base, real_base)) {
+        if (rk_realpath(parent_base, real_base)) {
             size_t blen = strlen(real_base);
-            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\0')) {
+            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
                 return 1;
             }
         }
@@ -179,9 +193,9 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
     char std_dir[4096];
     if (rokade_get_std_dir(std_dir, sizeof(std_dir)) == 0) {
         char real_std[4096];
-        if (realpath(std_dir, real_std)) {
+        if (rk_realpath(std_dir, real_std)) {
             size_t slen = strlen(real_std);
-            if (strncmp(real_cand, real_std, slen) == 0 && (real_cand[slen] == '/' || real_cand[slen] == '\0')) {
+            if (strncmp(real_cand, real_std, slen) == 0 && (real_cand[slen] == '/' || real_cand[slen] == '\\' || real_cand[slen] == '\0')) {
                 return 1;
             }
         }
@@ -191,9 +205,9 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
     for (size_t i = 0; i < n_inc; i++) {
         if (!inc_dirs[i]) continue;
         char real_inc[4096];
-        if (realpath(inc_dirs[i], real_inc)) {
+        if (rk_realpath(inc_dirs[i], real_inc)) {
             size_t ilen = strlen(real_inc);
-            if (strncmp(real_cand, real_inc, ilen) == 0 && (real_cand[ilen] == '/' || real_cand[ilen] == '\0')) {
+            if (strncmp(real_cand, real_inc, ilen) == 0 && (real_cand[ilen] == '/' || real_cand[ilen] == '\\' || real_cand[ilen] == '\0')) {
                 return 1;
             }
         }
@@ -451,7 +465,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
 
                             /* Deduplicate: check if already visited */
                             char canon[4096];
-                            const char* track_path = realpath(resolved, canon) ? canon : resolved;
+                            const char* track_path = rk_realpath(resolved, canon) ? canon : resolved;
                             int seen = 0;
                             for (VisitedInc* v = *visited; v; v = v->next) {
                                 if (strcmp(v->path, track_path) == 0) { seen = 1; break; }
@@ -2043,13 +2057,17 @@ static int run_single_file_jit(const char* path, const char* cli_backend) {
 }
 
 static int run_single_file_native(const char* path, const char* active_backend) {
-    char work[] = "/tmp/rokade_run_XXXXXX";
-    if (!mkdtemp(work)) {
+    char work[4096];
+    if (!rk_mktemp_dir(work, sizeof(work), "rokade_run")) {
         fprintf(stderr, "rokade: cannot create temp dir\n");
         return 1;
     }
     char exe_path[4096];
+#ifdef _WIN32
+    snprintf(exe_path, sizeof(exe_path), "%s/app.exe", work);
+#else
     snprintf(exe_path, sizeof(exe_path), "%s/app", work);
+#endif
 
     int rc = 0;
     if (strcmp(active_backend, "llvm") == 0 || strcmp(active_backend, "llvm2") == 0) {
@@ -2540,8 +2558,8 @@ static int write_all(const char* path, const char* data, int len) {
 
 static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, int quiet, const char* backend) {
     int pass = 0, fail = 0, skip = 0;
-    char work[] = "/tmp/rook_test_XXXXXX";
-    if (!mkdtemp(work)) {
+    char work[4096];
+    if (!rk_mktemp_dir(work, sizeof(work), "rook_test")) {
         fprintf(stderr, "rokade: cannot create temp dir\n");
         return 1;
     }
@@ -2652,15 +2670,34 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 }
             }
 
+#ifdef _WIN32
+            if (access(inref, F_OK) == 0)
+                snprintf(cmd, sizeof cmd, "\"%s\" < \"%s\" > \"%s\" 2>NUL", exe_path, inref, got_path);
+            else
+                snprintf(cmd, sizeof cmd, "\"%s\" > \"%s\" 2>NUL", exe_path, got_path);
+#else
             if (access(inref, F_OK) == 0)
                 snprintf(cmd, sizeof cmd, "'%s' < '%s' > '%s' 2>/dev/null", exe_path, inref, got_path);
             else
                 snprintf(cmd, sizeof cmd, "'%s' < /dev/null > '%s' 2>/dev/null", exe_path, got_path);
+#endif
             if (system(cmd) != 0) { fail++; if (!quiet) printf("  FAIL (run) %s\n", base); continue; }
 
             int glen = 0, elen = 0;
             char* got = util_read_file(got_path, &glen);
             char* expected = util_read_file(outref, &elen);
+            if (got) {
+                int gw = 0;
+                for (int r = 0; r < glen; r++) if (got[r] != '\r') got[gw++] = got[r];
+                got[gw] = '\0';
+                glen = gw;
+            }
+            if (expected) {
+                int ew = 0;
+                for (int r = 0; r < elen; r++) if (expected[r] != '\r') expected[ew++] = expected[r];
+                expected[ew] = '\0';
+                elen = ew;
+            }
             int same = got && expected && glen == elen && memcmp(got, expected, (size_t)glen) == 0;
             free(got); free(expected);
             if (same) { pass++; if (!quiet) printf("  PASS %s\n", base); }
@@ -3078,10 +3115,12 @@ static void path_to_uri(const char* path, char* buf, size_t cap) {
         snprintf(buf, cap, "%s%s", prefix, path);   /* -> file:///abs/... */
     } else {
         char abs[4096];
-        if (realpath(path, abs))
-            snprintf(buf, cap, "%s%s", prefix, abs);
-        else
+        if (rk_realpath(path, abs)) {
+            if (abs[0] == '/') snprintf(buf, cap, "%s%s", prefix, abs);
+            else snprintf(buf, cap, "%s/%s", prefix, abs);
+        } else {
             snprintf(buf, cap, "%s%s", prefix, path);
+        }
     }
 }
 

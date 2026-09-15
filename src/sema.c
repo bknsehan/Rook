@@ -4,9 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef __linux__
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#ifndef R_OK
+#define R_OK 4
+#endif
+#define access _access
+#else
 #include <unistd.h>
 #include <limits.h>
+#endif
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
 #endif
 
 #include "diag.h"
@@ -33,13 +43,22 @@ static int file_exists(const char* path) {
     return 0;
 }
 
-#ifdef __linux__
-/* Directory holding the running rokade executable, resolved via /proc/self/exe.
+#if defined(__linux__) || defined(__APPLE__) || defined(_WIN32)
+/* Directory holding the running rokade executable.
    Returns 0 on success, -1 if it cannot be determined. Callers own `buf`. */
 static int cl_exe_dir(char* buf, size_t cap) {
+#if defined(__linux__)
     ssize_t n = readlink("/proc/self/exe", buf, cap - 1);
     if (n <= 0) return -1;
     buf[n] = '\0';
+#elif defined(__APPLE__)
+    uint32_t size = (uint32_t)cap;
+    if (_NSGetExecutablePath(buf, &size) != 0) return -1;
+#elif defined(_WIN32)
+    DWORD n = GetModuleFileNameA(NULL, buf, (DWORD)cap);
+    if (n == 0 || n >= cap) return -1;
+    for (char* p = buf; *p; p++) if (*p == '\\') *p = '/';
+#endif
     char* slash = strrchr(buf, '/');
     if (!slash) return -1;
     *slash = '\0';
@@ -75,7 +94,7 @@ static void cl_load(const char* basedir, const char* override) {
             if (!file_exists(path)) path[0] = '\0';
         }
     }
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__) || defined(_WIN32)
     /* 4) alongside the executable: build tree ("build/commandlist.json") or an
        install layout ("<exe>/../share/rokade/commandlist.json"). This makes a
        build-tree or installed rokade find its commandlist from any cwd. */

@@ -32,6 +32,10 @@ void argvec_add(ArgVec* v, const char* arg);
 void argvec_split_and_add(ArgVec* v, const char* str);
 void argvec_free(ArgVec* v);
 
+/* Cross-platform path and temp directory helpers */
+char* rk_realpath(const char* path, char* resolved);
+char* rk_mktemp_dir(char* out, size_t out_cap, const char* prefix);
+
 /* Direct process execution without shell. Returns process exit code. */
 int util_exec(const char* const* argv);
 

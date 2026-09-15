@@ -69,3 +69,55 @@ jobs:
         run: |
           python3 scripts/generate_docs.py
           git diff --exit-code docs/rook-language-guide.html
+
+  build-and-test-windows:
+    name: Build & Test (Windows MSYS2 UCRT64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-clang
+            mingw-w64-ucrt-x86_64-llvm
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+
+      - name: Configure CMake
+        shell: msys2 {0}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROKADE_ENABLE_LLVM=ON \
+            -DROOK_BUILD_LSP=OFF
+
+      - name: Build Rokade
+        shell: msys2 {0}
+        run: |
+          cmake --build build
+
+      - name: Run Rokade Doctor
+        shell: msys2 {0}
+        run: |
+          ./build/rokade.exe doctor
+
+      - name: Test C Backend Corpus
+        shell: msys2 {0}
+        run: |
+          ROKADE=./build/rokade.exe bash tests/run.sh
+
+      - name: Verify CLI & Scaffolding
+        shell: msys2 {0}
+        run: |
+          ./build/rokade.exe --version
+          ./build/rokade.exe --help

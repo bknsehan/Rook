@@ -1,4 +1,4 @@
-# Rook Language & Architecture Guide (v0.6.0)
+# Rook Language & Architecture Guide (v0.6.1)
 
 > **Specification & Reference Manual**  
 > Technical documentation covering Rook language mechanics, memory layouts, C ABI compatibility, compiler architecture, and systems programming foundations.
@@ -77,7 +77,7 @@ Source (.rook) ➔ Lexer/Parser (AST) ➔ Sema & Libclang ➔ Codegen
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.0) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.1) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Model** | Manual, uninitialized stack defaults, raw pointers. | Affine type system, borrow checker, compile-time lifetimes. | Manual with allocators, slices, no hidden control flow. | Manual, deterministic zero initialization, raw pointers, bounds checks. |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` blocks and binding tools (`bindgen`). | Requires `@cImport` and translated C type headers. | Native 1:1 ABI mapping, dynamic libclang header parsing without wrappers. |

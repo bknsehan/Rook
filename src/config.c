@@ -6,7 +6,15 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <direct.h>
+#define access _access
+#define mkdir(p, m) _mkdir(p)
+#else
 #include <unistd.h>
+#endif
 
 typedef enum { K_STR, K_BOOL } KeyType;
 
