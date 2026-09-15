@@ -29,7 +29,8 @@ export ROKADE_DATA_DIR="${ROKADE_DATA_DIR:-$ROOK_ROOT/src/libc}"
 # The C code rokade emits requires C23 (`auto`); default to c2x so the corpus
 # builds on both gcc and clang. Override with CSTD=gnu99 etc. if desired.
 CSTD="${CSTD:-c2x}"
-WORK="$(mktemp -d)"
+mkdir -p "$ROOK_ROOT/build/tmp"
+WORK="$(mktemp -d "$ROOK_ROOT/build/tmp/test_work.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
 # ---- preflight --------------------------------------------------------------
@@ -119,6 +120,12 @@ for src in "$CORPUS"/*.rook; do
             PASS=$((PASS+1)); echo "  PASS $base"
         else
             FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (output) $base"
+            if [ -s "$WORK/err" ]; then
+                echo "    [stderr] $(head -n 2 "$WORK/err")"
+            fi
+            if [ ! -s "$WORK/got.clean" ]; then
+                echo "    [stdout] <empty>"
+            fi
         fi
         continue
     fi
