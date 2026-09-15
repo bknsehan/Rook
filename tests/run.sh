@@ -49,6 +49,9 @@ if [ ! -f "$CORPUS/basic.rook" ]; then
     exit 1
 fi
 if ! command -v "$ROKADE_CC" >/dev/null; then echo "C compiler '$ROKADE_CC' not found"; exit 1; fi
+if ! command -v diff >/dev/null && ! command -v cmp >/dev/null; then
+    echo "note: 'diff' not found; using pure bash fallback for output comparison"
+fi
 
 BACKEND="${BACKEND:-c}"
 
@@ -62,6 +65,20 @@ emit() { # $1=src, $2=out_file
         "$ROKADE" --emit-llvm2 "$1" >"$2" 2>"$WORK/emit.log"
     else
         "$ROKADE" --emit-c "$1" >"$2" 2>"$WORK/emit.log"
+    fi
+}
+
+# compares two files; falls back to cmp or pure bash if diff is not installed
+compare_files() { # $1=file1, $2=file2
+    if command -v diff >/dev/null 2>&1; then
+        diff -q "$1" "$2" >/dev/null 2>&1
+        return $?
+    elif command -v cmp >/dev/null 2>&1; then
+        cmp -s "$1" "$2"
+        return $?
+    else
+        [ "$(cat "$1")" = "$(cat "$2")" ]
+        return $?
     fi
 }
 
@@ -116,7 +133,7 @@ for src in "$CORPUS"/*.rook; do
         fi
         tr -d '\r' < "$WORK/got" > "$WORK/got.clean"
         tr -d '\r' < "$out_ref" > "$WORK/ref.clean"
-        if diff -q "$WORK/got.clean" "$WORK/ref.clean" >/dev/null 2>&1; then
+        if compare_files "$WORK/got.clean" "$WORK/ref.clean"; then
             PASS=$((PASS+1)); echo "  PASS $base"
         else
             FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (output) $base"
@@ -125,6 +142,9 @@ for src in "$CORPUS"/*.rook; do
             fi
             if [ ! -s "$WORK/got.clean" ]; then
                 echo "    [stdout] <empty>"
+            elif command -v diff >/dev/null 2>&1; then
+                echo "    [diff]"
+                diff -u "$WORK/ref.clean" "$WORK/got.clean" | head -n 4 | sed 's/^/      /'
             fi
         fi
         continue
