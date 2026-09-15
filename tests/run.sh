@@ -137,14 +137,8 @@ for src in "$CORPUS"/*.rook; do
             PASS=$((PASS+1)); echo "  PASS $base"
         else
             FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (output) $base"
-            if [ -s "$WORK/err" ]; then
-                echo "    [stderr] $(head -n 2 "$WORK/err")"
-            fi
-            if [ ! -s "$WORK/got.clean" ]; then
-                echo "    [stdout] <empty>"
-            elif command -v diff >/dev/null 2>&1; then
-                echo "    [diff]"
-                diff -u "$WORK/ref.clean" "$WORK/got.clean" | head -n 4 | sed 's/^/      /'
+            if command -v diff >/dev/null 2>&1; then
+                diff -u "$WORK/ref.clean" "$WORK/got.clean" | head -n 15 || true
             fi
         fi
         continue

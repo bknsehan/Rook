@@ -794,7 +794,13 @@ static void project_config_init(ProjectConfig* cfg) {
     snprintf(cfg->name, sizeof(cfg->name), "myproject");
     snprintf(cfg->version, sizeof(cfg->version), "0.1.0");
     snprintf(cfg->build_kind, sizeof(cfg->build_kind), "exe");
+#if defined(_WIN32)
+    snprintf(cfg->build_target, sizeof(cfg->build_target), "windows");
+#elif defined(__APPLE__)
+    snprintf(cfg->build_target, sizeof(cfg->build_target), "macos");
+#else
     snprintf(cfg->build_target, sizeof(cfg->build_target), "linux");
+#endif
     snprintf(cfg->backend, sizeof(cfg->backend), "c");
     snprintf(cfg->c_standard, sizeof(cfg->c_standard), "c2x");
 }
@@ -1433,7 +1439,13 @@ static int do_new(const char* name, int is_lib) {
         fprintf(f, "# kind = \"exe\"           # default: executable\n");
         fprintf(f, "# kind = \"static-lib\"     # static library\n");
         fprintf(f, "# kind = \"shared-lib\"     # shared library\n");
+#if defined(_WIN32)
+        fprintf(f, "# target = \"windows\"      # host build (default)\n");
+#elif defined(__APPLE__)
+        fprintf(f, "# target = \"macos\"        # host build (default)\n");
+#else
         fprintf(f, "# target = \"linux\"        # host build (default)\n");
+#endif
         fprintf(f, "# c-standard = 11\n");
         fprintf(f, "# libraries = [\"m\"]\n");
         fprintf(f, "# include-dirs = [\"../shared\"]\n");
@@ -1494,6 +1506,7 @@ static void mkdir_p(const char* path) {
     snprintf(buf, sizeof buf, "%s", path);
     for (char* p = buf + 1; *p; p++) {
         if (*p == '/' || *p == '\\') {
+            if (buf[1] == ':' && (p - buf) <= 3) continue;
             char save = *p;
             *p = '\0';
             mkdir(buf, 0755);
@@ -1965,8 +1978,12 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
                 tb_len = snprintf(target_bin, sizeof(target_bin), "%s/lib%s.a",
                                   target_out_dir, cfg.name);
             } else {
+                int need_exe = strcmp(spec.target_os, "windows") == 0;
+#if defined(_WIN32)
+                if (strcmp(spec.target_os, "host") == 0 || spec.target_os[0] == '\0') need_exe = 1;
+#endif
                 tb_len = snprintf(target_bin, sizeof(target_bin), "%s/%s%s",
-                                  target_out_dir, cfg.name, strcmp(spec.target_os, "windows") == 0 ? ".exe" : "");
+                                  target_out_dir, cfg.name, need_exe ? ".exe" : "");
             }
             if (tb_len >= (int)sizeof(target_bin)) {
                 fprintf(stderr, "error: target binary path too long\n");
@@ -1985,7 +2002,15 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
             free(obj_file_paths);
             toolchain_free(&tc);
 
-            if (link_ret != 0 || access(target_bin, F_OK) != 0) {
+            int bin_exists = (access(target_bin, F_OK) == 0);
+#ifdef _WIN32
+            if (!bin_exists) {
+                char win_exe[8192];
+                snprintf(win_exe, sizeof(win_exe), "%s.exe", target_bin);
+                if (access(win_exe, F_OK) == 0) bin_exists = 1;
+            }
+#endif
+            if (link_ret != 0 || !bin_exists) {
                 fprintf(stderr, "error: linking failed for %s\n", target_bin);
                 any_err = 1;
             } else {

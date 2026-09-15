@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 
 #ifdef ROKADE_HAS_LIBCLANG
 #include <clang-c/Index.h>
@@ -26,15 +27,12 @@ static const char* detect_clang_resource_dir(void) {
         return res_dir;
     }
 
-    FILE* fp = popen("clang -print-resource-dir 2>/dev/null", "r");
-    if (fp) {
-        if (fgets(res_dir, sizeof(res_dir), fp)) {
-            size_t l = strlen(res_dir);
-            while (l > 0 && (res_dir[l-1] == '\n' || res_dir[l-1] == '\r')) {
-                res_dir[--l] = '\0';
-            }
+    const char* clang_cmd[] = { "clang", "-print-resource-dir", NULL };
+    if (util_exec_capture(clang_cmd, res_dir, sizeof(res_dir)) == 0) {
+        size_t l = strlen(res_dir);
+        while (l > 0 && (res_dir[l-1] == '\n' || res_dir[l-1] == '\r')) {
+            res_dir[--l] = '\0';
         }
-        pclose(fp);
     }
     if (!res_dir[0]) {
         const char* probes[] = {

@@ -455,7 +455,11 @@ int toolchain_detect_target(Toolchain* tc, const TargetSpec* spec) {
     }
 
     /* 3. Target OS: Windows */
-    if (!tc->cc_path && strcmp(tos, "windows") == 0) {
+    if (!tc->cc_path && (strcmp(tos, "windows") == 0
+#if defined(_WIN32)
+        || strcmp(tos, "host") == 0
+#endif
+    )) {
 #if defined(_WIN32)
         const char* win_cands[] = { "gcc", "clang", "cl", NULL };
         for (int i = 0; win_cands[i]; i++) {
@@ -631,7 +635,14 @@ int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** 
 
 int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const char* out_bin, const char** obj_files, size_t n_objs, const char** libs, size_t n_libs, const char* extra_cflags) {
     const char* kind = (spec && spec->build_kind[0]) ? spec->build_kind : "exe";
-    const char* tos = (spec && spec->target_os[0]) ? spec->target_os : "linux";
+#if defined(_WIN32)
+    const char* def_os = "windows";
+#elif defined(__APPLE__)
+    const char* def_os = "macos";
+#else
+    const char* def_os = "linux";
+#endif
+    const char* tos = (spec && spec->target_os[0]) ? spec->target_os : def_os;
 
     if (out_bin) unlink(out_bin);
 
@@ -690,7 +701,17 @@ int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const cha
 
     int ret = util_exec((const char* const*)av.args);
     argvec_free(&av);
-    if (ret == 0 && out_bin && access(out_bin, F_OK) != 0) ret = 1;
+    if (ret == 0 && out_bin) {
+        int bin_exists = (access(out_bin, F_OK) == 0);
+#ifdef _WIN32
+        if (!bin_exists) {
+            char win_exe[4096];
+            snprintf(win_exe, sizeof(win_exe), "%s.exe", out_bin);
+            if (access(win_exe, F_OK) == 0) bin_exists = 1;
+        }
+#endif
+        if (!bin_exists) ret = 1;
+    }
     return ret;
 }
 
