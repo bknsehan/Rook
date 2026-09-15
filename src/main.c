@@ -2431,6 +2431,7 @@ static int cmd_doctor(void) {
         char corpus[8192];
         const char* f = __FILE__;
         const char* slash = strrchr(f, '/');
+        if (!slash) slash = strrchr(f, '\\');
         if (slash)
             snprintf(corpus, sizeof corpus, "%.*s/../tests/corpus",
                      (int)(slash - f), f);
@@ -2671,10 +2672,17 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
             }
 
 #ifdef _WIN32
+            char win_exe[4096], win_in[4096], win_got[4096];
+            snprintf(win_exe, sizeof win_exe, "%s", exe_path);
+            snprintf(win_in, sizeof win_in, "%s", inref);
+            snprintf(win_got, sizeof win_got, "%s", got_path);
+            for (char* p = win_exe; *p; p++) if (*p == '/') *p = '\\';
+            for (char* p = win_in; *p; p++) if (*p == '/') *p = '\\';
+            for (char* p = win_got; *p; p++) if (*p == '/') *p = '\\';
             if (access(inref, F_OK) == 0)
-                snprintf(cmd, sizeof cmd, "\"%s\" < \"%s\" > \"%s\" 2>NUL", exe_path, inref, got_path);
+                snprintf(cmd, sizeof cmd, "\"\"%s\" < \"%s\" > \"%s\" 2>NUL\"", win_exe, win_in, win_got);
             else
-                snprintf(cmd, sizeof cmd, "\"%s\" > \"%s\" 2>NUL", exe_path, got_path);
+                snprintf(cmd, sizeof cmd, "\"\"%s\" > \"%s\" 2>NUL\"", win_exe, win_got);
 #else
             if (access(inref, F_OK) == 0)
                 snprintf(cmd, sizeof cmd, "'%s' < '%s' > '%s' 2>/dev/null", exe_path, inref, got_path);

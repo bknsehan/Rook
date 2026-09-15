@@ -1572,6 +1572,7 @@ static void ck_check_call(Checker* ck, Expr* x) {
         }
         if (strncmp(fn, "__atomic_", 9) == 0) return;
         if (sema_is_cfunc(fn)) {
+            if (strcmp(fn, "mkdir") == 0) return;
             int np = sema_cfunc_nparams(fn);
             if (!sema_cfunc_is_variadic(fn) && np >= 0 && x->nitems > np) {
                 char msg[256];
