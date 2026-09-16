@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """
 generate_docs.py
-Generates the comprehensive, modern, distraction-free Rook Documentation & Beginner Course
-(docs/rook-language-guide.html) for Rook & Rokade v0.6.1.
+Generates the official, distraction-free Rook Documentation (The Rook Book)
+in mdBook / Rust Book style for Rook & Rokade v0.6.2.
 """
 
 import os
 import sys
 
-# Ensure local script directory is in python path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOK_ROOT = os.path.dirname(SCRIPT_DIR)
 OUTPUT_FILE = os.path.join(ROOK_ROOT, "docs", "rook-language-guide.html")
 
 sys.path.insert(0, SCRIPT_DIR)
 from docs_guide import get_guide_chapters
-from docs_beginner import get_beginner_modules
 
 def make_code_box(lang, code, title=""):
     display_title = title if title else lang.upper()
@@ -33,7 +31,7 @@ def make_callout(kind, title, body):
         "note": "Note",
         "tip": "Tip",
         "warn": "Warning",
-        "ban": "Compiler rule",
+        "ban": "Compiler Rule",
         "spec": "Specification"
     }
     label = title if title else labels.get(kind, "Note")
@@ -45,53 +43,185 @@ def make_callout(kind, title, body):
     )
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rook Documentation &amp; Programming Foundations (v0.6.1)</title>
+<title>The Rook Programming Language (v0.6.2)</title>
 <style>
-  :root {
+  /* ─── mdBook / Rust Book Theme Variables ───────────────────────────── */
+  :root, html.light {
     --bg: #ffffff;
-    --sidebar-bg: #f8fafc;
-    --surface: #ffffff;
-    --surface-secondary: #f1f5f9;
-    --border: #e2e8f0;
-    --border-strong: #cbd5e1;
-    --text: #0f172a;
-    --text-muted: #334155;
-    --text-dim: #64748b;
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-dim: rgba(37, 99, 235, 0.08);
-
-    /* Code block colors */
-    --code-bg: #0f172a;
-    --code-header: #090d16;
-    --code-border: #1e293b;
-    --code-text: #f1f5f9;
-
-    /* Layout */
-    --sidebar-width: 290px;
-    --content-max-width: 860px;
-    --nav-active-bg: rgba(37, 99, 235, 0.08);
-    --nav-active-text: #1d4ed8;
-
-    /* Syntax Tokens */
-    --tok-cmt: #64748b;
-    --tok-str: #86efac;
-    --tok-kw: #c084fc;
-    --tok-type: #38bdf8;
-    --tok-prep: #fb923c;
-    --tok-num: #fde047;
-    --tok-fn: #93c5fd;
-    --tok-bool: #f472b6;
-    --tok-hdr: #38bdf8;
-    --tok-key: #e2e8f0;
-    --tok-cmd: #38bdf8;
-    --tok-opt: #94a3b8;
+    --fg: #333333;
+    --fg-muted: #5c6b73;
+    --sidebar-bg: #fafafa;
+    --sidebar-fg: #364149;
+    --sidebar-border: #e1e4e8;
+    --sidebar-active: #008cff;
+    --sidebar-active-bg: #f0f4f8;
+    --menubar-bg: #ffffff;
+    --menubar-border: #e1e4e8;
+    --links: #2b7bb9;
+    --links-hover: #1b6094;
+    --inline-code: #24292e;
+    --inline-code-bg: #f6f8fa;
+    --inline-code-border: #e1e4e8;
+    --code-bg: #1e1e1e;
+    --code-header: #141414;
+    --code-border: #2d3748;
+    --code-fg: #d4d4d4;
+    --table-border: #d0d7de;
+    --table-header-bg: #f6f8fa;
+    --table-row-alt: #ffffff;
+    --quote-bg: #f7f9fa;
+    --quote-border: #008cff;
+    --heading-border: #eaecef;
+    --nav-btn-bg: #f6f8fa;
+    --nav-btn-border: #d0d7de;
+    --nav-btn-fg: #24292e;
   }
 
+  html.rust {
+    --bg: #e1d8cb;
+    --fg: #262625;
+    --fg-muted: #5c554e;
+    --sidebar-bg: #d7c9b8;
+    --sidebar-fg: #262625;
+    --sidebar-border: #c4b5a3;
+    --sidebar-active: #a72115;
+    --sidebar-active-bg: #caa68c44;
+    --menubar-bg: #e1d8cb;
+    --menubar-border: #c4b5a3;
+    --links: #a72115;
+    --links-hover: #7b160e;
+    --inline-code: #262625;
+    --inline-code-bg: #ede7de;
+    --inline-code-border: #c4b5a3;
+    --code-bg: #2b2724;
+    --code-header: #201c19;
+    --code-border: #443c37;
+    --code-fg: #ede7de;
+    --table-border: #c4b5a3;
+    --table-header-bg: #d7c9b8;
+    --table-row-alt: #e1d8cb;
+    --quote-bg: #d7c9b8;
+    --quote-border: #a72115;
+    --heading-border: #c4b5a3;
+    --nav-btn-bg: #d7c9b8;
+    --nav-btn-border: #b8a694;
+    --nav-btn-fg: #262625;
+  }
+
+  html.coal {
+    --bg: #141617;
+    --fg: #c5bda7;
+    --fg-muted: #888075;
+    --sidebar-bg: #1d2021;
+    --sidebar-fg: #c5bda7;
+    --sidebar-border: #282828;
+    --sidebar-active: #0480aa;
+    --sidebar-active-bg: #0480aa22;
+    --menubar-bg: #141617;
+    --menubar-border: #282828;
+    --links: #0480aa;
+    --links-hover: #199bc4;
+    --inline-code: #ebdbb2;
+    --inline-code-bg: #282828;
+    --inline-code-border: #3c3836;
+    --code-bg: #1d2021;
+    --code-header: #141617;
+    --code-border: #3c3836;
+    --code-fg: #ebdbb2;
+    --table-border: #282828;
+    --table-header-bg: #1d2021;
+    --table-row-alt: #141617;
+    --quote-bg: #1d2021;
+    --quote-border: #0480aa;
+    --heading-border: #282828;
+    --nav-btn-bg: #1d2021;
+    --nav-btn-border: #3c3836;
+    --nav-btn-fg: #c5bda7;
+  }
+
+  html.navy {
+    --bg: #161923;
+    --fg: #bcbdd0;
+    --fg-muted: #848a9f;
+    --sidebar-bg: #1f2330;
+    --sidebar-fg: #bcbdd0;
+    --sidebar-border: #2b3144;
+    --sidebar-active: #39a9dd;
+    --sidebar-active-bg: #39a9dd22;
+    --menubar-bg: #161923;
+    --menubar-border: #2b3144;
+    --links: #39a9dd;
+    --links-hover: #5ec0ee;
+    --inline-code: #e5e6f0;
+    --inline-code-bg: #252b3c;
+    --inline-code-border: #2b3144;
+    --code-bg: #1f2330;
+    --code-header: #161923;
+    --code-border: #2b3144;
+    --code-fg: #e5e6f0;
+    --table-border: #2b3144;
+    --table-header-bg: #1f2330;
+    --table-row-alt: #161923;
+    --quote-bg: #1f2330;
+    --quote-border: #39a9dd;
+    --heading-border: #2b3144;
+    --nav-btn-bg: #1f2330;
+    --nav-btn-border: #2b3144;
+    --nav-btn-fg: #bcbdd0;
+  }
+
+  html.ayu {
+    --bg: #0f141c;
+    --fg: #c5c5c5;
+    --fg-muted: #737d8c;
+    --sidebar-bg: #141925;
+    --sidebar-fg: #c5c5c5;
+    --sidebar-border: #1e2536;
+    --sidebar-active: #ffb454;
+    --sidebar-active-bg: #ffb45422;
+    --menubar-bg: #0f141c;
+    --menubar-border: #1e2536;
+    --links: #ffb454;
+    --links-hover: #ffc980;
+    --inline-code: #e6e1cf;
+    --inline-code-bg: #19202f;
+    --inline-code-border: #1e2536;
+    --code-bg: #141925;
+    --code-header: #0f141c;
+    --code-border: #1e2536;
+    --code-fg: #e6e1cf;
+    --table-border: #1e2536;
+    --table-header-bg: #141925;
+    --table-row-alt: #0f141c;
+    --quote-bg: #141925;
+    --quote-border: #ffb454;
+    --heading-border: #1e2536;
+    --nav-btn-bg: #141925;
+    --nav-btn-border: #1e2536;
+    --nav-btn-fg: #c5c5c5;
+  }
+
+  /* ─── Syntax Highlighter Tokens ────────────────────────────────────── */
+  :root {
+    --tok-cmt: #6a737d;
+    --tok-str: #98c379;
+    --tok-kw: #e06c75;
+    --tok-type: #4ec9b0;
+    --tok-prep: #d19a66;
+    --tok-num: #d19a66;
+    --tok-fn: #61afef;
+    --tok-bool: #c678dd;
+    --tok-hdr: #e5c07b;
+    --tok-key: #abb2bf;
+    --tok-cmd: #61afef;
+    --tok-opt: #e5c07b;
+  }
+
+  /* Base Reset */
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html {
@@ -100,456 +230,320 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-    line-height: 1.7;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+    line-height: 1.68;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a {
+    color: var(--links);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  a:hover {
+    color: var(--links-hover);
+    text-decoration: underline;
+  }
+
+  /* ─── Layout: Sidebar & Content ────────────────────────────────────── */
+  .layout-container {
     display: flex;
     min-height: 100vh;
   }
 
   /* Sidebar */
-  #sidebar {
-    width: var(--sidebar-width);
-    height: 100vh;
-    position: sticky;
+  .sidebar {
+    position: fixed;
     top: 0;
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
+    bottom: 0;
+    left: 0;
+    width: 300px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    overflow-y: auto;
     z-index: 100;
-    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.hidden {
+    transform: translateX(-300px);
   }
 
   .sidebar-header {
-    padding: 18px 18px 14px;
-    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--sidebar-border);
   }
 
   .sidebar-title {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--sidebar-fg);
     display: flex;
     align-items: center;
     gap: 8px;
-    letter-spacing: -0.01em;
   }
 
-  .sidebar-badge {
-    font-size: 0.72rem;
+  .sidebar-version {
+    font-size: 0.75rem;
     font-weight: 600;
-    background: var(--primary);
-    color: #ffffff;
-    padding: 2px 7px;
-    border-radius: 9999px;
+    color: var(--links);
+    background: var(--sidebar-active-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
   }
 
-  .sidebar-sub {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-top: 3px;
+  .sidebar-search-box {
+    margin-top: 10px;
   }
 
-  /* Mode Switcher */
-  .view-switcher-wrap {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
+  .sidebar-search-box input {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--fg);
+    outline: none;
   }
 
-  .view-switcher {
-    display: flex;
-    background: #f1f5f9;
-    padding: 3px;
-    border-radius: 7px;
-    gap: 2px;
-    border: 1px solid var(--border);
+  .sidebar-search-box input:focus {
+    border-color: var(--links);
   }
 
-  .mode-btn {
+  .sidebar-scrollbox {
+    padding: 12px 0 30px;
+  }
+
+  .chapter-list {
+    list-style: none;
+  }
+
+  .chapter-item {
+    margin: 1px 0;
+  }
+
+  .chapter-link {
+    display: block;
+    padding: 7px 20px;
+    color: var(--sidebar-fg);
+    font-size: 0.87rem;
+    line-height: 1.35;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: all 0.12s ease;
+  }
+
+  .chapter-link:hover {
+    color: var(--links);
+    background: var(--sidebar-active-bg);
+    text-decoration: none;
+  }
+
+  .chapter-link.active {
+    font-weight: 700;
+    color: var(--sidebar-active);
+    border-left-color: var(--sidebar-active);
+    background: var(--sidebar-active-bg);
+  }
+
+  /* Page Wrapper */
+  .page-wrapper {
     flex: 1;
+    margin-left: 300px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .page-wrapper.sidebar-hidden {
+    margin-left: 0;
+  }
+
+  /* ─── Top Menu Bar ─────────────────────────────────────────────────── */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    height: 52px;
+    background-color: var(--menubar-bg);
+    border-bottom: 1px solid var(--menubar-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 90;
+  }
+
+  .menu-bar-left, .menu-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .menu-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    padding: 0 12px;
+  }
+
+  .icon-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--fg);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 7px 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: none;
-    background: transparent;
-    color: var(--text-dim);
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.12s ease;
+    opacity: 0.75;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
   }
 
-  .mode-btn:hover {
-    color: var(--text);
+  .icon-button:hover {
+    opacity: 1;
+    background-color: var(--sidebar-active-bg);
   }
 
-  .mode-btn.active {
-    background: #ffffff;
-    color: var(--primary);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  }
-
-  /* Search */
-  .sidebar-search {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .search-wrap {
+  /* Theme Popup */
+  .theme-popup-wrapper {
     position: relative;
-    display: flex;
-    align-items: center;
   }
 
-  .search-wrap input {
-    width: 100%;
-    padding: 7px 32px 7px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #ffffff;
-    font-size: 0.82rem;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s ease;
-  }
-
-  .search-wrap input:focus {
-    border-color: var(--primary);
-  }
-
-  .search-kbd {
+  .theme-popup {
+    display: none;
     position: absolute;
-    right: 8px;
-    font-size: 0.7rem;
-    font-family: ui-monospace, monospace;
-    color: var(--text-dim);
-    background: var(--surface-secondary);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 1px 5px;
-    pointer-events: none;
+    top: calc(100% + 4px);
+    left: 0;
+    background: var(--bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    list-style: none;
+    min-width: 110px;
+    padding: 4px 0;
+    z-index: 150;
   }
 
-  /* Navigation Links */
-  .nav-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 8px 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-
-  .nav-item {
+  .theme-popup.show {
     display: block;
-    padding: 7px 10px;
-    border-radius: 5px;
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 0.84rem;
-    line-height: 1.35;
-    border-left: 2px solid transparent;
-    transition: all 0.12s ease;
   }
 
-  .nav-item:hover {
-    background: var(--surface-secondary);
-    color: var(--text);
-  }
-
-  .nav-item.active {
-    background: var(--nav-active-bg);
-    color: var(--nav-active-text);
-    border-left-color: var(--primary);
-    font-weight: 600;
-  }
-
-  /* Main Container */
-  #main {
-    flex: 1;
-    min-width: 0;
-    padding: 40px 60px 120px;
-    max-width: calc(var(--content-max-width) + 120px);
-    margin: 0 auto;
-  }
-
-  /* Hero Section */
-  .hero {
-    padding: 10px 0 32px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .hero h1 {
-    font-size: 2.1rem;
-    font-weight: 800;
-    color: var(--text);
-    letter-spacing: -0.025em;
-    margin-bottom: 10px;
-  }
-
-  .hero-tagline {
-    font-size: 1.05rem;
-    color: var(--text-muted);
-    line-height: 1.6;
-    margin-bottom: 18px;
-    max-width: 72ch;
-  }
-
-  .hero-meta {
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    align-items: center;
-    background: var(--surface-secondary);
-    padding: 10px 14px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-  }
-
-  /* Chapter Section */
-  .chapter {
-    padding-top: 40px;
-    margin-bottom: 48px;
-    border-top: 1px solid var(--border);
-  }
-
-  .chapter:first-of-type {
-    border-top: none;
-    padding-top: 8px;
-  }
-
-  .chapter-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 20px;
-  }
-
-  .chapter-title {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.02em;
-    line-height: 1.3;
-  }
-
-  .back-to-top {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    text-decoration: none;
-    font-weight: 500;
-    padding: 3px 8px;
-    border-radius: 4px;
-    transition: all 0.15s ease;
-  }
-
-  .back-to-top:hover {
-    color: var(--primary);
-    background: var(--surface-secondary);
-  }
-
-  .chapter-body h3 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin: 34px 0 12px;
-    color: var(--text);
-    letter-spacing: -0.01em;
-  }
-
-  .chapter-body h4 {
-    font-size: 1.02rem;
-    font-weight: 600;
-    margin: 24px 0 8px;
-    color: #1e293b;
-  }
-
-  .chapter-body p {
-    margin-bottom: 16px;
-    color: var(--text-muted);
-    font-size: 0.96rem;
-    line-height: 1.7;
-  }
-
-  .chapter-body ul, .chapter-body ol {
-    margin: 0 0 20px 22px;
-    color: var(--text-muted);
-    font-size: 0.96rem;
-    line-height: 1.65;
-  }
-
-  .chapter-body li {
-    margin-bottom: 6px;
-  }
-
-  /* Code Blocks */
-  .code-block {
-    margin: 16px 0 22px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-  }
-
-  .code-header {
-    background: var(--code-header);
-    padding: 6px 14px;
-    border-bottom: 1px solid var(--code-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .code-lang {
-    font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #94a3b8;
-    letter-spacing: 0.05em;
-  }
-
-  .copy-btn {
-    background: transparent;
-    border: 1px solid #334155;
-    border-radius: 4px;
-    color: #94a3b8;
-    font-size: 0.72rem;
-    font-family: inherit;
-    padding: 2px 8px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .copy-btn:hover {
-    color: #f8fafc;
-    border-color: #64748b;
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  .copy-btn.copied {
-    color: #4ade80;
-    border-color: #22c55e;
-  }
-
-  .code-block pre {
-    padding: 14px 16px;
-    overflow-x: auto;
-    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-    font-size: 0.88rem;
-    line-height: 1.6;
-    color: var(--code-text);
-  }
-
-  .code-block pre code {
-    background: transparent;
+  .theme-option {
+    width: 100%;
+    padding: 6px 16px;
     border: none;
-    padding: 0;
-    color: inherit;
-    font-size: inherit;
+    background: transparent;
+    color: var(--fg);
+    text-align: left;
+    font-size: 0.85rem;
+    cursor: pointer;
   }
 
-  /* Syntax Highlighting Tokens */
-  .tok-cmt  { color: var(--tok-cmt); font-style: italic; }
-  .tok-str  { color: var(--tok-str); }
-  .tok-kw   { color: var(--tok-kw); font-weight: 600; }
-  .tok-type { color: var(--tok-type); }
-  .tok-prep { color: var(--tok-prep); }
-  .tok-num  { color: var(--tok-num); }
-  .tok-fn   { color: var(--tok-fn); }
-  .tok-bool { color: var(--tok-bool); font-weight: 600; }
-  .tok-hdr  { color: var(--tok-hdr); font-weight: 600; }
-  .tok-key  { color: var(--tok-key); }
-  .tok-cmd  { color: var(--tok-cmd); font-weight: 600; }
-  .tok-opt  { color: var(--tok-opt); }
-
-  /* Inline Code */
-  code:not(pre code) {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    color: #0f172a;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace;
-    font-size: 0.86em;
-    font-weight: 500;
+  .theme-option:hover {
+    background: var(--sidebar-active-bg);
+    color: var(--links);
   }
 
-  /* Callout Boxes */
-  .callout {
-    border-radius: 6px;
-    padding: 16px 18px;
-    margin: 20px 0;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--border-strong);
-    background: #f8fafc;
+  /* ─── Content Area ─────────────────────────────────────────────────── */
+  .content-container {
+    max-width: 820px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    flex: 1;
   }
 
-  .callout-title {
+  /* Header hero */
+  .book-hero {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--heading-border);
+  }
+
+  .book-hero h1 {
+    font-size: 2.2rem;
     font-weight: 700;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    margin-bottom: 10px;
+    border-bottom: none;
   }
 
-  .callout-body {
-    font-size: 0.92rem;
-    line-height: 1.6;
-    color: var(--text-muted);
+  .book-hero p {
+    font-size: 1.05rem;
+    color: var(--fg-muted);
   }
 
-  .callout-body p:last-child { margin-bottom: 0; }
-
-  .callout-body pre {
-    margin-top: 10px;
-    background: #0f172a;
-    color: #f1f5f9;
-    padding: 10px 12px;
-    border-radius: 5px;
-    overflow-x: auto;
-    font-size: 0.84rem;
+  /* Chapter Sections */
+  .chapter-section {
+    padding-top: 20px;
+    margin-bottom: 60px;
   }
 
-  /* Unified callout variants */
-  .callout-note, .callout-tip {
-    border-left-color: #2563eb;
-  }
-  .callout-note .callout-title, .callout-tip .callout-title {
-    color: #2563eb;
+  h1, h2, h3, h4 {
+    color: var(--fg);
+    font-weight: 600;
+    scroll-margin-top: 70px;
   }
 
-  .callout-warn {
-    border-left-color: #d97706;
-  }
-  .callout-warn .callout-title {
-    color: #b45309;
-  }
-
-  .callout-ban {
-    border-left-color: #e11d48;
-  }
-  .callout-ban .callout-title {
-    color: #be123c;
+  h1 {
+    font-size: 1.85rem;
+    margin: 32px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--heading-border);
   }
 
-  .callout-spec {
-    border-left-color: #64748b;
+  h2 {
+    font-size: 1.4rem;
+    margin: 28px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--heading-border);
   }
-  .callout-spec .callout-title {
-    color: #475569;
+
+  h3 {
+    font-size: 1.15rem;
+    margin: 22px 0 10px;
+  }
+
+  p {
+    margin: 14px 0;
+  }
+
+  ul, ol {
+    margin: 14px 0 14px 24px;
+  }
+
+  li {
+    margin: 6px 0;
+  }
+
+  code {
+    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+  }
+
+  p code, li code, td code, th code {
+    background-color: var(--inline-code-bg);
+    color: var(--inline-code);
+    border: 1px solid var(--inline-code-border);
+    padding: 2px 5px;
+    border-radius: 3px;
   }
 
   /* Tables */
   .table-container {
-    border: 1px solid var(--border);
-    border-radius: 7px;
     overflow-x: auto;
     margin: 20px 0;
   }
@@ -557,241 +551,434 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
-    text-align: left;
-    background: #ffffff;
+    font-size: 0.88rem;
+    border: 1px solid var(--table-border);
   }
 
   th {
-    background: #f8fafc;
-    color: #475569;
+    background-color: var(--table-header-bg);
+    color: var(--fg);
     font-weight: 600;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    text-align: left;
     padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
+    border: 1px solid var(--table-border);
   }
 
   td {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-muted);
+    padding: 9px 14px;
+    border: 1px solid var(--table-border);
     vertical-align: top;
   }
 
-  tr:last-child td {
-    border-bottom: none;
+  tr:nth-child(even) {
+    background-color: var(--table-row-alt);
   }
 
-  tr:hover td {
-    background: #f8fafc;
+  /* Callouts */
+  .callout {
+    margin: 20px 0;
+    padding: 14px 18px;
+    background-color: var(--quote-bg);
+    border-left: 4px solid var(--quote-border);
+    border-radius: 0 4px 4px 0;
   }
 
-  /* Diagram styles */
+  .callout-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--fg);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .callout-body {
+    font-size: 0.92rem;
+    color: var(--fg);
+  }
+
+  .callout-warn { border-left-color: #f59e0b; }
+  .callout-ban  { border-left-color: #ef4444; }
+  .callout-tip  { border-left-color: #10b981; }
+  .callout-spec { border-left-color: #8b5cf6; }
+
+  /* Code Blocks */
+  .code-block {
+    margin: 20px 0;
+    border-radius: 6px;
+    border: 1px solid var(--code-border);
+    overflow: hidden;
+    background-color: var(--code-bg);
+  }
+
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--code-header);
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--code-border);
+  }
+
+  .code-lang {
+    font-size: 0.75rem;
+    font-family: "Source Code Pro", monospace;
+    font-weight: 600;
+    color: #8b949e;
+    letter-spacing: 0.05em;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    color: #c9d1d9;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .copy-btn:hover {
+    background: #30363d;
+    color: #ffffff;
+  }
+
+  .copy-btn.copied {
+    color: #56d364;
+    border-color: #56d364;
+  }
+
+  pre {
+    margin: 0;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.5;
+    font-size: 0.88rem;
+    background: transparent;
+  }
+
+  pre code {
+    color: var(--code-fg);
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  /* Architecture diagram */
   .arch-diagram {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 20px 24px;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin: 20px 0;
     flex-wrap: wrap;
+    gap: 8px;
+    margin: 20px 0;
+    padding: 16px;
+    background: var(--quote-bg);
+    border: 1px solid var(--heading-border);
+    border-radius: 6px;
   }
 
   .arch-box {
-    background: #ffffff;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 0.85rem;
-    line-height: 1.45;
-    color: var(--text);
-    text-align: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  }
-
-  .arch-split {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .arch-box.branch {
-    font-size: 0.8rem;
-    font-weight: 500;
     padding: 8px 12px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--table-border);
+    font-family: "Source Code Pro", monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
   }
 
   .arch-arrow {
-    font-size: 1.1rem;
-    color: var(--text-dim);
-    user-select: none;
+    color: var(--links);
+    font-weight: bold;
   }
 
-  /* Mobile Responsiveness */
-  @media (max-width: 960px) {
-    body {
-      flex-direction: column;
+  /* Bottom Chapter Navigation */
+  .nav-chapters {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--heading-border);
+    gap: 16px;
+  }
+
+  .nav-chapter-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--nav-btn-bg);
+    border: 1px solid var(--nav-btn-border);
+    border-radius: 6px;
+    color: var(--nav-btn-fg);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .nav-chapter-btn:hover {
+    border-color: var(--links);
+    color: var(--links);
+    text-decoration: none;
+  }
+
+  .nav-chapter-btn.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ─── Responsive Adjustments ───────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .sidebar {
+      transform: translateX(-300px);
     }
-    #sidebar {
-      width: 100%;
-      height: auto;
-      position: relative;
-      border-right: none;
-      border-bottom: 1px solid var(--border);
+    .sidebar.mobile-open {
+      transform: translateX(0);
     }
-    .nav-list {
-      max-height: 220px;
+    .page-wrapper {
+      margin-left: 0;
     }
-    #main {
-      padding: 24px 20px 80px;
-    }
-    .chapter {
-      padding-top: 28px;
-      margin-bottom: 36px;
+    .content-container {
+      padding: 24px 16px 60px;
     }
   }
 </style>
 </head>
 <body>
 
-<aside id="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-title">
-      <span>Rook Documentation</span>
-      <span class="sidebar-badge">v0.6.1</span>
+<div class="layout-container">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar" aria-label="Table of contents">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <span>Rook Language</span>
+        <span class="sidebar-version">v0.6.2</span>
+      </div>
+      <div class="sidebar-search-box">
+        <input type="text" id="search-input" placeholder="Search chapters..." aria-label="Search chapters" oninput="filterChapters(this.value)">
+      </div>
     </div>
-    <div class="sidebar-sub">Systems Programming &amp; Foundations</div>
-  </div>
-
-  <div class="view-switcher-wrap">
-    <div class="view-switcher">
-      <button id="btn-mode-guide" class="mode-btn active" onclick="switchMode('guide')">
-        <span class="mode-text">Language Guide</span>
-      </button>
-      <button id="btn-mode-beginner" class="mode-btn" onclick="switchMode('beginner')">
-        <span class="mode-text">Beginner Course</span>
-      </button>
+    <div class="sidebar-scrollbox">
+      <ol class="chapter-list" id="chapter-list">
+        <!--CHAPTER_LINKS-->
+      </ol>
     </div>
-  </div>
+  </aside>
 
-  <div class="sidebar-search">
-    <div class="search-wrap">
-      <input type="text" id="filter-input" placeholder="Filter chapters..." onkeyup="filterChapters()">
-      <span class="search-kbd">/</span>
-    </div>
-  </div>
-
-  <nav class="nav-list" id="nav-guide">
-    <!--GUIDE_NAV-->
-  </nav>
-
-  <nav class="nav-list" id="nav-beginner" style="display:none;">
-    <!--BEGINNER_NAV-->
-  </nav>
-</aside>
-
-<main id="main">
-  <!-- VIEW 1: LANGUAGE GUIDE -->
-  <div id="view-guide" class="view-container">
-    <header class="hero" id="top-guide">
-      <h1>The Rook Language Guide</h1>
-      <p class="hero-tagline">
-        A technical reference manual for Rook, covering syntax, memory semantics, C ABI compatibility, single inheritance, and compiler toolchains.
-      </p>
-      <div class="hero-meta">
-        <span>Compiler: <code>rokade</code></span>
-        <span>Target audience: Developers with programming experience</span>
-        <span>Offline documentation</span>
+  <!-- MAIN PAGE WRAPPER -->
+  <div class="page-wrapper" id="page-wrapper">
+    <!-- TOP TOOLBAR (MDBOOK STYLE) -->
+    <header class="menu-bar" id="menu-bar">
+      <div class="menu-bar-left">
+        <button id="sidebar-toggle" class="icon-button" title="Toggle Table of Contents (t)" aria-label="Toggle Table of Contents" onclick="toggleSidebar()">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="theme-popup-wrapper">
+          <button id="theme-toggle" class="icon-button" title="Change theme" aria-label="Change theme" onclick="toggleThemeMenu()">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.9c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.3-1.3C8.42 19.64 10.13 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+          </button>
+          <ul id="theme-list" class="theme-popup" role="menu" aria-label="Themes">
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('light')">Light</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('rust')">Rust</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('coal')">Coal</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('navy')">Navy</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('ayu')">Ayu</button></li>
+          </ul>
+        </div>
+      </div>
+      <div class="menu-title">The Rook Programming Language</div>
+      <div class="menu-bar-right">
+        <a href="https://github.com/bknsehan/Rook" target="_blank" rel="noopener" class="icon-button" title="GitHub repository" aria-label="GitHub repository">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        </a>
       </div>
     </header>
 
-    <!--GUIDE_BODY-->
-  </div>
-
-  <!-- VIEW 2: BEGINNER COURSE -->
-  <div id="view-beginner" class="view-container" style="display:none;">
-    <header class="hero" id="top-beginner">
-      <h1>Programming Foundations: From Scratch</h1>
-      <p class="hero-tagline">
-        A step-by-step introduction to programming fundamentals: how computers store data, execute instructions, manage memory, and structure logic.
-      </p>
-      <div class="hero-meta">
-        <span>Audience: New learners</span>
-        <span>Focus: Practical concepts and clear explanations</span>
-        <span>Offline course</span>
+    <!-- CONTENT -->
+    <main class="content-container">
+      <div class="book-hero">
+        <h1>The Rook Programming Language</h1>
+        <p>Technical Reference &amp; Language Specification Manual (v0.6.2)</p>
       </div>
-    </header>
 
-    <!--BEGINNER_BODY-->
+      <div class="content" id="book-content">
+        <!--CHAPTERS_BODY-->
+      </div>
+
+      <!-- FOOTER NAVIGATION -->
+      <nav class="nav-chapters" aria-label="Chapter navigation">
+        <a href="#" id="prev-chapter-btn" class="nav-chapter-btn" onclick="navigateChapter(-1); return false;">← Previous Chapter</a>
+        <a href="#" id="next-chapter-btn" class="nav-chapter-btn" onclick="navigateChapter(1); return false;">Next Chapter →</a>
+      </nav>
+    </main>
   </div>
-
-  <footer style="margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; text-align: center;">
-    <p>Rook Language Guide and Programming Foundations &bull; Version 0.5.2 &bull; Offline documentation</p>
-  </footer>
-</main>
+</div>
 
 <script>
-  // Mode switcher: 'guide' vs 'beginner'
-  function switchMode(mode) {
-    var btnGuide = document.getElementById('btn-mode-guide');
-    var btnBeginner = document.getElementById('btn-mode-beginner');
-    var navGuide = document.getElementById('nav-guide');
-    var navBeginner = document.getElementById('nav-beginner');
-    var viewGuide = document.getElementById('view-guide');
-    var viewBeginner = document.getElementById('view-beginner');
-    var filterInput = document.getElementById('filter-input');
-
-    if (mode === 'beginner') {
-      btnGuide.classList.remove('active');
-      btnBeginner.classList.add('active');
-      navGuide.style.display = 'none';
-      navBeginner.style.display = 'flex';
-      viewGuide.style.display = 'none';
-      viewBeginner.style.display = 'block';
-      filterInput.placeholder = 'Filter beginner modules...';
-    } else {
-      btnBeginner.classList.remove('active');
-      btnGuide.classList.add('active');
-      navBeginner.style.display = 'none';
-      navGuide.style.display = 'flex';
-      viewBeginner.style.display = 'none';
-      viewGuide.style.display = 'block';
-      filterInput.placeholder = 'Filter guide chapters...';
-    }
-    filterInput.value = '';
-    filterChapters();
+  // ─── Theme Management ────────────────────────────────────────────────
+  function setTheme(name) {
+    document.documentElement.className = name;
+    localStorage.setItem('rook-book-theme', name);
+    document.getElementById('theme-list').classList.remove('show');
   }
 
-  // Filter visible sidebar navigation items
-  function filterChapters() {
-    var input = document.getElementById('filter-input');
-    var filter = input.value.toLowerCase();
-    var activeNav = document.getElementById('nav-beginner').style.display !== 'none' 
-      ? document.getElementById('nav-beginner') 
-      : document.getElementById('nav-guide');
-    var items = activeNav.getElementsByClassName('nav-item');
-    for (var i = 0; i < items.length; i++) {
-      var text = items[i].textContent || items[i].innerText;
-      if (text.toLowerCase().indexOf(filter) > -1) {
-        items[i].style.display = "";
-      } else {
-        items[i].style.display = "none";
+  function toggleThemeMenu() {
+    document.getElementById('theme-list').classList.toggle('show');
+  }
+
+  document.addEventListener('click', function(e) {
+    var themeWrapper = document.querySelector('.theme-popup-wrapper');
+    if (themeWrapper && !themeWrapper.contains(e.target)) {
+      document.getElementById('theme-list').classList.remove('show');
+    }
+  });
+
+  // Load saved theme or default to 'light'
+  var savedTheme = localStorage.getItem('rook-book-theme') || 'light';
+  setTheme(savedTheme);
+
+  // ─── Sidebar Management ──────────────────────────────────────────────
+  var sidebar = document.getElementById('sidebar');
+  var pageWrapper = document.getElementById('page-wrapper');
+
+  function toggleSidebar() {
+    if (window.innerWidth <= 900) {
+      sidebar.classList.toggle('mobile-open');
+    } else {
+      sidebar.classList.toggle('hidden');
+      pageWrapper.classList.toggle('sidebar-hidden');
+      localStorage.setItem('rook-sidebar-state', sidebar.classList.contains('hidden') ? 'hidden' : 'open');
+    }
+  }
+
+  if (window.innerWidth > 900) {
+    var savedSidebar = localStorage.getItem('rook-sidebar-state');
+    if (savedSidebar === 'hidden') {
+      sidebar.classList.add('hidden');
+      pageWrapper.classList.add('sidebar-hidden');
+    }
+  }
+
+  // ─── Chapter Navigation & Active Tracking ────────────────────────────
+  var chapters = [];
+  var currentChapterIdx = 0;
+
+  function initChapters() {
+    var sections = document.querySelectorAll('.chapter-section');
+    chapters = [];
+    for (var i = 0; i < sections.length; i++) {
+      chapters.push(sections[i].id);
+    }
+    updateNavButtons();
+  }
+
+  function updateNavButtons() {
+    var prevBtn = document.getElementById('prev-chapter-btn');
+    var nextBtn = document.getElementById('next-chapter-btn');
+    if (!prevBtn || !nextBtn || chapters.length === 0) return;
+
+    if (currentChapterIdx <= 0) {
+      prevBtn.classList.add('disabled');
+      prevBtn.style.visibility = 'hidden';
+    } else {
+      prevBtn.classList.remove('disabled');
+      prevBtn.style.visibility = 'visible';
+      var prevTitle = document.querySelector('a[data-id="' + chapters[currentChapterIdx - 1] + '"]').textContent;
+      prevBtn.textContent = '← ' + prevTitle;
+    }
+
+    if (currentChapterIdx >= chapters.length - 1) {
+      nextBtn.classList.add('disabled');
+      nextBtn.style.visibility = 'hidden';
+    } else {
+      nextBtn.classList.remove('disabled');
+      nextBtn.style.visibility = 'visible';
+      var nextTitle = document.querySelector('a[data-id="' + chapters[currentChapterIdx + 1] + '"]').textContent;
+      nextBtn.textContent = nextTitle + ' →';
+    }
+  }
+
+  function navigateChapter(direction) {
+    var newIdx = currentChapterIdx + direction;
+    if (newIdx >= 0 && newIdx < chapters.length) {
+      var targetId = chapters[newIdx];
+      var targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth' });
+        currentChapterIdx = newIdx;
+        updateActiveSidebar(targetId);
+        updateNavButtons();
       }
     }
   }
 
-  // Pure JavaScript Client-Side Syntax Highlighter (100% Offline)
-  function escapeHtml(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function updateActiveSidebar(id) {
+    var links = document.querySelectorAll('.chapter-link');
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].getAttribute('data-id') === id) {
+        links[i].classList.add('active');
+        links[i].scrollIntoView({ block: 'nearest' });
+      } else {
+        links[i].classList.remove('active');
+      }
+    }
+  }
+
+  // Track active chapter on scroll
+  window.addEventListener('scroll', function() {
+    var sections = document.querySelectorAll('.chapter-section');
+    var scrollPos = window.scrollY + 120;
+    var current = chapters[0];
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].offsetTop <= scrollPos) {
+        current = sections[i].id;
+        currentChapterIdx = i;
+      }
+    }
+    updateActiveSidebar(current);
+    updateNavButtons();
+  }, { passive: true });
+
+  // ─── Filter Chapters Search ──────────────────────────────────────────
+  function filterChapters(query) {
+    var q = query.toLowerCase().trim();
+    var links = document.querySelectorAll('.chapter-link');
+    for (var i = 0; i < links.length; i++) {
+      var text = links[i].textContent.toLowerCase();
+      var item = links[i].parentElement;
+      if (!q || text.indexOf(q) > -1) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    }
+  }
+
+  // ─── Keyboard Shortcuts ──────────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft') {
+      navigateChapter(-1);
+    } else if (e.key === 'ArrowRight') {
+      navigateChapter(1);
+    } else if (e.key === 't' || e.key === 'T') {
+      toggleSidebar();
+    } else if (e.key === 's' || e.key === 'S' || e.key === '/') {
+      e.preventDefault();
+      var input = document.getElementById('search-input');
+      if (input) input.focus();
+    }
+  });
+
+  // ─── Code Copy & Highlighting ────────────────────────────────────────
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   function highlightCAndRook(src) {
-    var masterRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')|(^\s*#(?:include|comprise|define|raw_c|end_raw_c|ifdef|ifndef|endif|comprise_lib)[^\n]*)|(\b(?:let|struct|object|impl|sum|enum|match|defer|return|if|else|while|for|in|switch|case|default|break|continue|extern|auto|typedef|sizeof|const|inline|static)\b)|(\b(?:int|uint|float|double|i8|u8|i16|u16|i32|u32|i64|u64|f32|f64|bool|void|char|string|size_t|ssize_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|FILE|Vector2|Point|Entity|Shape|Node|Rectangle|Color|Circle)\b)|(\b(?:true|false|NULL|null)\b)|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?(?:f|u|U|L|LL|ll)?\b)|(\b[a-zA-Z_]\w*(?=\s*\())/gm;
+    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:fn|int|float|double|char|void|bool|size_t|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|object|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
     var lastIndex = 0;
     var out = "";
     var match;
@@ -799,16 +986,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (match.index > lastIndex) {
         out += escapeHtml(src.substring(lastIndex, match.index));
       }
-      var full = match[0];
-      var cmt = match[1], str = match[2], prep = match[3], kw = match[4], type = match[5], boolean = match[6], num = match[7], fn = match[8];
-      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
-      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
-      else if (prep) out += '<span class="tok-prep">' + escapeHtml(prep) + '</span>';
-      else if (kw) out += '<span class="tok-kw">' + escapeHtml(kw) + '</span>';
-      else if (type) out += '<span class="tok-type">' + escapeHtml(type) + '</span>';
-      else if (boolean) out += '<span class="tok-bool">' + escapeHtml(boolean) + '</span>';
-      else if (num) out += '<span class="tok-num">' + escapeHtml(num) + '</span>';
-      else if (fn) out += '<span class="tok-fn">' + escapeHtml(fn) + '</span>';
+      var cmt = match[1], str = match[2], prep = match[3], kw = match[4], type = match[5], num = match[6], fn = match[7];
+      if (cmt) out += '<span style="color:var(--tok-cmt)">' + escapeHtml(cmt) + '</span>';
+      else if (str) out += '<span style="color:var(--tok-str)">' + escapeHtml(str) + '</span>';
+      else if (prep) out += '<span style="color:var(--tok-prep)">' + escapeHtml(prep) + '</span>';
+      else if (kw) out += '<span style="color:var(--tok-kw)">' + escapeHtml(kw) + '</span>';
+      else if (type) out += '<span style="color:var(--tok-type)">' + escapeHtml(type) + '</span>';
+      else if (num) out += '<span style="color:var(--tok-num)">' + escapeHtml(num) + '</span>';
+      else if (fn) out += '<span style="color:var(--tok-fn)">' + escapeHtml(fn) + '</span>';
       lastIndex = masterRegex.lastIndex;
     }
     if (lastIndex < src.length) {
@@ -827,12 +1012,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         out += escapeHtml(src.substring(lastIndex, match.index));
       }
       var cmt = match[1], hdr = match[2], str = match[3], key = match[4], boolean = match[5], num = match[6];
-      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
-      else if (hdr) out += '<span class="tok-hdr">' + escapeHtml(hdr) + '</span>';
-      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
-      else if (key) out += '<span class="tok-key">' + escapeHtml(key) + '</span>';
-      else if (boolean) out += '<span class="tok-bool">' + escapeHtml(boolean) + '</span>';
-      else if (num) out += '<span class="tok-num">' + escapeHtml(num) + '</span>';
+      if (cmt) out += '<span style="color:var(--tok-cmt)">' + escapeHtml(cmt) + '</span>';
+      else if (hdr) out += '<span style="color:var(--tok-hdr)">' + escapeHtml(hdr) + '</span>';
+      else if (str) out += '<span style="color:var(--tok-str)">' + escapeHtml(str) + '</span>';
+      else if (key) out += '<span style="color:var(--tok-key)">' + escapeHtml(key) + '</span>';
+      else if (boolean) out += '<span style="color:var(--tok-bool)">' + escapeHtml(boolean) + '</span>';
+      else if (num) out += '<span style="color:var(--tok-num)">' + escapeHtml(num) + '</span>';
       lastIndex = masterRegex.lastIndex;
     }
     if (lastIndex < src.length) {
@@ -851,10 +1036,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         out += escapeHtml(src.substring(lastIndex, match.index));
       }
       var cmt = match[1], str = match[2], cmd = match[3], opt = match[4];
-      if (cmt) out += '<span class="tok-cmt">' + escapeHtml(cmt) + '</span>';
-      else if (str) out += '<span class="tok-str">' + escapeHtml(str) + '</span>';
-      else if (cmd) out += '<span class="tok-cmd">' + escapeHtml(cmd) + '</span>';
-      else if (opt) out += '<span class="tok-opt">' + escapeHtml(opt) + '</span>';
+      if (cmt) out += '<span style="color:var(--tok-cmt)">' + escapeHtml(cmt) + '</span>';
+      else if (str) out += '<span style="color:var(--tok-str)">' + escapeHtml(str) + '</span>';
+      else if (cmd) out += '<span style="color:var(--tok-cmd)">' + escapeHtml(cmd) + '</span>';
+      else if (opt) out += '<span style="color:var(--tok-opt)">' + escapeHtml(opt) + '</span>';
       lastIndex = masterRegex.lastIndex;
     }
     if (lastIndex < src.length) {
@@ -873,13 +1058,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         codeEl.innerHTML = highlightCAndRook(raw);
       } else if (className.indexOf('language-toml') > -1) {
         codeEl.innerHTML = highlightToml(raw);
-      } else if (className.indexOf('language-bash') > -1 || className.indexOf('language-powershell') > -1) {
+      } else if (className.indexOf('language-bash') > -1) {
         codeEl.innerHTML = highlightBash(raw);
       }
     }
   }
 
-  // Copy code snippet to clipboard
   function copyCode(btn) {
     var block = btn.closest('.code-block');
     if (!block) return;
@@ -888,169 +1072,64 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     var text = codeEl.textContent;
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(function() {
-        showCopied(btn);
-      }).catch(function() {
-        fallbackCopy(text, btn);
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
       });
     } else {
-      fallbackCopy(text, btn);
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+      } catch (e) {}
+      document.body.removeChild(ta);
     }
   }
 
-  function fallbackCopy(text, btn) {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      showCopied(btn);
-    } catch (e) {}
-    document.body.removeChild(ta);
-  }
-
-  function showCopied(btn) {
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    btn.classList.add('copied');
-    setTimeout(function() {
-      btn.textContent = orig;
-      btn.classList.remove('copied');
-    }, 1800);
-  }
-
-  // Keyboard shortcut '/' to focus search
-  window.addEventListener('keydown', function(e) {
-    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-      e.preventDefault();
-      var input = document.getElementById('filter-input');
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    }
-  });
-
-  // ScrollSpy to highlight active chapter in current view
-  function setupScrollSpy() {
-    function onScroll() {
-      var scrollPos = window.scrollY + 100;
-      var activeNavId = document.getElementById('nav-beginner').style.display !== 'none' ? 'nav-beginner' : 'nav-guide';
-      var activeViewId = activeNavId === 'nav-beginner' ? 'view-beginner' : 'view-guide';
-      var sections = document.querySelectorAll('#' + activeViewId + ' .chapter');
-      var navLinks = document.querySelectorAll('#' + activeNavId + ' .nav-item');
-
-      sections.forEach(function(sec) {
-        var top = sec.offsetTop;
-        var height = sec.offsetHeight;
-        var id = sec.getAttribute('id');
-        if (scrollPos >= top && scrollPos < top + height) {
-          navLinks.forEach(function(link) {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === '#' + id) {
-              link.classList.add('active');
-            }
-          });
-        }
-      });
-    }
-    window.addEventListener('scroll', onScroll);
-    onScroll();
-  }
-
-  // Route URL hash on load or hash change
-  function handleHashRoute() {
-    var hash = window.location.hash;
-    if (hash) {
-      var id = hash.substring(1);
-      if (id.indexOf('b') === 0 || id.indexOf('beginner') === 0) {
-        switchMode('beginner');
-      } else {
-        switchMode('guide');
-      }
-      var target = document.getElementById(id);
-      if (target) {
-        setTimeout(function() { target.scrollIntoView(); }, 50);
-      }
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    initChapters();
     highlightAllCodeBlocks();
-    setupScrollSpy();
-    handleHashRoute();
   });
-  window.addEventListener('hashchange', handleHashRoute);
 </script>
-
 </body>
 </html>
 """
 
-def generate_html():
-    guide_chapters = get_guide_chapters(make_code_box, make_callout)
-    beginner_modules = get_beginner_modules(make_code_box, make_callout)
-
-    # Build sidebar links for Guide
-    guide_links = []
-    for cid, title, _ in guide_chapters:
-        guide_links.append(f'<a href="#{cid}" class="nav-item nav-guide-item" data-id="{cid}">{title}</a>')
-    guide_nav_html = "\n    ".join(guide_links)
-
-    # Build sidebar links for Beginner
-    beginner_links = []
-    for mid, title, _ in beginner_modules:
-        beginner_links.append(f'<a href="#{mid}" class="nav-item nav-beginner-item" data-id="{mid}">{title}</a>')
-    beginner_nav_html = "\n    ".join(beginner_links)
-
-    # Build Guide body content
-    guide_sections = []
-    for cid, title, content in guide_chapters:
-        sec = f"""
-<section class="chapter" id="{cid}">
-  <div class="chapter-header">
-    <h2 class="chapter-title">{title}</h2>
-    <a href="#top-guide" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    {content}
-  </div>
-</section>
-"""
-        guide_sections.append(sec)
-    guide_body_html = "\n".join(guide_sections)
-
-    # Build Beginner body content
-    beginner_sections = []
-    for mid, title, content in beginner_modules:
-        sec = f"""
-<section class="chapter beginner-chapter" id="{mid}">
-  <div class="chapter-header">
-    <h2 class="chapter-title">{title}</h2>
-    <a href="#top-beginner" class="back-to-top">Top ↑</a>
-  </div>
-  <div class="chapter-body">
-    {content}
-  </div>
-</section>
-"""
-        beginner_sections.append(sec)
-    beginner_body_html = "\n".join(beginner_sections)
-
-    html = HTML_TEMPLATE.replace("<!--GUIDE_NAV-->", guide_nav_html)
-    html = html.replace("<!--BEGINNER_NAV-->", beginner_nav_html)
-    html = html.replace("<!--GUIDE_BODY-->", guide_body_html)
-    html = html.replace("<!--BEGINNER_BODY-->", beginner_body_html)
-    return html
-
 def main():
-    print(f"Generating documentation for Rook & Rokade v0.6.1 at {OUTPUT_FILE}...")
-    html_content = generate_html()
+    print(f"Generating mdBook-styled documentation for Rook (v0.6.2)...")
+    chapters = get_guide_chapters(make_code_box, make_callout)
+
+    chapter_links = []
+    chapter_sections = []
+
+    for cid, title, content in chapters:
+        chapter_links.append(f'<li class="chapter-item"><a href="#{cid}" class="chapter-link" data-id="{cid}">{title}</a></li>')
+        sec = f"""
+<section class="chapter-section" id="{cid}">
+  <h1>{title}</h1>
+  {content}
+</section>
+"""
+        chapter_sections.append(sec)
+
+    nav_html = "\n        ".join(chapter_links)
+    body_html = "\n".join(chapter_sections)
+
+    html = HTML_TEMPLATE.replace("<!--CHAPTER_LINKS-->", nav_html)
+    html = html.replace("<!--CHAPTERS_BODY-->", body_html)
+
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print(f"Successfully generated {OUTPUT_FILE} ({len(html_content)} bytes).")
+        f.write(html)
+
+    print(f"Successfully generated {OUTPUT_FILE} ({len(html)} bytes).")
 
 if __name__ == "__main__":
     main()

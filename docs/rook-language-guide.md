@@ -1,4 +1,4 @@
-# Rook Language & Architecture Guide (v0.6.1)
+# Rook Language & Architecture Guide (v0.6.2)
 
 > **Specification & Reference Manual**  
 > Technical documentation covering Rook language mechanics, memory layouts, C ABI compatibility, compiler architecture, and systems programming foundations.
@@ -7,30 +7,18 @@
 
 ## Table of Contents
 
-- [PART I: Technical Reference & Architecture](#part-i-technical-reference--architecture)
-  - [1. Language Fundamentals & Design Constraints](#1-language-fundamentals--design-constraints)
-  - [2. Architecture & The Three Compiler Backends](#2-architecture--the-three-compiler-backends)
-  - [3. Technical Comparison: C, Rust, Zig, and Rook](#3-technical-comparison-c-rust-zig-and-rook)
-  - [4. Memory Layout & Storage Semantics](#4-memory-layout--storage-semantics)
-  - [5. Type System & Semantic Analysis](#5-type-system--semantic-analysis)
-  - [6. Control Flow & Evaluation Rules](#6-control-flow--evaluation-rules)
-  - [7. Algebraic Data Types: sum, enum & match](#7-algebraic-data-types-sum-enum--match)
-  - [8. Zero-Overhead C Interoperability & Libclang Integration](#8-zero-overhead-c-interoperability--libclang-integration)
-  - [9. Standard Library (std/) Architecture](#9-standard-library-std-architecture)
-  - [10. Configuration, Multi-Target Builds & Toolchains](#10-configuration-multi-target-builds--toolchains)
-- [PART II: Foundational Systems Tutorial (Beginner Track)](#part-ii-foundational-systems-tutorial-beginner-track)
-  - [B1. Hardware Architecture & Memory Hierarchy](#b1-hardware-architecture--memory-hierarchy)
-  - [B2. Your First Program & Execution Lifecycle](#b2-your-first-program--execution-lifecycle)
-  - [B3. Bits, Bytes, and Integer Widths](#b3-bits-bytes-and-integer-widths)
-  - [B4. Memory Addresses & The Pointer Mental Model](#b4-memory-addresses--the-pointer-mental-model)
-  - [B5. Structs & Memory Layout in Practice](#b5-structs--memory-layout-in-practice)
-  - [B6. Arrays, Buffers, and Bounds Safety](#b6-arrays-buffers-and-bounds-safety)
-  - [B7. Resource Management & Avoiding Leaks (defer)](#b7-resource-management--avoiding-leaks-defer)
-  - [B8. Building Real Projects & C Library Integration](#b8-building-real-projects--c-library-integration)
+- [1. Language Fundamentals & Design Constraints](#1-language-fundamentals--design-constraints)
+- [2. Architecture & The Three Compiler Backends](#2-architecture--the-three-compiler-backends)
+- [3. Technical Comparison: C, Rust, Zig, and Rook](#3-technical-comparison-c-rust-zig-and-rook)
+- [4. Memory Layout & Storage Semantics](#4-memory-layout--storage-semantics)
+- [5. Type System & Semantic Analysis](#5-type-system--semantic-analysis)
+- [6. Control Flow & Evaluation Rules](#6-control-flow--evaluation-rules)
+- [7. Algebraic Data Types: sum, enum & match](#7-algebraic-data-types-sum-enum--match)
+- [8. Zero-Overhead C Interoperability & Libclang Integration](#8-zero-overhead-c-interoperability--libclang-integration)
+- [9. Standard Library (std/) Architecture](#9-standard-library-std-architecture)
+- [10. Configuration, Multi-Target Builds & Toolchains](#10-configuration-multi-target-builds--toolchains)
 
 ---
-
-# PART I: Technical Reference & Architecture
 
 ## 1. Language Fundamentals & Design Constraints
 
@@ -301,15 +289,21 @@ pkg-config = ["raylib", "elementary", "sqlite3"]
 
 ---
 
-## 9. Standard Library (std/) Architecture
+### 9. Standard Library (std/) Architecture
 
 | Module | Include | Primary Capabilities |
 | :--- | :--- | :--- |
-| **`std/io`** | `#comprise std/io` | Buffered stream I/O, file descriptor abstraction, line-by-line reading, binary read/write. |
-| **`std/math`** | `#comprise std/math` | Arithmetic routines: `min`, `max`, `clamp`, `abs`, power routines, float comparisons. |
-| **`std/json`** | `#comprise std/json` | Streaming recursive-descent JSON parser and serializer with zero external dependencies. |
-| **`std/log`** | `#comprise std/log` | Structured leveled logging (`DEBUG`, `INFO`, `WARN`, `ERROR`) with ISO-8601 timestamps. |
-| **`std/test`** | `#comprise std/test` | Assertion framework (`assert_eq`, `assert_true`), test harness, and failure reports. |
+| **`std/io`** | `#comprise <std/io>` | Buffered stream I/O, file descriptor abstraction, line-by-line reading, binary read/write. |
+| **`std/str`** | `#comprise <std/str>` | Non-owning string slices (`Str`) with bounds checking, splitting, searching, and conversions. |
+| **`std/mem`** | `#comprise <std/mem>` | High-performance memory management: bump allocators, scratchpads, and fixed-size element pools. |
+| **`std/atomic`** | `#comprise <std/atomic>` | Lock-free atomic primitives (`AtomicInt`, `AtomicBool`, `AtomicPtr`) with CAS and exchange operations. |
+| **`std/sync`** | `#comprise <std/sync>` | Concurrency synchronization: native OS threads (`Thread`), mutexes (`Mutex`), and condition variables (`CondVar`). |
+| **`std/option`** | `#comprise <std/option>` | Ergonomic optional types (`Option`) for safe null-free value representation and unwrapping. |
+| **`std/result`** | `#comprise <std/result>` | Explicit error handling types (`Result`) without exception overhead. |
+| **`std/math`** | `#comprise <std/math>` | Arithmetic routines: `min`, `max`, `clamp`, `abs`, power routines, float comparisons. |
+| **`std/json`** | `#comprise <std/json>` | Streaming recursive-descent JSON parser and serializer with zero external dependencies. |
+| **`std/log`** | `#comprise <std/log>` | Structured leveled logging (`DEBUG`, `INFO`, `WARN`, `ERROR`) with ISO-8601 timestamps. |
+| **`std/test`** | `#comprise <std/test>` | Assertion framework (`assert_eq`, `assert_true`), test harness, and failure reports. |
 
 ---
 
@@ -320,7 +314,7 @@ pkg-config = ["raylib", "elementary", "sqlite3"]
 # Build and execute
 rokade run [path] [--backend=c|llvm|llvm2]
 
-# Build release binary
+# Build native binary
 rokade build [path] [--backend=c|llvm|llvm2]
 
 # Comprehensive environment and corpus health check
@@ -332,188 +326,8 @@ rokade toolchain set cc /usr/bin/clang
 ```
 
 ### 10.2 Cross-Compilation
-- **Windows (x86_64-w64-mingw32):** Compiles via MinGW-w64 GCC.
-- **Android (aarch64-linux-android):** Cross-compiles using the Android NDK Clang toolchain.
+- **Windows (x86_64-w64-mingw32):** Compiles via MinGW-w64 GCC toolchain.
+- **Android (aarch64-linux-android):** Cross-compiles using the Android NDK Clang toolchain and target sysroot.
 
----
-
-# PART II: Foundational Systems Tutorial (Beginner Track)
-
-## B1. Hardware Architecture & Memory Hierarchy
-
-Software executes directly on physical hardware composed of three primary tiers:
-
-```
-[Permanent Storage (SSD)]  ➔  [Main Memory (RAM)]  ➔  [CPU Registers & Caches]
-~10–50 μs latency              ~50–100 ns latency         ~0.5–5 ns latency
-```
-
-- **Permanent Storage:** Holds binary files on disk. The CPU cannot execute instructions directly from storage.
-- **Main Memory (RAM):** A contiguous array of byte storage cells indexed by numerical addresses.
-- **CPU Registers:** Small, high-speed storage slots inside the core (`RAX`, `RSP`, `RIP`).
-
-### Stack vs. Heap
-- **Call Stack:** Managed by adjusting the Stack Pointer register (`RSP`). Allocations are instantaneous and deallocated automatically on function return.
-- **Heap:** Managed by an allocator (`malloc`/`free`). Dynamically sized and persists until explicitly freed.
-
----
-
-## B2. Your First Program & Execution Lifecycle
-
-```rook
-#include <stdio.h>
-
-int main() {
-    printf("Hello from Rook systems code!\n");
-    return 0; // Return code 0 indicates success to the operating system
-}
-```
-
-When you run `rokade run`:
-1. **Compilation:** `main.rook` is translated into machine instructions.
-2. **Linking:** The object code is linked with standard C runtime libraries (`libc`).
-3. **Execution:** The operating system kernel initializes a process, allocates virtual memory, and points the Instruction Pointer to `main`.
-
----
-
-## B3. Bits, Bytes, and Integer Widths
-
-In systems programming, data types represent concrete physical bit patterns:
-
-| Type | Bit Width | Byte Size | Signed Range | Unsigned Equivalent |
-| :--- | :--- | :--- | :--- | :--- |
-| `int8_t` | 8 bits | 1 byte | -128 to 127 | `uint8_t` (0 to 255) |
-| `int16_t` | 16 bits | 2 bytes | -32,768 to 32,767 | `uint16_t` (0 to 65,535) |
-| `int32_t` (`int`) | 32 bits | 4 bytes | ~-2.14B to ~2.14B | `uint32_t` (0 to ~4.29B) |
-| `int64_t` | 64 bits | 8 bytes | -9.22 &times; 10<sup>18</sup> to 9.22 &times; 10<sup>18</sup> | `uint64_t` (0 to 1.84 &times; 10<sup>19</sup>) |
-
-Signed integers use **Two's Complement** encoding. If an 8-bit signed integer holding `127` (`01111111`) is incremented by 1, it wraps around to `-128` (`10000000`).
-
----
-
-## B4. Memory Addresses & The Pointer Mental Model
-
-A pointer is an integer variable whose value is an address in memory.
-
-### Address-Of (`&`) and Dereference (`*`)
-```rook
-int target = 42;
-int* ptr = &target; // ptr stores the address of target
-
-printf("Address: %p\n", (void*)ptr);
-printf("Value:   %d\n", *ptr); // Reads 4 bytes at that address
-
-*ptr = 99; // Writes 99 to the memory address in ptr
-printf("Updated target: %d\n", target); // Prints 99
-```
-
-### Pointer Arithmetic
-Adding `1` to a pointer `T*` advances the memory address by `sizeof(T)` bytes:
-```rook
-int numbers[3] = { 100, 200, 300 };
-int* p = &numbers[0]; // Address: 0x1000
-
-p = p + 1; // Advances by 1 * sizeof(int) (4 bytes) -> Address: 0x1004
-printf("%d\n", *p); // Prints 200
-```
-
-> **Warning:** Dereferencing a null pointer (`NULL` or address `0`) triggers a Segmentation Fault (SIGSEGV) from the CPU Memory Management Unit (MMU).
-
----
-
-## B5. Structs & Memory Layout in Practice
-
-Structures group heterogeneous fields into contiguous memory blocks:
-
-```rook
-struct Vector3 {
-    x: float
-    y: float
-    z: float
-}
-
-int main() {
-    Vector3 v = { 1.0, 2.0, 3.0 };
-    printf("Vector: (%.1f, %.1f, %.1f)\n", v.x, v.y, v.z);
-    return 0;
-}
-```
-
-### Passing Strategies
-- **Pass by Value (`void process(Vector3 v)`):** Copies all 12 bytes onto the new stack frame. Modifications affect only the local copy.
-- **Pass by Pointer (`void process(Vector3* v)`):** Passes a single 8-byte memory address in a CPU register. Modifications directly mutate the caller's memory.
-
----
-
-## B6. Arrays, Buffers, and Bounds Safety
-
-```rook
-int buffer[5]; // 5 integers * 4 bytes = 20 contiguous stack bytes
-buffer[0] = 10;
-buffer[1] = 20;
-
-for item in buffer {
-    printf("%d\n", item);
-}
-```
-
-Compiling with `-b` (`rokade build -b`) injects runtime bounds checks that terminate execution safely if an invalid index is accessed.
-
----
-
-## B7. Resource Management & Avoiding Leaks (defer)
-
-```rook
-#include <stdio.h>
-#include <stdlib.h>
-
-int process_data(const char* filename) {
-    FILE* f = fopen(filename, "r");
-    if (!f) return -1;
-    defer fclose(f); // Guaranteed to execute on function exit
-
-    char* buf = (char*)malloc(1024);
-    if (!buf) return -2;
-    defer free(buf); // Guaranteed to execute before fclose(f)
-
-    if (fread(buf, 1, 1024, f) <= 0) {
-        return -3; // Both buf is freed and f is closed
-    }
-
-    return 0;     // Both buf is freed and f is closed
-}
-```
-
----
-
-## B8. Building Real Projects & C Library Integration
-
-```toml
-[project]
-name = "graphics_demo"
-version = "0.1.0"
-pkg-config = ["raylib"]
-```
-
-```rook
-#include <raylib.h>
-
-int main() {
-    InitWindow(640, 480, "Rook Raylib Window");
-    SetTargetFPS(60);
-
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Native C Library Called from Rook!", 100, 200, 20, DARKGRAY);
-        EndDrawing();
-    }
-
-    CloseWindow();
-    return 0;
-}
-```
-Compile and run directly:
-```bash
-rokade run
-```
+### 10.3 Language Server Protocol (`rook-lsp`)
+The official language server provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via `rokade --diagnostics`, jump-to-definition (`--def-at`), and document outlines (`--symbols`).

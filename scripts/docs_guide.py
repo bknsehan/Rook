@@ -498,27 +498,57 @@ pkg-config = ["raylib", "elementary", "sqlite3"]
   <tbody>
     <tr>
       <td><strong><code>std/io</code></strong></td>
-      <td><code>#comprise std/io</code></td>
+      <td><code>#comprise &lt;std/io&gt;</code></td>
       <td>Buffered stream I/O, file handle abstraction, line-by-line reading, binary read/write operations.</td>
     </tr>
     <tr>
+      <td><strong><code>std/str</code></strong></td>
+      <td><code>#comprise &lt;std/str&gt;</code></td>
+      <td>Non-owning string slice (<code>Str</code>) with bounds checking, splitting, searching, trimming, and conversions.</td>
+    </tr>
+    <tr>
+      <td><strong><code>std/mem</code></strong></td>
+      <td><code>#comprise &lt;std/mem&gt;</code></td>
+      <td>High-performance memory allocators: monotonic arena (bump allocator), scratchpads, and fixed-size element pools.</td>
+    </tr>
+    <tr>
+      <td><strong><code>std/atomic</code></strong></td>
+      <td><code>#comprise &lt;std/atomic&gt;</code></td>
+      <td>Lock-free atomic primitives (<code>AtomicInt</code>, <code>AtomicBool</code>, <code>AtomicPtr</code>) with load, store, compare-exchange, and fetch operations.</td>
+    </tr>
+    <tr>
+      <td><strong><code>std/sync</code></strong></td>
+      <td><code>#comprise &lt;std/sync&gt;</code></td>
+      <td>Multi-threading primitives: OS threads (<code>Thread</code>), mutual exclusion locks (<code>Mutex</code>), and condition variables (<code>CondVar</code>).</td>
+    </tr>
+    <tr>
+      <td><strong><code>std/option</code></strong></td>
+      <td><code>#comprise &lt;std/option&gt;</code></td>
+      <td>Type-safe optional value representation (<code>Option</code>) eliminating raw null pointers with safe unwrapping.</td>
+    </tr>
+    <tr>
+      <td><strong><code>std/result</code></strong></td>
+      <td><code>#comprise &lt;std/result&gt;</code></td>
+      <td>Explicit error propagation type (<code>Result</code>) for predictable error handling without exception overhead.</td>
+    </tr>
+    <tr>
       <td><strong><code>std/math</code></strong></td>
-      <td><code>#comprise std/math</code></td>
+      <td><code>#comprise &lt;std/math&gt;</code></td>
       <td>Arithmetic utility routines: <code>min</code>, <code>max</code>, <code>clamp</code>, <code>abs</code>, power functions, floating-point comparisons.</td>
     </tr>
     <tr>
       <td><strong><code>std/json</code></strong></td>
-      <td><code>#comprise std/json</code></td>
+      <td><code>#comprise &lt;std/json&gt;</code></td>
       <td>Lightweight recursive descent JSON parser and serializer with zero external dependencies.</td>
     </tr>
     <tr>
       <td><strong><code>std/log</code></strong></td>
-      <td><code>#comprise std/log</code></td>
+      <td><code>#comprise &lt;std/log&gt;</code></td>
       <td>Structured leveled logging (<code>DEBUG</code>, <code>INFO</code>, <code>WARN</code>, <code>ERROR</code>) with ISO-8601 timestamps and terminal styling.</td>
     </tr>
     <tr>
       <td><strong><code>std/test</code></strong></td>
-      <td><code>#comprise std/test</code></td>
+      <td><code>#comprise &lt;std/test&gt;</code></td>
       <td>Unit testing framework: assertion macros (<code>assert_eq</code>, <code>assert_true</code>), test harness, and failure reports.</td>
     </tr>
   </tbody>
