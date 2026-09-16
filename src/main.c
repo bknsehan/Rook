@@ -1154,93 +1154,78 @@ static void resolve_pkg_config(ProjectConfig* cfg) {
             continue;
         }
 
-        char cmd[1024];
+        char buf[4096];
 
         /* Include dirs */
-        snprintf(cmd, sizeof cmd, "pkg-config --cflags-only-I %s 2>/dev/null", pkg);
-        FILE* fp = popen(cmd, "r");
-        if (fp) {
-            char buf[4096];
-            while (fgets(buf, sizeof buf, fp)) {
-                char* p = buf;
-                while (*p) {
-                    while (*p == ' ' || *p == '\t' || *p == '\n') p++;
-                    if (*p == '-' && *(p + 1) == 'I') {
-                        p += 2;
-                        char inc[4096];
-                        int k = 0;
-                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
-                            inc[k++] = *p++;
-                        }
-                        inc[k] = '\0';
-                        if (k > 0) {
-                            project_config_add_include_dir(cfg, inc);
-                        }
-                    } else if (*p) {
-                        p++;
+        const char* pc_inc[] = { "pkg-config", "--cflags-only-I", pkg, NULL };
+        if (util_exec_capture(pc_inc, buf, sizeof buf) == 0) {
+            char* p = buf;
+            while (*p) {
+                while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+                if (*p == '-' && *(p + 1) == 'I') {
+                    p += 2;
+                    char inc[4096];
+                    int k = 0;
+                    while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
+                        inc[k++] = *p++;
                     }
+                    inc[k] = '\0';
+                    if (k > 0) {
+                        project_config_add_include_dir(cfg, inc);
+                    }
+                } else if (*p) {
+                    p++;
                 }
             }
-            pclose(fp);
         }
 
         /* Other cflags */
-        snprintf(cmd, sizeof cmd, "pkg-config --cflags-only-other %s 2>/dev/null", pkg);
-        fp = popen(cmd, "r");
-        if (fp) {
-            char buf[4096];
-            while (fgets(buf, sizeof buf, fp)) {
-                size_t blen = strlen(buf);
-                while (blen > 0 && (buf[blen - 1] == '\n' || buf[blen - 1] == '\r')) buf[--blen] = '\0';
-                if (blen > 0) {
-                    size_t curlen = strlen(cfg->cflags);
-                    if (curlen + blen + 2 < sizeof(cfg->cflags)) {
-                        snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", buf);
-                    }
+        const char* pc_cflags[] = { "pkg-config", "--cflags-only-other", pkg, NULL };
+        if (util_exec_capture(pc_cflags, buf, sizeof buf) == 0) {
+            size_t blen = strlen(buf);
+            while (blen > 0 && (buf[blen - 1] == '\n' || buf[blen - 1] == '\r')) buf[--blen] = '\0';
+            if (blen > 0) {
+                size_t curlen = strlen(cfg->cflags);
+                if (curlen + blen + 2 < sizeof(cfg->cflags)) {
+                    snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", buf);
                 }
             }
-            pclose(fp);
         }
 
         /* Libraries (-l) and library dirs (-L) */
-        snprintf(cmd, sizeof cmd, "pkg-config --libs %s 2>/dev/null", pkg);
-        fp = popen(cmd, "r");
-        if (fp) {
-            char buf[4096];
-            while (fgets(buf, sizeof buf, fp)) {
-                char* p = buf;
-                while (*p) {
-                    while (*p == ' ' || *p == '\t' || *p == '\n') p++;
-                    if (*p == '-' && *(p + 1) == 'l') {
-                        p += 2;
-                        char lib[256];
-                        int k = 0;
-                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
-                            lib[k++] = *p++;
-                        }
-                        lib[k] = '\0';
-                        if (k > 0) {
-                            project_config_add_library(cfg, lib);
-                        }
-                    } else if (*p == '-' && *(p + 1) == 'L') {
-                        char ldir[4096];
-                        int k = 0;
-                        ldir[k++] = *p++;
-                        ldir[k++] = *p++;
-                        while (*p && *p != ' ' && *p != '\t' && *p != '\n') {
-                            ldir[k++] = *p++;
-                        }
-                        ldir[k] = '\0';
-                        size_t curlen = strlen(cfg->cflags);
-                        if (curlen + k + 2 < sizeof(cfg->cflags)) {
-                            snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", ldir);
-                        }
-                    } else if (*p) {
-                        p++;
+        const char* pc_libs[] = { "pkg-config", "--libs", pkg, NULL };
+        if (util_exec_capture(pc_libs, buf, sizeof buf) == 0) {
+            char* p = buf;
+            while (*p) {
+                while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+                if (*p == '-' && *(p + 1) == 'l') {
+                    p += 2;
+                    char lib[256];
+                    int k = 0;
+                    while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r' && k + 1 < (int)sizeof(lib)) {
+                        lib[k++] = *p++;
                     }
+                    lib[k] = '\0';
+                    if (k > 0) {
+                        project_config_add_library(cfg, lib);
+                    }
+                } else if (*p == '-' && *(p + 1) == 'L') {
+                    char ldir[4096];
+                    int k = 0;
+                    ldir[k++] = *p++;
+                    ldir[k++] = *p++;
+                    while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
+                        ldir[k++] = *p++;
+                    }
+                    ldir[k] = '\0';
+                    size_t curlen = strlen(cfg->cflags);
+                    if (curlen + k + 2 < sizeof(cfg->cflags)) {
+                        snprintf(cfg->cflags + curlen, sizeof(cfg->cflags) - curlen, " %s", ldir);
+                    }
+                } else if (*p) {
+                    p++;
                 }
             }
-            pclose(fp);
         }
     }
 }

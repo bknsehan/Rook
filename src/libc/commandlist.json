@@ -1142,5 +1142,153 @@
         "type": "double"
       }
     ]
+  },
+  {
+    "name": "pthread_create",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      },
+      {
+        "name": "arg2",
+        "type": "void*"
+      },
+      {
+        "name": "arg3",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_join",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "void**"
+      }
+    ]
+  },
+  {
+    "name": "pthread_mutex_init",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_mutex_lock",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_mutex_unlock",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_mutex_trylock",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_mutex_destroy",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_cond_init",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "const void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_cond_wait",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      },
+      {
+        "name": "arg1",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_cond_signal",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_cond_broadcast",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_cond_destroy",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
+      }
+    ]
   }
 ]

@@ -24,6 +24,7 @@
 
 #include "diag.h"
 #include "util.h"
+#include "commandlist_data.h"
 
 /* ─── Commandlist (C API info from commandlist.json) ────── */
 
@@ -116,18 +117,24 @@ static void cl_load(const char* basedir, const char* override) {
     if (path[0] == '\0') {
         snprintf(path, sizeof(path), "commandlist.json");
     }
-    if (!file_exists(path)) return;
 
-    FILE* f = fopen(path, "rb");
-    if (!f) return;
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    rewind(f);
-    char* buf = malloc((size_t)sz + 1);
-    if (!buf) { fclose(f); return; }
-    fread(buf, 1, (size_t)sz, f);
-    buf[sz] = '\0';
-    fclose(f);
+    FILE* f = file_exists(path) ? fopen(path, "rb") : NULL;
+    char* buf = NULL;
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        rewind(f);
+        buf = malloc((size_t)sz + 1);
+        if (buf) {
+            fread(buf, 1, (size_t)sz, f);
+            buf[sz] = '\0';
+        }
+        fclose(f);
+    }
+    if (!buf) {
+        buf = strdup(EMBEDDED_COMMANDLIST_JSON);
+    }
+    if (!buf) return;
 
     /* Minimal scan: function objects have "name", "ret", "params" keys.
        A "name" value only counts as a function name if followed by "ret".
