@@ -248,8 +248,21 @@ object Player : Entity {
 
 <p>Because the parent struct is at byte offset 0, casting a child pointer to a parent pointer requires no pointer arithmetic:</p>
 {make_code_box("rook", """
-Player p;
-Entity* e = (Entity*)&p; // Exact same memory address, zero adjustment
+object Entity {
+    id: int
+    active: bool
+}
+
+object Player : Entity {
+    health: int
+    score: int
+}
+
+int main() {
+    Player p;
+    Entity* e = (Entity*)&p; // Exact same memory address, zero adjustment
+    return 0;
+}
 """, "Zero-Offset Upcasting")}
 """
     add_ch("mental-model", "4. Memory Layout & Storage Semantics", ch4)
@@ -280,12 +293,16 @@ int uninitialized_val;   // Automatically initialized to 0
 <h3>5.3 Dynamic Typedef Unwrapping (<code>ck_unwrap_typedef</code>)</h3>
 <p>When external C headers are included, the semantic analyzer indexes all typedef aliases (such as <code>uint32_t</code>, <code>size_t</code>, <code>gchar</code>, <code>gboolean</code>, or <code>HWND</code>). During type checking, <code>ck_unwrap_typedef</code> recursively resolves typedef chains to verify structural equivalence:</p>
 {make_code_box("rook", """
-#include <gtk/gtk.h>
+#include <stdio.h>
+#include <stdint.h>
 
-// gtk_window_get_title returns 'const gchar*'
-// In GLib, 'typedef char gchar;'
-// The compiler unwraps 'gchar' to 'char', verifying exact compatibility:
-const char* title = gtk_window_get_title(win);
+// uint32_t is a typedef alias to 'unsigned int' in C standard headers.
+// The compiler unwraps typedef aliases dynamically to verify exact compatibility:
+int main() {
+    uint32_t count = 42;
+    unsigned int raw = count; // Exact compatibility verified by ck_unwrap_typedef
+    return 0;
+}
 """, "C Typedef Resolution")}
 """
     add_ch("variables", "5. Type System & Semantic Analysis", ch5)
@@ -299,12 +316,15 @@ const char* title = gtk_window_get_title(win);
 <h3>6.1 Conditionals &amp; Assignment Rejection</h3>
 <p>Condition expressions in <code>if</code> and <code>while</code> statements must evaluate to boolean or numeric truth values. Assignment operators (<code>=</code>, <code>+=</code>, etc.) are syntactically rejected inside conditions:</p>
 {make_code_box("rook", """
-int x = 0;
-if (x == 5) {
-    // Valid equality check
-}
+int main() {
+    int x = 0;
+    if (x == 5) {
+        // Valid equality check
+    }
 
-// if (x = 5) { } // Hard compile-time error: assignment not allowed in condition
+    // if (x = 5) { } // Hard compile-time error: assignment not allowed in condition
+    return 0;
+}
 """, "Condition Invariant")}
 
 <h3>6.2 Guaranteed Short-Circuit Evaluation</h3>
@@ -332,37 +352,45 @@ land.merge:
 
 <h3>6.3 Loops</h3>
 {make_code_box("rook", """
-// Standard while loop
-while (condition) {
-    step();
-}
+#include <stdio.h>
 
-// Three-clause for loop
-for (int i = 0; i < 10; i++) {
-    printf("%d\\n", i);
-}
+int main() {
+    // Standard while loop
+    int n = 0;
+    while (n < 5) {
+        n = n + 1;
+    }
 
-// Array iteration (for-in)
-int values[4] = { 10, 20, 30, 40 };
-for item in values {
-    printf("%d\\n", item);
+    // Three-clause for loop
+    for (int i = 0; i < 10; i++) {
+        printf("%d\\n", i);
+    }
+
+    // Array literal iteration (for-in)
+    for item in [10, 20, 30, 40] {
+        printf("%d\\n", item);
+    }
+    return 0;
 }
 """, "Loops in Rook")}
 
 <h3>6.4 Deterministic Cleanup with <code>defer</code></h3>
 <p>The <code>defer</code> statement registers a statement or block to be executed upon leaving the current enclosing scope. Multiple <code>defer</code> statements execute in reverse declaration order (Last-In, First-Out / LIFO):</p>
 {make_code_box("rook", """
-FILE* f = fopen("data.bin", "rb");
-if (!f) return -1;
-defer fclose(f); // Guaranteed to execute on any exit path
+#include <stdio.h>
+#include <stdlib.h>
 
-void* buf = malloc(1024);
-defer free(buf); // Executes before fclose(f)
+int main() {
+    FILE* f = fopen("data.bin", "rb");
+    if (!f) return 0;
+    defer fclose(f); // Guaranteed to execute on any exit path
 
-if (error_condition()) {
-    return -2; // buf is freed, then f is closed
+    void* buf = malloc(1024);
+    if (!buf) return 0;
+    defer free(buf); // Executes before fclose(f)
+
+    return 0;
 }
-return 0;      // buf is freed, then f is closed
 """, "Deterministic Resource Cleanup")}
 """
     add_ch("control-flow", "6. Control Flow & Evaluation Rules", ch6)
@@ -371,7 +399,7 @@ return 0;      // buf is freed, then f is closed
     # Chapter 7: Algebraic Data Types: sum, enum & match
     # ==========================================
     ch7 = f"""
-<p>Rook provides first-class Algebraic Data Types (ADTs) through <code>sum</code> and <code>enum</code> declarations, accompanied by compile-time exhaustive <code>match</code> statements.</p>
+<p>Rook provides first-class Algebraic Data Types (ADTs) through <code>sum</code> and <code>enum</code> declarations, accompanied by compile-time exhaustive <code>match</code> expressions.</p>
 
 <h3>7.1 Simple Enums</h3>
 <p>A simple <code>enum</code> defines named numeric constants matching C enum semantics:</p>
@@ -388,9 +416,9 @@ enum Direction {
 <p>A <code>sum</code> type represents a value that can take one of several variant shapes, each optionally carrying payload data:</p>
 {make_code_box("rook", """
 sum Shape {
-    Circle { radius: float },
-    Rectangle { width: float, height: float },
-    Point
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
 }
 """, "Sum Type Declaration")}
 
@@ -409,29 +437,55 @@ sum Shape {
 </div>
 
 <h3>7.3 Pattern Matching and Exhaustiveness</h3>
-<p>The <code>match</code> construct tests a sum type against its possible variants. The compiler enforces that all variants are handled:</p>
+<p>The <code>match</code> construct evaluates a sum type against its possible variants. Struct patterns unpack field members directly into scope:</p>
 {make_code_box("rook", """
+sum Shape {
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
+}
+
 float get_area(Shape s) {
-    match (s) {
-        Circle(c) => return 3.14159 * c.radius * c.radius;
-        Rectangle(r) => return r.width * r.height;
-        Point => return 0.0;
-    }
+    return match (s) {
+        Circle { radius }           => 3.14159 * radius * radius,
+        Rectangle { width, height } => width * height,
+        Point                       => 0.0,
+        _                           => 0.0,
+    };
+}
+
+int main() {
+    Shape c = Circle { radius: 2.0 };
+    Shape r = Rectangle { width: 3.0, height: 4.0 };
+    Shape p = Point;
+    return 0;
 }
 """, "Pattern Matching")}
 
-<h3>7.4 Error Handling with <code>Result</code> and <code>?</code> Operator</h3>
-<p>The standard library provides <code>Result</code> and <code>Option</code> sum types. The postfix <code>?</code> operator unwraps a successful value or early-returns the error variant from the enclosing function:</p>
+<h3>7.4 Canonical Error &amp; Option Handling: <code>std/result</code></h3>
+<p>The standard library provides zero-cost algebraic sum types for error handling and optional values without runtime exceptions:</p>
 {make_code_box("rook", """
-#comprise std/io
+#include <stdio.h>
+#comprise <std/result>
+#comprise <std/io>
 
-Result<int, IOError> read_config() {
-    File f = File::open("config.json", "r")?; // Early return if Err
-    defer f.close();
-    int val = f.read_int()?;
-    return Result::Ok(val);
+Result parse_positive_int(int val) {
+    if (val > 0) {
+        return result_ok((void*)1);
+    }
+    return result_err("Value must be positive");
 }
-""", "Error Propagation with ?")}
+
+int main() {
+    Result res = parse_positive_int(42);
+    if (res.is_ok()) {
+        println("Success: valid positive number");
+    } else {
+        printf("Error: %s\\n", res.unwrap_err());
+    }
+    return 0;
+}
+""", "Error Handling with std/result")}
 """
     add_ch("sum-match", "7. Algebraic Data Types: sum, enum & match", ch7)
 
@@ -451,119 +505,485 @@ Result<int, IOError> read_config() {
 </ul>
 
 <h3>8.2 Function Pointer Callbacks</h3>
-<p>Rook functions matching C callback prototypes can be passed directly as function pointers:</p>
+<p>Rook functions matching C callback prototypes can be passed directly as C function pointers:</p>
 {make_code_box("rook", """
 #include <stdio.h>
-#include <Elementary.h>
+#include <stdlib.h>
 
-void on_click(void* data, Evas_Object* obj, void* event_info) {
-    printf("Button clicked!\\n");
+int compare_ints(const void* a, const void* b) {
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+    if (arg1 < arg2) return -1;
+    if (arg1 > arg2) return 1;
+    return 0;
 }
 
 int main() {
-    elm_init(0, NULL);
-    Evas_Object* win = elm_win_util_standard_add("main", "Demo");
-    Evas_Object* btn = elm_button_add(win);
-    evas_object_smart_callback_add(btn, "clicked", on_click, NULL);
-    evas_object_show(win);
-    elm_run();
+    int arr[5] = { 5, 2, 8, 1, 9 };
+    qsort(arr, 5, sizeof(int), compare_ints);
+    for (int i = 0; i < 5; i = i + 1) {
+        printf("%d ", arr[i]);
+    }
+    printf("\\n");
     return 0;
 }
 """, "Passing Function Pointers to C Callbacks")}
 
 <h3>8.3 Managing C Dependencies via <code>rokade.toml</code></h3>
-<p>Project dependencies on system libraries are declared in <code>rokade.toml</code> under <code>pkg-config</code>:</p>
+<p>Project dependencies on system libraries are declared in <code>rokade.toml</code> under <code>pkg-config</code> in the <code>[build]</code> table:</p>
 {make_code_box("toml", """
-[project]
+[package]
 name = "gui_app"
 version = "0.1.0"
-pkg-config = ["raylib", "elementary", "sqlite3"]
+
+[build]
+kind = "exe"
+pkg-config = ["raylib"]
 """, "rokade.toml")}
 <p>The compiler automatically queries <code>pkg-config --cflags</code> and <code>pkg-config --libs</code> during build execution.</p>
 """
     add_ch("c-interop", "8. Zero-Overhead C Interoperability & Libclang Integration", ch8)
 
     # ==========================================
-    # Chapter 9: Standard Library (std/) Architecture
+    # Chapter 9: Project Composition: Inclusions, Modules & Cross-Path Ingestion
     # ==========================================
     ch9 = f"""
-<p>Rook's standard library resides in <code>std/</code> and provides fundamental primitives implemented directly in Rook.</p>
+<p>Rook separates the ingestion of foreign C interfaces from native Rook module composition via two distinct directives: <code>#include</code> and <code>#comprise</code>.</p>
 
-<h3>9.1 Modules Overview</h3>
+<h3>9.1 The Two Ingestion Models: <code>#include</code> vs <code>#comprise</code></h3>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Module</th><th>Header</th><th>Primary Capabilities</th></tr>
+    <tr><th>Directive</th><th>Target File Type</th><th>Parsing Engine</th><th>Behavior &amp; Semantics</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong><code>std/io</code></strong></td>
-      <td><code>#comprise &lt;std/io&gt;</code></td>
-      <td>Buffered stream I/O, file handle abstraction, line-by-line reading, binary read/write operations.</td>
+      <td><code>#include &lt;header.h&gt;</code><br><code>#include "header.h"</code></td>
+      <td>C Header (<code>.h</code>)</td>
+      <td>libclang (Clang C Frontend)</td>
+      <td>Parses host C headers dynamically at compile time. Ingests C functions, structs, unions, typedefs, enums, and macros directly into Rook's symbol table without hand-written binding layers.</td>
     </tr>
     <tr>
-      <td><strong><code>std/str</code></strong></td>
-      <td><code>#comprise &lt;std/str&gt;</code></td>
-      <td>Non-owning string slice (<code>Str</code>) with bounds checking, splitting, searching, trimming, and conversions.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/mem</code></strong></td>
-      <td><code>#comprise &lt;std/mem&gt;</code></td>
-      <td>High-performance memory allocators: monotonic arena (bump allocator), scratchpads, and fixed-size element pools.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/atomic</code></strong></td>
-      <td><code>#comprise &lt;std/atomic&gt;</code></td>
-      <td>Lock-free atomic primitives (<code>AtomicInt</code>, <code>AtomicBool</code>, <code>AtomicPtr</code>) with load, store, compare-exchange, and fetch operations.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/sync</code></strong></td>
-      <td><code>#comprise &lt;std/sync&gt;</code></td>
-      <td>Multi-threading primitives: OS threads (<code>Thread</code>), mutual exclusion locks (<code>Mutex</code>), and condition variables (<code>CondVar</code>).</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/option</code></strong></td>
-      <td><code>#comprise &lt;std/option&gt;</code></td>
-      <td>Type-safe optional value representation (<code>Option</code>) eliminating raw null pointers with safe unwrapping.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/result</code></strong></td>
-      <td><code>#comprise &lt;std/result&gt;</code></td>
-      <td>Explicit error propagation type (<code>Result</code>) for predictable error handling without exception overhead.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/math</code></strong></td>
-      <td><code>#comprise &lt;std/math&gt;</code></td>
-      <td>Arithmetic utility routines: <code>min</code>, <code>max</code>, <code>clamp</code>, <code>abs</code>, power functions, floating-point comparisons.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/json</code></strong></td>
-      <td><code>#comprise &lt;std/json&gt;</code></td>
-      <td>Lightweight recursive descent JSON parser and serializer with zero external dependencies.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/log</code></strong></td>
-      <td><code>#comprise &lt;std/log&gt;</code></td>
-      <td>Structured leveled logging (<code>DEBUG</code>, <code>INFO</code>, <code>WARN</code>, <code>ERROR</code>) with ISO-8601 timestamps and terminal styling.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/test</code></strong></td>
-      <td><code>#comprise &lt;std/test&gt;</code></td>
-      <td>Unit testing framework: assertion macros (<code>assert_eq</code>, <code>assert_true</code>), test harness, and failure reports.</td>
+      <td><code>#comprise &lt;std/mod&gt;</code><br><code>#comprise "path.rook"</code></td>
+      <td>Rook Source (<code>.rook</code>)</td>
+      <td>Rokade Preprocessor</td>
+      <td>Inlines and resolves Rook source modules. Expands declarations into the compilation unit with canonical path deduplication.</td>
     </tr>
   </tbody>
 </table>
 </div>
+
+<h3>9.2 Cross-Directory Module Ingestion &amp; Relative Path Resolution</h3>
+<p>Rook source files can be composed across nested directories using standard POSIX relative paths:</p>
+<ul>
+  <li><strong>Standard Library Modules:</strong> Use angle brackets with the <code>std/</code> prefix, e.g., <code>#comprise &lt;std/io&gt;</code> or <code>#comprise &lt;std/str&gt;</code>. The compiler resolves these from the toolchain installation directory or <code>ROKADE_PATH</code>.</li>
+  <li><strong>Sibling Modules:</strong> Use quoted relative paths, e.g., <code>#comprise "utils.rook"</code> or <code>#comprise "./types.rook"</code>.</li>
+  <li><strong>Nested Subdirectories:</strong> Specify the relative path to sub-modules, e.g., <code>#comprise "engine/renderer.rook"</code> or <code>#comprise "net/socket.rook"</code>.</li>
+  <li><strong>Parent and Sibling Trees:</strong> Walk up directory hierarchies using <code>../</code>, e.g., <code>#comprise "../shared/config.rook"</code>.</li>
+</ul>
+
+{make_callout("spec", "Canonical Path Deduplication", "Rook resolves every included file to its canonical filesystem path (via <code>rk_realpath</code>). If multiple modules comprise the same source file—either directly or transitively—the compiler expands and parses that file exactly once. Circular comprises are automatically prevented, eliminating the need for C-style <code>#ifndef</code> include guards.")}
+
+<h3>9.3 Multi-File Project Architecture (Comprehensive Example)</h3>
+<p>Consider a modular systems project structured across directories with external C dependencies:</p>
+
+{make_code_box("text", """
+my_game/
+├── rokade.toml
+└── src/
+    ├── main.rook
+    ├── config.rook
+    └── engine/
+        ├── math.rook
+        └── renderer.rook
+""", "Project Directory Structure")}
+
+<p>In <code>src/engine/math.rook</code>, we define local geometry types:</p>
+{make_code_box("rook", """
+// src/engine/math.rook
+object Vec2 {
+    x: float
+    y: float
+}
+
+Vec2 vec2_new(float x, float y) {
+    return Vec2 { x: x, y: y };
+}
+""", "src/engine/math.rook")}
+
+<p>In <code>src/engine/renderer.rook</code>, we combine local math, standard strings, and native Raylib C headers:</p>
+{make_code_box("rook", """
+// src/engine/renderer.rook
+#include <raylib.h>
+#comprise <std/str>
+#comprise "math.rook"       // Sibling comprise inside engine/
+
+object RenderContext {
+    width: int
+    height: int
+    title: Str
+}
+
+RenderContext renderer_create(int w, int h, Str title) {
+    char* c_title = title.to_cstr();
+    defer free(c_title);
+    InitWindow(w, h, c_title);
+    return RenderContext { width: w, height: h, title: title };
+}
+
+void renderer_draw_point(RenderContext* ctx, Vec2 pos, Color c) {
+    DrawPixel((int)pos.x, (int)pos.y, c);
+}
+""", "src/engine/renderer.rook")}
+
+<p>In <code>src/main.rook</code>, we link the entire project together:</p>
+{make_code_box("rook", """
+// src/main.rook
+#include <stdio.h>
+#comprise <std/io>
+#comprise <std/str>
+#comprise "config.rook"             // Local comprise
+#comprise "engine/renderer.rook"    // Subdirectory comprise
+
+int main() {
+    Str app_name = str_from_cstr("Rook Modular Engine");
+    println_str(app_name);
+
+    RenderContext rc = renderer_create(800, 600, app_name);
+    defer CloseWindow();
+
+    Vec2 player_pos = vec2_new(400.0f, 300.0f);
+    renderer_draw_point(&rc, player_pos, RAYWHITE);
+    return 0;
+}
+""", "src/main.rook")}
 """
-    add_ch("stdlib", "9. Standard Library (std/) Architecture", ch9)
+    add_ch("composition", "9. Project Composition: Inclusions, Modules & Cross-Path Ingestion", ch9)
 
     # ==========================================
-    # Chapter 10: Configuration, Multi-Target Builds & Toolchains
+    # Chapter 10: The Rook Standard Library (std/) Deep Dive
     # ==========================================
     ch10 = f"""
+<p>The Rook Standard Library resides in <code>std/</code>. It is written purely in Rook, carries zero runtime overhead, and relies exclusively on standard C ABI primitives.</p>
+
+<h3>10.1 Safe String Slices: <code>std/str</code></h3>
+<p>C strings (<code>char*</code>) are null-terminated, requiring <code>O(n)</code> scans for length calculations and risking buffer overflows. Rook's <code>Str</code> provides a safe, non-owning slice holding a pointer and an explicit length:</p>
+
+{make_code_box("rook", """
+object Str {
+    data: const char*
+    len: size_t
+}
+""", "Str Internal Representation")}
+
+<h4>Core Capabilities of <code>Str</code>:</h4>
+<ul>
+  <li><strong>Zero-Allocation Slicing:</strong> <code>s.slice(start, end)</code> returns a new <code>Str</code> view over existing memory in <code>O(1)</code> time without allocating.</li>
+  <li><strong>Safe Inspection:</strong> <code>s.is_empty()</code>, <code>s.starts_with(prefix)</code>, <code>s.ends_with(suffix)</code>, <code>s.equals(other)</code>, <code>s.char_at(index)</code>.</li>
+  <li><strong>Searching &amp; Splitting:</strong> <code>s.find_char(c)</code>, <code>s.find(needle)</code>, <code>s.contains(needle)</code>, <code>s.split_once(delim, &left, &right)</code>.</li>
+  <li><strong>Whitespace Trimming:</strong> <code>s.trim_start()</code>, <code>s.trim_end()</code>, <code>s.trim()</code>.</li>
+  <li><strong>Parsing &amp; Conversions:</strong> <code>s.to_int()</code>, <code>s.to_float()</code>, <code>s.to_bool()</code>, <code>s.to_cstr()</code> (heap-allocated copy).</li>
+</ul>
+
+{make_code_box("rook", """
+#include <stdio.h>
+#comprise <std/io>
+#comprise <std/str>
+
+void demonstrate_strings() {
+    Str full = str_from_cstr("HOST=127.0.0.1:8080");
+    Str key;
+    Str val;
+
+    if (full.split_once('=', &key, &val)) {
+        println_str(key); // Prints: HOST
+        println_str(val); // Prints: 127.0.0.1:8080
+    }
+
+    Str port_str = val.slice(10, val.len);
+    int port = port_str.to_int();
+    println_int(port); // Prints: 8080
+}
+
+int main() {
+    demonstrate_strings();
+    return 0;
+}
+""", "Working with std/str")}
+
+<h3>10.2 Ergonomic Input/Output: <code>std/io</code></h3>
+<p><code>std/io</code> replaces raw <code>printf</code>/<code>scanf</code> with type-safe, bounds-checked I/O routines:</p>
+<ul>
+  <li><strong>Printing:</strong> <code>print(s)</code>, <code>println(s)</code>, <code>println_int(n)</code>, <code>println_float(f)</code>, <code>println_bool(b)</code>, <code>println_str(s)</code>.</li>
+  <li><strong>Standard Error:</strong> <code>eprint(s)</code>, <code>eprintln(s)</code>, <code>eprintln_int(n)</code>, <code>eprintln_str(s)</code>, <code>io_eflush()</code>.</li>
+  <li><strong>Safe Input Scanning:</strong> <code>scanln(buf, cap)</code>, <code>scanln_alloc()</code>, <code>scan_word(buf, cap)</code>, <code>scan_int(&out)</code>, <code>scan_float(&out)</code>.</li>
+</ul>
+
+<h3>10.3 High-Performance Memory Management: <code>std/mem</code></h3>
+<p>In high-throughput systems, invoking <code>malloc</code>/<code>free</code> repeatedly fragments the heap and incurs allocator lock contention. <code>std/mem</code> provides specialized allocators:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Allocator</th><th>Allocation Pattern</th><th>Deallocation Mechanism</th><th>Use Case</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong><code>Arena</code></strong></td>
+      <td>Linear monotonic bump pointer. Aligns all allocations to 8-byte boundaries.</td>
+      <td>Bulk reset via <code>arena.reset()</code> or free via <code>arena.destroy()</code>.</td>
+      <td>Per-frame allocations in games, request-scoped lifecycles in network servers, AST compilation phases.</td>
+    </tr>
+    <tr>
+      <td><strong><code>ArenaTemp</code></strong></td>
+      <td>Saves current arena offset. Sub-allocations increment offset.</td>
+      <td>Restores offset via <code>arena_temp_end()</code>.</td>
+      <td>Temporary scratchpad buffers inside inner loops or subroutines.</td>
+    </tr>
+    <tr>
+      <td><strong><code>ElementPool</code></strong></td>
+      <td>Fixed-size chunk allocator with embedded free-list recycling.</td>
+      <td>Instantaneous <code>O(1)</code> return via <code>pool.free(ptr)</code>.</td>
+      <td>Game entities, network connection slots, graph nodes, AST nodes.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+{make_code_box("rook", """
+#include <stdio.h>
+#comprise <std/mem>
+#comprise <std/io>
+
+struct Packet {
+    id: int
+    data: char[60]
+}
+
+void test_allocators() {
+    // 1. Linear Arena Allocation
+    Arena arena = arena_new(1024 * 1024); // 1 MB buffer
+    defer arena.destroy();
+
+    int* numbers = (int*)arena.alloc(100 * sizeof(int));
+    numbers[0] = 42;
+
+    // 2. Element Pool (O(1) recycling)
+    ElementPool pool = pool_new(sizeof(Packet), 100);
+    defer pool.destroy();
+
+    Packet* p1 = (Packet*)pool.alloc();
+    p1->id = 1;
+
+    pool.free((void*)p1); // Re-added to free list immediately
+    Packet* p2 = (Packet*)pool.alloc(); // Reuses p1's slot without OS allocation
+}
+
+int main() {
+    test_allocators();
+    return 0;
+}
+""", "Using Arena and ElementPool")}
+
+<h3>10.4 Hardware Lock-Free Atomics: <code>std/atomic</code></h3>
+<p>Rook exposes direct CPU memory bus atomic operations without library indirection:</p>
+<ul>
+  <li><code>AtomicInt</code> &amp; <code>AtomicBool</code>: wrappers over machine-word atomic storage.</li>
+  <li><strong>Operations:</strong> <code>load()</code>, <code>store(val)</code>, <code>fetch_add(delta)</code>, <code>fetch_sub(delta)</code>, <code>exchange(val)</code>, and <code>compare_exchange(&expected, desired)</code>.</li>
+</ul>
+
+<h3>10.5 Multi-Threading &amp; Synchronization: <code>std/sync</code></h3>
+<p>Provides zero-overhead abstractions over host OS threads (POSIX pthreads / Windows Win32 threads):</p>
+<ul>
+  <li><strong><code>Thread</code>:</strong> Created with <code>thread_spawn(worker_fn, arg)</code>. Joined via <code>t.join(&ret_val)</code>.</li>
+  <li><strong><code>Mutex</code>:</strong> Native OS mutual exclusion lock (<code>m.init()</code>, <code>m.lock()</code>, <code>m.unlock()</code>, <code>m.try_lock()</code>, <code>m.destroy()</code>).</li>
+  <li><strong><code>CondVar</code>:</strong> Condition variable for thread coordination (<code>cv.init()</code>, <code>cv.wait(&mutex)</code>, <code>cv.signal()</code>, <code>cv.broadcast()</code>).</li>
+</ul>
+
+<h3>10.6 Concurrency Safety Model &amp; Current Limitations</h3>
+{make_callout("warn", "Explicit Concurrency Model", "Rook does not incorporate a compile-time borrow checker or automatic race detector. Thread safety is explicit and the responsibility of the systems programmer.")}
+
+<p>When developing concurrent software in Rook, developers must enforce the following architectural rules:</p>
+<ol>
+  <li><strong>Shared Mutable State Must Be Synchronized:</strong> Any data structure accessible by multiple threads must be protected by a <code>Mutex</code> or implemented with lock-free atomic primitives (<code>AtomicInt</code>). Unsynchronized concurrent writes cause undefined behavior.</li>
+  <li><strong>Thread Worker Argument Lifetimes:</strong> The <code>void* arg</code> passed to <code>thread_spawn</code> must remain valid until the spawned thread finishes executing. Passing a pointer to a local stack variable of a function that returns before <code>t.join()</code> results in a dangling pointer read. Shared state should be allocated on the heap or in an Arena that outlives all worker threads.</li>
+  <li><strong>Deadlock Prevention with <code>defer</code>:</strong> Always unlock mutexes using <code>defer m.unlock()</code> immediately after acquiring them. This guarantees the lock is released across all return paths and branches.</li>
+</ol>
+
+{make_code_box("rook", """
+#include <stdio.h>
+#comprise <std/sync>
+#comprise <std/atomic>
+
+object CounterTask {
+    counter: AtomicInt
+    lock: Mutex
+}
+
+void* worker(void* arg) {
+    CounterTask* task = (CounterTask*)arg;
+    for (int i = 0; i < 1000; i = i + 1) {
+        task->lock.lock();
+        task->counter.fetch_add(1);
+        task->lock.unlock();
+    }
+    return NULL;
+}
+
+int main() {
+    CounterTask task;
+    task.counter = atomic_int_new(0);
+    task.lock.init();
+    defer task.lock.destroy();
+
+    Thread t1 = thread_spawn(worker, &task);
+    Thread t2 = thread_spawn(worker, &task);
+
+    void* r1 = NULL;
+    void* r2 = NULL;
+    t1.join(&r1);
+    t2.join(&r2);
+
+    printf("Final counter: %d\\n", task.counter.load());
+    return 0;
+}
+""", "Safe Concurrency with Thread, Mutex, and AtomicInt")}
+
+<h3>10.7 Null Safety &amp; Explicit Errors: <code>std/option</code> &amp; <code>std/result</code></h3>
+<ul>
+  <li><strong><code>std/option</code>:</strong> Replaces unchecked nullable pointers with <code>Option</code> (<code>option_some(val)</code>, <code>option_none()</code>, <code>Option_unwrap(&opt)</code>, <code>Option_unwrap_or(&opt, default)</code>).</li>
+  <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
+</ul>
+"""
+    add_ch("stdlib", "10. The Rook Standard Library (std/) Deep Dive", ch10)
+
+    # ==========================================
+    # Chapter 11: Idiomatic Data Structure Implementation in Rook
+    # ==========================================
+    ch11 = f"""
+<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, object methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
+
+<h3>11.1 Dynamic Array (Vector)</h3>
+<p>Here is an idiomatic resizable integer vector demonstrating explicit allocation, growth doubling, and bounds checking:</p>
+
+{make_code_box("rook", """
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+object IntVector {
+    items: int*
+    count: size_t
+    capacity: size_t
+}
+
+IntVector vec_new() {
+    return IntVector { items: NULL, count: 0, capacity: 0 };
+}
+
+impl IntVector {
+    void push(IntVector* self, int value) {
+        if (self->count >= self->capacity) {
+            size_t new_cap = self->capacity == 0 ? 8 : self->capacity * 2;
+            int* new_items = (int*)realloc(self->items, new_cap * sizeof(int));
+            if (!new_items) return;
+            self->items = new_items;
+            self->capacity = new_cap;
+        }
+        self->items[self->count] = value;
+        self->count = self->count + 1;
+    }
+
+    int get(IntVector* self, size_t index) {
+        if (index >= self->count) return -1; // Bounds guard
+        return self->items[index];
+    }
+
+    void destroy(IntVector* self) {
+        if (self->items) {
+            free(self->items);
+            self->items = NULL;
+        }
+        self->count = 0;
+        self->capacity = 0;
+    }
+}
+
+int main() {
+    IntVector v = vec_new();
+    defer v.destroy(); // Guarantees zero memory leaks on return
+
+    for (int i = 0; i < 20; i = i + 1) {
+        v.push(i * 10);
+    }
+
+    printf("Element at 5: %d\\n", v.get(5)); // Prints: 50
+    return 0;
+}
+""", "Idiomatic Dynamic Array in Rook")}
+
+<h3>11.2 Singly Linked List with Recycled Allocations</h3>
+<p>By pairing custom node structures with <code>ElementPool</code> from <code>std/mem</code>, linked lists achieve cache locality and zero heap fragmentation:</p>
+
+{make_code_box("rook", """
+#include <stdio.h>
+#comprise <std/mem>
+
+struct ListNode {
+    value: int
+    next: ListNode*
+}
+
+object LinkedList {
+    head: ListNode*
+    pool: ElementPool*
+}
+
+LinkedList list_create(ElementPool* pool) {
+    return LinkedList { head: NULL, pool: pool };
+}
+
+impl LinkedList {
+    void prepend(LinkedList* self, int value) {
+        ListNode* node = (ListNode*)self->pool->alloc();
+        if (!node) return;
+        node->value = value;
+        node->next = self->head;
+        self->head = node;
+    }
+
+    void print_all(LinkedList* self) {
+        ListNode* curr = self->head;
+        while (curr != NULL) {
+            printf("%d -> ", curr->value);
+            curr = curr->next;
+        }
+        printf("NULL\\n");
+    }
+}
+
+int main() {
+    ElementPool pool = pool_new(sizeof(ListNode), 50);
+    defer pool.destroy();
+
+    LinkedList list = list_create(&pool);
+    list.prepend(10);
+    list.prepend(20);
+    list.prepend(30);
+    list.print_all();
+    return 0;
+}
+""", "Linked List Powered by ElementPool")}
+"""
+    add_ch("data-structures", "11. Idiomatic Data Structure Implementation in Rook", ch11)
+
+    # ==========================================
+    # Chapter 12: Configuration, Multi-Target Builds & Toolchains
+    # ==========================================
+    ch12 = f"""
 <p>The Rokade build system manages compilation, cross-compilation, and language server diagnostics.</p>
 
-<h3>10.1 CLI Commands</h3>
+<h3>12.1 CLI Commands</h3>
 {make_code_box("bash", """
 # Compile and run project
 rokade run [path] [--backend=c|llvm|llvm2]
@@ -579,16 +999,17 @@ rokade toolchain
 rokade toolchain set cc /usr/bin/clang
 """, "Common CLI Commands")}
 
-<h3>10.2 Cross-Compilation</h3>
+<h3>12.2 Cross-Compilation</h3>
 <p>Rokade supports cross-compilation targets out of the box:</p>
 <ul>
   <li><strong>Windows (x86_64-w64-mingw32):</strong> Compiles via MinGW-w64 GCC toolchain.</li>
   <li><strong>Android (aarch64-linux-android):</strong> Cross-compiles using the Android NDK Clang toolchain and target sysroot.</li>
 </ul>
 
-<h3>10.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
+<h3>12.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
 <p>The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via <code>rokade --diagnostics</code>, jump-to-definition (<code>--def-at</code>), and document outlines (<code>--symbols</code>).</p>
 """
-    add_ch("config", "10. Configuration, Multi-Target Builds & Toolchains", ch10)
+    add_ch("config", "12. Configuration, Multi-Target Builds & Toolchains", ch12)
 
     return chapters
+

@@ -43,73 +43,42 @@ def make_callout(kind, title, body):
     )
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class="warm">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Rook Programming Language (v0.6.2)</title>
 <style>
-  /* ─── mdBook / Rust Book Theme Variables ───────────────────────────── */
-  :root, html.light {
-    --bg: #ffffff;
-    --fg: #333333;
-    --fg-muted: #5c6b73;
-    --sidebar-bg: #fafafa;
-    --sidebar-fg: #364149;
-    --sidebar-border: #e1e4e8;
-    --sidebar-active: #008cff;
-    --sidebar-active-bg: #f0f4f8;
-    --menubar-bg: #ffffff;
-    --menubar-border: #e1e4e8;
-    --links: #2b7bb9;
-    --links-hover: #1b6094;
-    --inline-code: #24292e;
-    --inline-code-bg: #f6f8fa;
-    --inline-code-border: #e1e4e8;
-    --code-bg: #1e1e1e;
-    --code-header: #141414;
-    --code-border: #2d3748;
-    --code-fg: #d4d4d4;
-    --table-border: #d0d7de;
-    --table-header-bg: #f6f8fa;
-    --table-row-alt: #ffffff;
-    --quote-bg: #f7f9fa;
-    --quote-border: #008cff;
-    --heading-border: #eaecef;
-    --nav-btn-bg: #f6f8fa;
-    --nav-btn-border: #d0d7de;
-    --nav-btn-fg: #24292e;
-  }
-
-  html.rust {
-    --bg: #e1d8cb;
-    --fg: #262625;
-    --fg-muted: #5c554e;
-    --sidebar-bg: #d7c9b8;
-    --sidebar-fg: #262625;
-    --sidebar-border: #c4b5a3;
-    --sidebar-active: #a72115;
-    --sidebar-active-bg: #caa68c44;
-    --menubar-bg: #e1d8cb;
-    --menubar-border: #c4b5a3;
-    --links: #a72115;
-    --links-hover: #7b160e;
-    --inline-code: #262625;
-    --inline-code-bg: #ede7de;
-    --inline-code-border: #c4b5a3;
-    --code-bg: #2b2724;
-    --code-header: #201c19;
-    --code-border: #443c37;
-    --code-fg: #ede7de;
-    --table-border: #c4b5a3;
-    --table-header-bg: #d7c9b8;
-    --table-row-alt: #e1d8cb;
-    --quote-bg: #d7c9b8;
-    --quote-border: #a72115;
-    --heading-border: #c4b5a3;
-    --nav-btn-bg: #d7c9b8;
-    --nav-btn-border: #b8a694;
-    --nav-btn-fg: #262625;
+  /* ─── mdBook Theme Variables ───────────────────────────────────────── */
+  :root, html.warm {
+    --bg: #f5ede1;
+    --fg: #2e241f;
+    --fg-muted: #6b584d;
+    --sidebar-bg: #ecdcc9;
+    --sidebar-fg: #2e241f;
+    --sidebar-border: #d4bfab;
+    --sidebar-active: #9b2c1b;
+    --sidebar-active-bg: #e2cbb888;
+    --menubar-bg: #f5ede1;
+    --menubar-border: #d4bfab;
+    --links: #9b2c1b;
+    --links-hover: #6e1c10;
+    --inline-code: #2e241f;
+    --inline-code-bg: #fcf8f2;
+    --inline-code-border: #d8c5b3;
+    --code-bg: #25201d;
+    --code-header: #1c1815;
+    --code-border: #3d342f;
+    --code-fg: #f5ede1;
+    --table-border: #d4bfab;
+    --table-header-bg: #ecdcc9;
+    --table-row-alt: #f8f2e9;
+    --quote-bg: #ece0d1;
+    --quote-border: #9b2c1b;
+    --heading-border: #d8c5b3;
+    --nav-btn-bg: #ecdcc9;
+    --nav-btn-border: #cbb49e;
+    --nav-btn-fg: #2e241f;
   }
 
   html.coal {
@@ -780,8 +749,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.9c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.3-1.3C8.42 19.64 10.13 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
           </button>
           <ul id="theme-list" class="theme-popup" role="menu" aria-label="Themes">
-            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('light')">Light</button></li>
-            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('rust')">Rust</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('warm')">Warm</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('coal')">Coal</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('navy')">Navy</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('ayu')">Ayu</button></li>
@@ -835,8 +803,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
   });
 
-  // Load saved theme or default to 'light'
-  var savedTheme = localStorage.getItem('rook-book-theme') || 'light';
+  // Load saved theme or default to 'warm'
+  var savedTheme = localStorage.getItem('rook-book-theme') || 'warm';
+  if (savedTheme === 'light' || savedTheme === 'rust') savedTheme = 'warm';
   setTheme(savedTheme);
 
   // ─── Sidebar Management ──────────────────────────────────────────────

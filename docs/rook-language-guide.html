@@ -1,71 +1,40 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class="warm">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Rook Programming Language (v0.6.2)</title>
 <style>
-  /* ─── mdBook / Rust Book Theme Variables ───────────────────────────── */
-  :root, html.light {
-    --bg: #ffffff;
-    --fg: #333333;
-    --fg-muted: #5c6b73;
-    --sidebar-bg: #fafafa;
-    --sidebar-fg: #364149;
-    --sidebar-border: #e1e4e8;
-    --sidebar-active: #008cff;
-    --sidebar-active-bg: #f0f4f8;
-    --menubar-bg: #ffffff;
-    --menubar-border: #e1e4e8;
-    --links: #2b7bb9;
-    --links-hover: #1b6094;
-    --inline-code: #24292e;
-    --inline-code-bg: #f6f8fa;
-    --inline-code-border: #e1e4e8;
-    --code-bg: #1e1e1e;
-    --code-header: #141414;
-    --code-border: #2d3748;
-    --code-fg: #d4d4d4;
-    --table-border: #d0d7de;
-    --table-header-bg: #f6f8fa;
-    --table-row-alt: #ffffff;
-    --quote-bg: #f7f9fa;
-    --quote-border: #008cff;
-    --heading-border: #eaecef;
-    --nav-btn-bg: #f6f8fa;
-    --nav-btn-border: #d0d7de;
-    --nav-btn-fg: #24292e;
-  }
-
-  html.rust {
-    --bg: #e1d8cb;
-    --fg: #262625;
-    --fg-muted: #5c554e;
-    --sidebar-bg: #d7c9b8;
-    --sidebar-fg: #262625;
-    --sidebar-border: #c4b5a3;
-    --sidebar-active: #a72115;
-    --sidebar-active-bg: #caa68c44;
-    --menubar-bg: #e1d8cb;
-    --menubar-border: #c4b5a3;
-    --links: #a72115;
-    --links-hover: #7b160e;
-    --inline-code: #262625;
-    --inline-code-bg: #ede7de;
-    --inline-code-border: #c4b5a3;
-    --code-bg: #2b2724;
-    --code-header: #201c19;
-    --code-border: #443c37;
-    --code-fg: #ede7de;
-    --table-border: #c4b5a3;
-    --table-header-bg: #d7c9b8;
-    --table-row-alt: #e1d8cb;
-    --quote-bg: #d7c9b8;
-    --quote-border: #a72115;
-    --heading-border: #c4b5a3;
-    --nav-btn-bg: #d7c9b8;
-    --nav-btn-border: #b8a694;
-    --nav-btn-fg: #262625;
+  /* ─── mdBook Theme Variables ───────────────────────────────────────── */
+  :root, html.warm {
+    --bg: #f5ede1;
+    --fg: #2e241f;
+    --fg-muted: #6b584d;
+    --sidebar-bg: #ecdcc9;
+    --sidebar-fg: #2e241f;
+    --sidebar-border: #d4bfab;
+    --sidebar-active: #9b2c1b;
+    --sidebar-active-bg: #e2cbb888;
+    --menubar-bg: #f5ede1;
+    --menubar-border: #d4bfab;
+    --links: #9b2c1b;
+    --links-hover: #6e1c10;
+    --inline-code: #2e241f;
+    --inline-code-bg: #fcf8f2;
+    --inline-code-border: #d8c5b3;
+    --code-bg: #25201d;
+    --code-header: #1c1815;
+    --code-border: #3d342f;
+    --code-fg: #f5ede1;
+    --table-border: #d4bfab;
+    --table-header-bg: #ecdcc9;
+    --table-row-alt: #f8f2e9;
+    --quote-bg: #ece0d1;
+    --quote-border: #9b2c1b;
+    --heading-border: #d8c5b3;
+    --nav-btn-bg: #ecdcc9;
+    --nav-btn-border: #cbb49e;
+    --nav-btn-fg: #2e241f;
   }
 
   html.coal {
@@ -726,8 +695,10 @@
         <li class="chapter-item"><a href="#control-flow" class="chapter-link" data-id="control-flow">6. Control Flow & Evaluation Rules</a></li>
         <li class="chapter-item"><a href="#sum-match" class="chapter-link" data-id="sum-match">7. Algebraic Data Types: sum, enum & match</a></li>
         <li class="chapter-item"><a href="#c-interop" class="chapter-link" data-id="c-interop">8. Zero-Overhead C Interoperability & Libclang Integration</a></li>
-        <li class="chapter-item"><a href="#stdlib" class="chapter-link" data-id="stdlib">9. Standard Library (std/) Architecture</a></li>
-        <li class="chapter-item"><a href="#config" class="chapter-link" data-id="config">10. Configuration, Multi-Target Builds & Toolchains</a></li>
+        <li class="chapter-item"><a href="#composition" class="chapter-link" data-id="composition">9. Project Composition: Inclusions, Modules & Cross-Path Ingestion</a></li>
+        <li class="chapter-item"><a href="#stdlib" class="chapter-link" data-id="stdlib">10. The Rook Standard Library (std/) Deep Dive</a></li>
+        <li class="chapter-item"><a href="#data-structures" class="chapter-link" data-id="data-structures">11. Idiomatic Data Structure Implementation in Rook</a></li>
+        <li class="chapter-item"><a href="#config" class="chapter-link" data-id="config">12. Configuration, Multi-Target Builds & Toolchains</a></li>
       </ol>
     </div>
   </aside>
@@ -745,8 +716,7 @@
             <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.9c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.3-1.3C8.42 19.64 10.13 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
           </button>
           <ul id="theme-list" class="theme-popup" role="menu" aria-label="Themes">
-            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('light')">Light</button></li>
-            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('rust')">Rust</button></li>
+            <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('warm')">Warm</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('coal')">Coal</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('navy')">Navy</button></li>
             <li role="none"><button role="menuitem" class="theme-option" onclick="setTheme('ayu')">Ayu</button></li>
@@ -1001,8 +971,21 @@ object Player : Entity {
 </div>
 
 <p>Because the parent struct is at byte offset 0, casting a child pointer to a parent pointer requires no pointer arithmetic:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Zero-Offset Upcasting</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">Player p;
-Entity* e = (Entity*)&amp;p; // Exact same memory address, zero adjustment</code></pre></div>
+<div class="code-block"><div class="code-header"><span class="code-lang">Zero-Offset Upcasting</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Entity {
+    id: int
+    active: bool
+}
+
+object Player : Entity {
+    health: int
+    score: int
+}
+
+int main() {
+    Player p;
+    Entity* e = (Entity*)&amp;p; // Exact same memory address, zero adjustment
+    return 0;
+}</code></pre></div>
 
 </section>
 
@@ -1029,12 +1012,16 @@ int uninitialized_val;   // Automatically initialized to 0</code></pre></div>
 
 <h3>5.3 Dynamic Typedef Unwrapping (<code>ck_unwrap_typedef</code>)</h3>
 <p>When external C headers are included, the semantic analyzer indexes all typedef aliases (such as <code>uint32_t</code>, <code>size_t</code>, <code>gchar</code>, <code>gboolean</code>, or <code>HWND</code>). During type checking, <code>ck_unwrap_typedef</code> recursively resolves typedef chains to verify structural equivalence:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">C Typedef Resolution</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;gtk/gtk.h&gt;
+<div class="code-block"><div class="code-header"><span class="code-lang">C Typedef Resolution</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdint.h&gt;
 
-// gtk_window_get_title returns 'const gchar*'
-// In GLib, 'typedef char gchar;'
-// The compiler unwraps 'gchar' to 'char', verifying exact compatibility:
-const char* title = gtk_window_get_title(win);</code></pre></div>
+// uint32_t is a typedef alias to 'unsigned int' in C standard headers.
+// The compiler unwraps typedef aliases dynamically to verify exact compatibility:
+int main() {
+    uint32_t count = 42;
+    unsigned int raw = count; // Exact compatibility verified by ck_unwrap_typedef
+    return 0;
+}</code></pre></div>
 
 </section>
 
@@ -1046,12 +1033,15 @@ const char* title = gtk_window_get_title(win);</code></pre></div>
 
 <h3>6.1 Conditionals &amp; Assignment Rejection</h3>
 <p>Condition expressions in <code>if</code> and <code>while</code> statements must evaluate to boolean or numeric truth values. Assignment operators (<code>=</code>, <code>+=</code>, etc.) are syntactically rejected inside conditions:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Condition Invariant</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int x = 0;
-if (x == 5) {
-    // Valid equality check
-}
+<div class="code-block"><div class="code-header"><span class="code-lang">Condition Invariant</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int main() {
+    int x = 0;
+    if (x == 5) {
+        // Valid equality check
+    }
 
-// if (x = 5) { } // Hard compile-time error: assignment not allowed in condition</code></pre></div>
+    // if (x = 5) { } // Hard compile-time error: assignment not allowed in condition
+    return 0;
+}</code></pre></div>
 
 <h3>6.2 Guaranteed Short-Circuit Evaluation</h3>
 <p>In both the C and LLVM2 backends, logical AND (<code>&&</code>) and logical OR (<code>||</code>) operators guarantee short-circuit evaluation. The right-hand operand is never evaluated if the left-hand operand determines the result:</p>
@@ -1073,35 +1063,43 @@ land.merge:
   %result = phi i1 [ false, %entry ], [ %rhs_val, %land.rhs ]</code></pre></div>
 
 <h3>6.3 Loops</h3>
-<div class="code-block"><div class="code-header"><span class="code-lang">Loops in Rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// Standard while loop
-while (condition) {
-    step();
-}
+<div class="code-block"><div class="code-header"><span class="code-lang">Loops in Rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
 
-// Three-clause for loop
-for (int i = 0; i &lt; 10; i++) {
-    printf("%d\n", i);
-}
+int main() {
+    // Standard while loop
+    int n = 0;
+    while (n &lt; 5) {
+        n = n + 1;
+    }
 
-// Array iteration (for-in)
-int values[4] = { 10, 20, 30, 40 };
-for item in values {
-    printf("%d\n", item);
+    // Three-clause for loop
+    for (int i = 0; i &lt; 10; i++) {
+        printf("%d\n", i);
+    }
+
+    // Array literal iteration (for-in)
+    for item in [10, 20, 30, 40] {
+        printf("%d\n", item);
+    }
+    return 0;
 }</code></pre></div>
 
 <h3>6.4 Deterministic Cleanup with <code>defer</code></h3>
 <p>The <code>defer</code> statement registers a statement or block to be executed upon leaving the current enclosing scope. Multiple <code>defer</code> statements execute in reverse declaration order (Last-In, First-Out / LIFO):</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Deterministic Resource Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">FILE* f = fopen("data.bin", "rb");
-if (!f) return -1;
-defer fclose(f); // Guaranteed to execute on any exit path
+<div class="code-block"><div class="code-header"><span class="code-lang">Deterministic Resource Cleanup</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
 
-void* buf = malloc(1024);
-defer free(buf); // Executes before fclose(f)
+int main() {
+    FILE* f = fopen("data.bin", "rb");
+    if (!f) return 0;
+    defer fclose(f); // Guaranteed to execute on any exit path
 
-if (error_condition()) {
-    return -2; // buf is freed, then f is closed
-}
-return 0;      // buf is freed, then f is closed</code></pre></div>
+    void* buf = malloc(1024);
+    if (!buf) return 0;
+    defer free(buf); // Executes before fclose(f)
+
+    return 0;
+}</code></pre></div>
 
 </section>
 
@@ -1109,7 +1107,7 @@ return 0;      // buf is freed, then f is closed</code></pre></div>
 <section class="chapter-section" id="sum-match">
   <h1>7. Algebraic Data Types: sum, enum & match</h1>
   
-<p>Rook provides first-class Algebraic Data Types (ADTs) through <code>sum</code> and <code>enum</code> declarations, accompanied by compile-time exhaustive <code>match</code> statements.</p>
+<p>Rook provides first-class Algebraic Data Types (ADTs) through <code>sum</code> and <code>enum</code> declarations, accompanied by compile-time exhaustive <code>match</code> expressions.</p>
 
 <h3>7.1 Simple Enums</h3>
 <p>A simple <code>enum</code> defines named numeric constants matching C enum semantics:</p>
@@ -1123,9 +1121,9 @@ return 0;      // buf is freed, then f is closed</code></pre></div>
 <h3>7.2 Sum Types (Tagged Unions)</h3>
 <p>A <code>sum</code> type represents a value that can take one of several variant shapes, each optionally carrying payload data:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Sum Type Declaration</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum Shape {
-    Circle { radius: float },
-    Rectangle { width: float, height: float },
-    Point
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
 }</code></pre></div>
 
 <p>In memory, a <code>sum</code> is represented as a tagged struct containing an integer discriminator tag followed by a union buffer sized to the largest variant:</p>
@@ -1143,24 +1141,50 @@ return 0;      // buf is freed, then f is closed</code></pre></div>
 </div>
 
 <h3>7.3 Pattern Matching and Exhaustiveness</h3>
-<p>The <code>match</code> construct tests a sum type against its possible variants. The compiler enforces that all variants are handled:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Pattern Matching</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">float get_area(Shape s) {
-    match (s) {
-        Circle(c) =&gt; return 3.14159 * c.radius * c.radius;
-        Rectangle(r) =&gt; return r.width * r.height;
-        Point =&gt; return 0.0;
-    }
+<p>The <code>match</code> construct evaluates a sum type against its possible variants. Struct patterns unpack field members directly into scope:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Pattern Matching</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">sum Shape {
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
+}
+
+float get_area(Shape s) {
+    return match (s) {
+        Circle { radius }           =&gt; 3.14159 * radius * radius,
+        Rectangle { width, height } =&gt; width * height,
+        Point                       =&gt; 0.0,
+        _                           =&gt; 0.0,
+    };
+}
+
+int main() {
+    Shape c = Circle { radius: 2.0 };
+    Shape r = Rectangle { width: 3.0, height: 4.0 };
+    Shape p = Point;
+    return 0;
 }</code></pre></div>
 
-<h3>7.4 Error Handling with <code>Result</code> and <code>?</code> Operator</h3>
-<p>The standard library provides <code>Result</code> and <code>Option</code> sum types. The postfix <code>?</code> operator unwraps a successful value or early-returns the error variant from the enclosing function:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Error Propagation with ?</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#comprise std/io
+<h3>7.4 Canonical Error &amp; Option Handling: <code>std/result</code></h3>
+<p>The standard library provides zero-cost algebraic sum types for error handling and optional values without runtime exceptions:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Error Handling with std/result</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#comprise &lt;std/result&gt;
+#comprise &lt;std/io&gt;
 
-Result&lt;int, IOError&gt; read_config() {
-    File f = File::open("config.json", "r")?; // Early return if Err
-    defer f.close();
-    int val = f.read_int()?;
-    return Result::Ok(val);
+Result parse_positive_int(int val) {
+    if (val &gt; 0) {
+        return result_ok((void*)1);
+    }
+    return result_err("Value must be positive");
+}
+
+int main() {
+    Result res = parse_positive_int(42);
+    if (res.is_ok()) {
+        println("Success: valid positive number");
+    } else {
+        printf("Error: %s\n", res.unwrap_err());
+    }
+    return 0;
 }</code></pre></div>
 
 </section>
@@ -1181,115 +1205,461 @@ Result&lt;int, IOError&gt; read_config() {
 </ul>
 
 <h3>8.2 Function Pointer Callbacks</h3>
-<p>Rook functions matching C callback prototypes can be passed directly as function pointers:</p>
+<p>Rook functions matching C callback prototypes can be passed directly as C function pointers:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Passing Function Pointers to C Callbacks</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
-#include &lt;Elementary.h&gt;
+#include &lt;stdlib.h&gt;
 
-void on_click(void* data, Evas_Object* obj, void* event_info) {
-    printf("Button clicked!\n");
+int compare_ints(const void* a, const void* b) {
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+    if (arg1 &lt; arg2) return -1;
+    if (arg1 &gt; arg2) return 1;
+    return 0;
 }
 
 int main() {
-    elm_init(0, NULL);
-    Evas_Object* win = elm_win_util_standard_add("main", "Demo");
-    Evas_Object* btn = elm_button_add(win);
-    evas_object_smart_callback_add(btn, "clicked", on_click, NULL);
-    evas_object_show(win);
-    elm_run();
+    int arr[5] = { 5, 2, 8, 1, 9 };
+    qsort(arr, 5, sizeof(int), compare_ints);
+    for (int i = 0; i &lt; 5; i = i + 1) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
     return 0;
 }</code></pre></div>
 
 <h3>8.3 Managing C Dependencies via <code>rokade.toml</code></h3>
-<p>Project dependencies on system libraries are declared in <code>rokade.toml</code> under <code>pkg-config</code>:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[project]
+<p>Project dependencies on system libraries are declared in <code>rokade.toml</code> under <code>pkg-config</code> in the <code>[build]</code> table:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">rokade.toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-toml">[package]
 name = "gui_app"
 version = "0.1.0"
-pkg-config = ["raylib", "elementary", "sqlite3"]</code></pre></div>
+
+[build]
+kind = "exe"
+pkg-config = ["raylib"]</code></pre></div>
 <p>The compiler automatically queries <code>pkg-config --cflags</code> and <code>pkg-config --libs</code> during build execution.</p>
 
 </section>
 
 
-<section class="chapter-section" id="stdlib">
-  <h1>9. Standard Library (std/) Architecture</h1>
+<section class="chapter-section" id="composition">
+  <h1>9. Project Composition: Inclusions, Modules & Cross-Path Ingestion</h1>
   
-<p>Rook's standard library resides in <code>std/</code> and provides fundamental primitives implemented directly in Rook.</p>
+<p>Rook separates the ingestion of foreign C interfaces from native Rook module composition via two distinct directives: <code>#include</code> and <code>#comprise</code>.</p>
 
-<h3>9.1 Modules Overview</h3>
+<h3>9.1 The Two Ingestion Models: <code>#include</code> vs <code>#comprise</code></h3>
 <div class="table-container">
 <table>
   <thead>
-    <tr><th>Module</th><th>Header</th><th>Primary Capabilities</th></tr>
+    <tr><th>Directive</th><th>Target File Type</th><th>Parsing Engine</th><th>Behavior &amp; Semantics</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><strong><code>std/io</code></strong></td>
-      <td><code>#comprise &lt;std/io&gt;</code></td>
-      <td>Buffered stream I/O, file handle abstraction, line-by-line reading, binary read/write operations.</td>
+      <td><code>#include &lt;header.h&gt;</code><br><code>#include "header.h"</code></td>
+      <td>C Header (<code>.h</code>)</td>
+      <td>libclang (Clang C Frontend)</td>
+      <td>Parses host C headers dynamically at compile time. Ingests C functions, structs, unions, typedefs, enums, and macros directly into Rook's symbol table without hand-written binding layers.</td>
     </tr>
     <tr>
-      <td><strong><code>std/str</code></strong></td>
-      <td><code>#comprise &lt;std/str&gt;</code></td>
-      <td>Non-owning string slice (<code>Str</code>) with bounds checking, splitting, searching, trimming, and conversions.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/mem</code></strong></td>
-      <td><code>#comprise &lt;std/mem&gt;</code></td>
-      <td>High-performance memory allocators: monotonic arena (bump allocator), scratchpads, and fixed-size element pools.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/atomic</code></strong></td>
-      <td><code>#comprise &lt;std/atomic&gt;</code></td>
-      <td>Lock-free atomic primitives (<code>AtomicInt</code>, <code>AtomicBool</code>, <code>AtomicPtr</code>) with load, store, compare-exchange, and fetch operations.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/sync</code></strong></td>
-      <td><code>#comprise &lt;std/sync&gt;</code></td>
-      <td>Multi-threading primitives: OS threads (<code>Thread</code>), mutual exclusion locks (<code>Mutex</code>), and condition variables (<code>CondVar</code>).</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/option</code></strong></td>
-      <td><code>#comprise &lt;std/option&gt;</code></td>
-      <td>Type-safe optional value representation (<code>Option</code>) eliminating raw null pointers with safe unwrapping.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/result</code></strong></td>
-      <td><code>#comprise &lt;std/result&gt;</code></td>
-      <td>Explicit error propagation type (<code>Result</code>) for predictable error handling without exception overhead.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/math</code></strong></td>
-      <td><code>#comprise &lt;std/math&gt;</code></td>
-      <td>Arithmetic utility routines: <code>min</code>, <code>max</code>, <code>clamp</code>, <code>abs</code>, power functions, floating-point comparisons.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/json</code></strong></td>
-      <td><code>#comprise &lt;std/json&gt;</code></td>
-      <td>Lightweight recursive descent JSON parser and serializer with zero external dependencies.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/log</code></strong></td>
-      <td><code>#comprise &lt;std/log&gt;</code></td>
-      <td>Structured leveled logging (<code>DEBUG</code>, <code>INFO</code>, <code>WARN</code>, <code>ERROR</code>) with ISO-8601 timestamps and terminal styling.</td>
-    </tr>
-    <tr>
-      <td><strong><code>std/test</code></strong></td>
-      <td><code>#comprise &lt;std/test&gt;</code></td>
-      <td>Unit testing framework: assertion macros (<code>assert_eq</code>, <code>assert_true</code>), test harness, and failure reports.</td>
+      <td><code>#comprise &lt;std/mod&gt;</code><br><code>#comprise "path.rook"</code></td>
+      <td>Rook Source (<code>.rook</code>)</td>
+      <td>Rokade Preprocessor</td>
+      <td>Inlines and resolves Rook source modules. Expands declarations into the compilation unit with canonical path deduplication.</td>
     </tr>
   </tbody>
 </table>
 </div>
 
+<h3>9.2 Cross-Directory Module Ingestion &amp; Relative Path Resolution</h3>
+<p>Rook source files can be composed across nested directories using standard POSIX relative paths:</p>
+<ul>
+  <li><strong>Standard Library Modules:</strong> Use angle brackets with the <code>std/</code> prefix, e.g., <code>#comprise &lt;std/io&gt;</code> or <code>#comprise &lt;std/str&gt;</code>. The compiler resolves these from the toolchain installation directory or <code>ROKADE_PATH</code>.</li>
+  <li><strong>Sibling Modules:</strong> Use quoted relative paths, e.g., <code>#comprise "utils.rook"</code> or <code>#comprise "./types.rook"</code>.</li>
+  <li><strong>Nested Subdirectories:</strong> Specify the relative path to sub-modules, e.g., <code>#comprise "engine/renderer.rook"</code> or <code>#comprise "net/socket.rook"</code>.</li>
+  <li><strong>Parent and Sibling Trees:</strong> Walk up directory hierarchies using <code>../</code>, e.g., <code>#comprise "../shared/config.rook"</code>.</li>
+</ul>
+
+<div class="callout callout-spec"><div class="callout-title">Canonical Path Deduplication</div><div class="callout-body">Rook resolves every included file to its canonical filesystem path (via <code>rk_realpath</code>). If multiple modules comprise the same source file—either directly or transitively—the compiler expands and parses that file exactly once. Circular comprises are automatically prevented, eliminating the need for C-style <code>#ifndef</code> include guards.</div></div>
+
+<h3>9.3 Multi-File Project Architecture (Comprehensive Example)</h3>
+<p>Consider a modular systems project structured across directories with external C dependencies:</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Project Directory Structure</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-text">my_game/
+├── rokade.toml
+└── src/
+    ├── main.rook
+    ├── config.rook
+    └── engine/
+        ├── math.rook
+        └── renderer.rook</code></pre></div>
+
+<p>In <code>src/engine/math.rook</code>, we define local geometry types:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/engine/math.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/engine/math.rook
+object Vec2 {
+    x: float
+    y: float
+}
+
+Vec2 vec2_new(float x, float y) {
+    return Vec2 { x: x, y: y };
+}</code></pre></div>
+
+<p>In <code>src/engine/renderer.rook</code>, we combine local math, standard strings, and native Raylib C headers:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/engine/renderer.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/engine/renderer.rook
+#include &lt;raylib.h&gt;
+#comprise &lt;std/str&gt;
+#comprise "math.rook"       // Sibling comprise inside engine/
+
+object RenderContext {
+    width: int
+    height: int
+    title: Str
+}
+
+RenderContext renderer_create(int w, int h, Str title) {
+    char* c_title = title.to_cstr();
+    defer free(c_title);
+    InitWindow(w, h, c_title);
+    return RenderContext { width: w, height: h, title: title };
+}
+
+void renderer_draw_point(RenderContext* ctx, Vec2 pos, Color c) {
+    DrawPixel((int)pos.x, (int)pos.y, c);
+}</code></pre></div>
+
+<p>In <code>src/main.rook</code>, we link the entire project together:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">src/main.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/main.rook
+#include &lt;stdio.h&gt;
+#comprise &lt;std/io&gt;
+#comprise &lt;std/str&gt;
+#comprise "config.rook"             // Local comprise
+#comprise "engine/renderer.rook"    // Subdirectory comprise
+
+int main() {
+    Str app_name = str_from_cstr("Rook Modular Engine");
+    println_str(app_name);
+
+    RenderContext rc = renderer_create(800, 600, app_name);
+    defer CloseWindow();
+
+    Vec2 player_pos = vec2_new(400.0f, 300.0f);
+    renderer_draw_point(&amp;rc, player_pos, RAYWHITE);
+    return 0;
+}</code></pre></div>
+
+</section>
+
+
+<section class="chapter-section" id="stdlib">
+  <h1>10. The Rook Standard Library (std/) Deep Dive</h1>
+  
+<p>The Rook Standard Library resides in <code>std/</code>. It is written purely in Rook, carries zero runtime overhead, and relies exclusively on standard C ABI primitives.</p>
+
+<h3>10.1 Safe String Slices: <code>std/str</code></h3>
+<p>C strings (<code>char*</code>) are null-terminated, requiring <code>O(n)</code> scans for length calculations and risking buffer overflows. Rook's <code>Str</code> provides a safe, non-owning slice holding a pointer and an explicit length:</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Str Internal Representation</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Str {
+    data: const char*
+    len: size_t
+}</code></pre></div>
+
+<h4>Core Capabilities of <code>Str</code>:</h4>
+<ul>
+  <li><strong>Zero-Allocation Slicing:</strong> <code>s.slice(start, end)</code> returns a new <code>Str</code> view over existing memory in <code>O(1)</code> time without allocating.</li>
+  <li><strong>Safe Inspection:</strong> <code>s.is_empty()</code>, <code>s.starts_with(prefix)</code>, <code>s.ends_with(suffix)</code>, <code>s.equals(other)</code>, <code>s.char_at(index)</code>.</li>
+  <li><strong>Searching &amp; Splitting:</strong> <code>s.find_char(c)</code>, <code>s.find(needle)</code>, <code>s.contains(needle)</code>, <code>s.split_once(delim, &left, &right)</code>.</li>
+  <li><strong>Whitespace Trimming:</strong> <code>s.trim_start()</code>, <code>s.trim_end()</code>, <code>s.trim()</code>.</li>
+  <li><strong>Parsing &amp; Conversions:</strong> <code>s.to_int()</code>, <code>s.to_float()</code>, <code>s.to_bool()</code>, <code>s.to_cstr()</code> (heap-allocated copy).</li>
+</ul>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Working with std/str</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#comprise &lt;std/io&gt;
+#comprise &lt;std/str&gt;
+
+void demonstrate_strings() {
+    Str full = str_from_cstr("HOST=127.0.0.1:8080");
+    Str key;
+    Str val;
+
+    if (full.split_once('=', &amp;key, &amp;val)) {
+        println_str(key); // Prints: HOST
+        println_str(val); // Prints: 127.0.0.1:8080
+    }
+
+    Str port_str = val.slice(10, val.len);
+    int port = port_str.to_int();
+    println_int(port); // Prints: 8080
+}
+
+int main() {
+    demonstrate_strings();
+    return 0;
+}</code></pre></div>
+
+<h3>10.2 Ergonomic Input/Output: <code>std/io</code></h3>
+<p><code>std/io</code> replaces raw <code>printf</code>/<code>scanf</code> with type-safe, bounds-checked I/O routines:</p>
+<ul>
+  <li><strong>Printing:</strong> <code>print(s)</code>, <code>println(s)</code>, <code>println_int(n)</code>, <code>println_float(f)</code>, <code>println_bool(b)</code>, <code>println_str(s)</code>.</li>
+  <li><strong>Standard Error:</strong> <code>eprint(s)</code>, <code>eprintln(s)</code>, <code>eprintln_int(n)</code>, <code>eprintln_str(s)</code>, <code>io_eflush()</code>.</li>
+  <li><strong>Safe Input Scanning:</strong> <code>scanln(buf, cap)</code>, <code>scanln_alloc()</code>, <code>scan_word(buf, cap)</code>, <code>scan_int(&out)</code>, <code>scan_float(&out)</code>.</li>
+</ul>
+
+<h3>10.3 High-Performance Memory Management: <code>std/mem</code></h3>
+<p>In high-throughput systems, invoking <code>malloc</code>/<code>free</code> repeatedly fragments the heap and incurs allocator lock contention. <code>std/mem</code> provides specialized allocators:</p>
+
+<div class="table-container">
+<table>
+  <thead>
+    <tr><th>Allocator</th><th>Allocation Pattern</th><th>Deallocation Mechanism</th><th>Use Case</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong><code>Arena</code></strong></td>
+      <td>Linear monotonic bump pointer. Aligns all allocations to 8-byte boundaries.</td>
+      <td>Bulk reset via <code>arena.reset()</code> or free via <code>arena.destroy()</code>.</td>
+      <td>Per-frame allocations in games, request-scoped lifecycles in network servers, AST compilation phases.</td>
+    </tr>
+    <tr>
+      <td><strong><code>ArenaTemp</code></strong></td>
+      <td>Saves current arena offset. Sub-allocations increment offset.</td>
+      <td>Restores offset via <code>arena_temp_end()</code>.</td>
+      <td>Temporary scratchpad buffers inside inner loops or subroutines.</td>
+    </tr>
+    <tr>
+      <td><strong><code>ElementPool</code></strong></td>
+      <td>Fixed-size chunk allocator with embedded free-list recycling.</td>
+      <td>Instantaneous <code>O(1)</code> return via <code>pool.free(ptr)</code>.</td>
+      <td>Game entities, network connection slots, graph nodes, AST nodes.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Using Arena and ElementPool</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#comprise &lt;std/mem&gt;
+#comprise &lt;std/io&gt;
+
+struct Packet {
+    id: int
+    data: char[60]
+}
+
+void test_allocators() {
+    // 1. Linear Arena Allocation
+    Arena arena = arena_new(1024 * 1024); // 1 MB buffer
+    defer arena.destroy();
+
+    int* numbers = (int*)arena.alloc(100 * sizeof(int));
+    numbers[0] = 42;
+
+    // 2. Element Pool (O(1) recycling)
+    ElementPool pool = pool_new(sizeof(Packet), 100);
+    defer pool.destroy();
+
+    Packet* p1 = (Packet*)pool.alloc();
+    p1-&gt;id = 1;
+
+    pool.free((void*)p1); // Re-added to free list immediately
+    Packet* p2 = (Packet*)pool.alloc(); // Reuses p1's slot without OS allocation
+}
+
+int main() {
+    test_allocators();
+    return 0;
+}</code></pre></div>
+
+<h3>10.4 Hardware Lock-Free Atomics: <code>std/atomic</code></h3>
+<p>Rook exposes direct CPU memory bus atomic operations without library indirection:</p>
+<ul>
+  <li><code>AtomicInt</code> &amp; <code>AtomicBool</code>: wrappers over machine-word atomic storage.</li>
+  <li><strong>Operations:</strong> <code>load()</code>, <code>store(val)</code>, <code>fetch_add(delta)</code>, <code>fetch_sub(delta)</code>, <code>exchange(val)</code>, and <code>compare_exchange(&expected, desired)</code>.</li>
+</ul>
+
+<h3>10.5 Multi-Threading &amp; Synchronization: <code>std/sync</code></h3>
+<p>Provides zero-overhead abstractions over host OS threads (POSIX pthreads / Windows Win32 threads):</p>
+<ul>
+  <li><strong><code>Thread</code>:</strong> Created with <code>thread_spawn(worker_fn, arg)</code>. Joined via <code>t.join(&ret_val)</code>.</li>
+  <li><strong><code>Mutex</code>:</strong> Native OS mutual exclusion lock (<code>m.init()</code>, <code>m.lock()</code>, <code>m.unlock()</code>, <code>m.try_lock()</code>, <code>m.destroy()</code>).</li>
+  <li><strong><code>CondVar</code>:</strong> Condition variable for thread coordination (<code>cv.init()</code>, <code>cv.wait(&mutex)</code>, <code>cv.signal()</code>, <code>cv.broadcast()</code>).</li>
+</ul>
+
+<h3>10.6 Concurrency Safety Model &amp; Current Limitations</h3>
+<div class="callout callout-warn"><div class="callout-title">Explicit Concurrency Model</div><div class="callout-body">Rook does not incorporate a compile-time borrow checker or automatic race detector. Thread safety is explicit and the responsibility of the systems programmer.</div></div>
+
+<p>When developing concurrent software in Rook, developers must enforce the following architectural rules:</p>
+<ol>
+  <li><strong>Shared Mutable State Must Be Synchronized:</strong> Any data structure accessible by multiple threads must be protected by a <code>Mutex</code> or implemented with lock-free atomic primitives (<code>AtomicInt</code>). Unsynchronized concurrent writes cause undefined behavior.</li>
+  <li><strong>Thread Worker Argument Lifetimes:</strong> The <code>void* arg</code> passed to <code>thread_spawn</code> must remain valid until the spawned thread finishes executing. Passing a pointer to a local stack variable of a function that returns before <code>t.join()</code> results in a dangling pointer read. Shared state should be allocated on the heap or in an Arena that outlives all worker threads.</li>
+  <li><strong>Deadlock Prevention with <code>defer</code>:</strong> Always unlock mutexes using <code>defer m.unlock()</code> immediately after acquiring them. This guarantees the lock is released across all return paths and branches.</li>
+</ol>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Safe Concurrency with Thread, Mutex, and AtomicInt</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#comprise &lt;std/sync&gt;
+#comprise &lt;std/atomic&gt;
+
+object CounterTask {
+    counter: AtomicInt
+    lock: Mutex
+}
+
+void* worker(void* arg) {
+    CounterTask* task = (CounterTask*)arg;
+    for (int i = 0; i &lt; 1000; i = i + 1) {
+        task-&gt;lock.lock();
+        task-&gt;counter.fetch_add(1);
+        task-&gt;lock.unlock();
+    }
+    return NULL;
+}
+
+int main() {
+    CounterTask task;
+    task.counter = atomic_int_new(0);
+    task.lock.init();
+    defer task.lock.destroy();
+
+    Thread t1 = thread_spawn(worker, &amp;task);
+    Thread t2 = thread_spawn(worker, &amp;task);
+
+    void* r1 = NULL;
+    void* r2 = NULL;
+    t1.join(&amp;r1);
+    t2.join(&amp;r2);
+
+    printf("Final counter: %d\n", task.counter.load());
+    return 0;
+}</code></pre></div>
+
+<h3>10.7 Null Safety &amp; Explicit Errors: <code>std/option</code> &amp; <code>std/result</code></h3>
+<ul>
+  <li><strong><code>std/option</code>:</strong> Replaces unchecked nullable pointers with <code>Option</code> (<code>option_some(val)</code>, <code>option_none()</code>, <code>Option_unwrap(&opt)</code>, <code>Option_unwrap_or(&opt, default)</code>).</li>
+  <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
+</ul>
+
+</section>
+
+
+<section class="chapter-section" id="data-structures">
+  <h1>11. Idiomatic Data Structure Implementation in Rook</h1>
+  
+<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, object methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
+
+<h3>11.1 Dynamic Array (Vector)</h3>
+<p>Here is an idiomatic resizable integer vector demonstrating explicit allocation, growth doubling, and bounds checking:</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Idiomatic Dynamic Array in Rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdbool.h&gt;
+
+object IntVector {
+    items: int*
+    count: size_t
+    capacity: size_t
+}
+
+IntVector vec_new() {
+    return IntVector { items: NULL, count: 0, capacity: 0 };
+}
+
+impl IntVector {
+    void push(IntVector* self, int value) {
+        if (self-&gt;count &gt;= self-&gt;capacity) {
+            size_t new_cap = self-&gt;capacity == 0 ? 8 : self-&gt;capacity * 2;
+            int* new_items = (int*)realloc(self-&gt;items, new_cap * sizeof(int));
+            if (!new_items) return;
+            self-&gt;items = new_items;
+            self-&gt;capacity = new_cap;
+        }
+        self-&gt;items[self-&gt;count] = value;
+        self-&gt;count = self-&gt;count + 1;
+    }
+
+    int get(IntVector* self, size_t index) {
+        if (index &gt;= self-&gt;count) return -1; // Bounds guard
+        return self-&gt;items[index];
+    }
+
+    void destroy(IntVector* self) {
+        if (self-&gt;items) {
+            free(self-&gt;items);
+            self-&gt;items = NULL;
+        }
+        self-&gt;count = 0;
+        self-&gt;capacity = 0;
+    }
+}
+
+int main() {
+    IntVector v = vec_new();
+    defer v.destroy(); // Guarantees zero memory leaks on return
+
+    for (int i = 0; i &lt; 20; i = i + 1) {
+        v.push(i * 10);
+    }
+
+    printf("Element at 5: %d\n", v.get(5)); // Prints: 50
+    return 0;
+}</code></pre></div>
+
+<h3>11.2 Singly Linked List with Recycled Allocations</h3>
+<p>By pairing custom node structures with <code>ElementPool</code> from <code>std/mem</code>, linked lists achieve cache locality and zero heap fragmentation:</p>
+
+<div class="code-block"><div class="code-header"><span class="code-lang">Linked List Powered by ElementPool</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#include &lt;stdio.h&gt;
+#comprise &lt;std/mem&gt;
+
+struct ListNode {
+    value: int
+    next: ListNode*
+}
+
+object LinkedList {
+    head: ListNode*
+    pool: ElementPool*
+}
+
+LinkedList list_create(ElementPool* pool) {
+    return LinkedList { head: NULL, pool: pool };
+}
+
+impl LinkedList {
+    void prepend(LinkedList* self, int value) {
+        ListNode* node = (ListNode*)self-&gt;pool-&gt;alloc();
+        if (!node) return;
+        node-&gt;value = value;
+        node-&gt;next = self-&gt;head;
+        self-&gt;head = node;
+    }
+
+    void print_all(LinkedList* self) {
+        ListNode* curr = self-&gt;head;
+        while (curr != NULL) {
+            printf("%d -&gt; ", curr-&gt;value);
+            curr = curr-&gt;next;
+        }
+        printf("NULL\n");
+    }
+}
+
+int main() {
+    ElementPool pool = pool_new(sizeof(ListNode), 50);
+    defer pool.destroy();
+
+    LinkedList list = list_create(&amp;pool);
+    list.prepend(10);
+    list.prepend(20);
+    list.prepend(30);
+    list.print_all();
+    return 0;
+}</code></pre></div>
+
 </section>
 
 
 <section class="chapter-section" id="config">
-  <h1>10. Configuration, Multi-Target Builds & Toolchains</h1>
+  <h1>12. Configuration, Multi-Target Builds & Toolchains</h1>
   
 <p>The Rokade build system manages compilation, cross-compilation, and language server diagnostics.</p>
 
-<h3>10.1 CLI Commands</h3>
+<h3>12.1 CLI Commands</h3>
 <div class="code-block"><div class="code-header"><span class="code-lang">Common CLI Commands</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-bash"># Compile and run project
 rokade run [path] [--backend=c|llvm|llvm2]
 
@@ -1303,14 +1673,14 @@ rokade doctor
 rokade toolchain
 rokade toolchain set cc /usr/bin/clang</code></pre></div>
 
-<h3>10.2 Cross-Compilation</h3>
+<h3>12.2 Cross-Compilation</h3>
 <p>Rokade supports cross-compilation targets out of the box:</p>
 <ul>
   <li><strong>Windows (x86_64-w64-mingw32):</strong> Compiles via MinGW-w64 GCC toolchain.</li>
   <li><strong>Android (aarch64-linux-android):</strong> Cross-compiles using the Android NDK Clang toolchain and target sysroot.</li>
 </ul>
 
-<h3>10.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
+<h3>12.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
 <p>The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via <code>rokade --diagnostics</code>, jump-to-definition (<code>--def-at</code>), and document outlines (<code>--symbols</code>).</p>
 
 </section>
@@ -1345,8 +1715,9 @@ rokade toolchain set cc /usr/bin/clang</code></pre></div>
     }
   });
 
-  // Load saved theme or default to 'light'
-  var savedTheme = localStorage.getItem('rook-book-theme') || 'light';
+  // Load saved theme or default to 'warm'
+  var savedTheme = localStorage.getItem('rook-book-theme') || 'warm';
+  if (savedTheme === 'light' || savedTheme === 'rust') savedTheme = 'warm';
   setTheme(savedTheme);
 
   // ─── Sidebar Management ──────────────────────────────────────────────
