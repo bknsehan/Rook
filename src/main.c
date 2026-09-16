@@ -39,7 +39,7 @@
 #include "util.h"
 
 #ifndef ROKADE_VERSION
-#define ROKADE_VERSION "0.6.1"
+#define ROKADE_VERSION "0.6.2"
 #endif
 
 #ifdef _WIN32
