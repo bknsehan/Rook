@@ -26,6 +26,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(rokade PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation)
 endif()
 
+target_compile_definitions(rokade PRIVATE ROKADE_VERSION="${PROJECT_VERSION}")
+
 # ─── Optional LLVM & libclang support ────────────────────────────────
 option(ROKADE_ENABLE_LLVM "Enable native LLVM backend and libclang C-interop" ON)
 

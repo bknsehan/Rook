@@ -342,20 +342,31 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
         }
 
 #ifdef _WIN32
-        static char win_inc_args[8][512];
+        static char win_inc_args[10][512];
         int w_slot = 0;
-        if (res && w_slot < 8) {
+        if (res && w_slot < 10) {
             snprintf(win_inc_args[w_slot], sizeof(win_inc_args[w_slot]), "-isystem%s/../../include", res);
             args[n_args++] = win_inc_args[w_slot++];
+        }
+        const char* mp = getenv("MINGW_PREFIX");
+        if (mp && mp[0] && w_slot < 10) {
+            static char mp_inc[512];
+            snprintf(mp_inc, sizeof(mp_inc), "%s/include", mp);
+            if (access_file(mp_inc, 0) == 0) {
+                snprintf(win_inc_args[w_slot], sizeof(win_inc_args[w_slot]), "-isystem%s", mp_inc);
+                args[n_args++] = win_inc_args[w_slot++];
+            }
         }
         const char* win_std_incs[] = {
             "C:/msys64/ucrt64/include",
             "C:/msys64/mingw64/include",
+            "C:/msys64/clang64/include",
             "/ucrt64/include",
             "/mingw64/include",
+            "/clang64/include",
             NULL
         };
-        for (int w = 0; win_std_incs[w] && w_slot < 8; w++) {
+        for (int w = 0; win_std_incs[w] && w_slot < 10; w++) {
             if (access_file(win_std_incs[w], 0) == 0) {
                 snprintf(win_inc_args[w_slot], sizeof(win_inc_args[w_slot]), "-isystem%s", win_std_incs[w]);
                 args[n_args++] = win_inc_args[w_slot++];

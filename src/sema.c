@@ -994,7 +994,11 @@ static int raw_has(const char* name) {
     return 0;
 }
 
+static char scanned_headers[1024][256];
+static size_t n_scanned_headers = 0;
+
 static void raw_names_free(void) {
+    n_scanned_headers = 0;
     for (int i = 0; i < RAW_HASH_BUCKETS; i++) {
         RawName* r = raw_buckets[i];
         while (r) {
@@ -1121,13 +1125,11 @@ static void scan_raw_region(Checker* ck, const char* raw, int len, int scan_incl
 static void scan_c_header_file(Checker* ck, const char* header_name) {
     if (!header_name || !*header_name) return;
 
-    static char scanned[1024][256];
-    static size_t n_scanned = 0;
-    for (size_t i = 0; i < n_scanned; i++) {
-        if (strcmp(scanned[i], header_name) == 0) return;
+    for (size_t i = 0; i < n_scanned_headers; i++) {
+        if (strcmp(scanned_headers[i], header_name) == 0) return;
     }
-    if (n_scanned < 1024) {
-        snprintf(scanned[n_scanned++], 256, "%s", header_name);
+    if (n_scanned_headers < 1024) {
+        snprintf(scanned_headers[n_scanned_headers++], 256, "%s", header_name);
     } else {
         return;
     }
@@ -1137,6 +1139,14 @@ static void scan_c_header_file(Checker* ck, const char* header_name) {
         "/usr/local/include",
         "/usr/include/x86_64-linux-gnu",
         "/usr/include/aarch64-linux-gnu",
+#ifdef _WIN32
+        "C:/msys64/ucrt64/include",
+        "C:/msys64/mingw64/include",
+        "C:/msys64/clang64/include",
+        "/ucrt64/include",
+        "/mingw64/include",
+        "/clang64/include",
+#endif
         "src",
         "include",
         "."
@@ -1150,6 +1160,22 @@ static void scan_c_header_file(Checker* ck, const char* header_name) {
             break;
         }
     }
+#ifdef _WIN32
+    if (!found) {
+        const char* mp = getenv("MINGW_PREFIX");
+        if (mp && mp[0]) {
+            snprintf(full_path, sizeof full_path, "%s/include/%s", mp, header_name);
+            if (access(full_path, R_OK) == 0) found = 1;
+        }
+    }
+    if (!found) {
+        const char* mp = getenv("MSYSTEM_PREFIX");
+        if (mp && mp[0]) {
+            snprintf(full_path, sizeof full_path, "%s/include/%s", mp, header_name);
+            if (access(full_path, R_OK) == 0) found = 1;
+        }
+    }
+#endif
     if (!found && ck && ck->s && ck->s->include_dirs) {
         for (size_t d = 0; d < ck->s->n_include_dirs; d++) {
             snprintf(full_path, sizeof full_path, "%s/%s", ck->s->include_dirs[d], header_name);
