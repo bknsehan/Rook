@@ -574,7 +574,7 @@ char* toolchain_cc(void) {
     return strdup("gcc");
 }
 
-int toolchain_compile_exe(const char* out_exe, const char* c_file) {
+int toolchain_compile_exe_with_inc(const char* out_exe, const char* c_file, const char** inc_dirs, size_t n_inc) {
     Toolchain tc;
     toolchain_detect(&tc);
     TargetSpec spec;
@@ -583,10 +583,25 @@ int toolchain_compile_exe(const char* out_exe, const char* c_file) {
     if (tc.supports_c23) {
         snprintf(spec.standard, sizeof spec.standard, "c2x");
     }
+    char extra_cflags[8192];
+    extra_cflags[0] = '\0';
+    size_t off = 0;
+    for (size_t i = 0; i < n_inc; i++) {
+        if (inc_dirs[i] && inc_dirs[i][0]) {
+            int written = snprintf(extra_cflags + off, sizeof(extra_cflags) - off, "-I\"%s\" ", inc_dirs[i]);
+            if (written > 0 && (size_t)written < sizeof(extra_cflags) - off) {
+                off += (size_t)written;
+            }
+        }
+    }
     const char* objs[1] = { c_file };
-    int rc = toolchain_link_target(&spec, &tc, out_exe, objs, 1, NULL, 0, NULL);
+    int rc = toolchain_link_target(&spec, &tc, out_exe, objs, 1, NULL, 0, off > 0 ? extra_cflags : NULL);
     toolchain_free(&tc);
     return rc;
+}
+
+int toolchain_compile_exe(const char* out_exe, const char* c_file) {
+    return toolchain_compile_exe_with_inc(out_exe, c_file, NULL, 0);
 }
 
 int toolchain_compile_obj_target(const TargetSpec* spec, const Toolchain* tc, const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags) {

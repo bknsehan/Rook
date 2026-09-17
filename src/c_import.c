@@ -161,6 +161,19 @@ typedef struct {
     Sema* sema;
 } ImportContext;
 
+static int is_c_num_literal(const char* val) {
+    if (!val || !val[0]) return 0;
+    if (val[0] == '"' || val[0] == '\'') return 0;
+    for (const char* c = val; *c; c++) {
+        if (!((*c >= '0' && *c <= '9') || *c == 'x' || *c == 'X' ||
+              (*c >= 'a' && *c <= 'f') || (*c >= 'A' && *c <= 'F') ||
+              *c == 'u' || *c == 'U' || *c == 'l' || *c == 'L' || *c == '.')) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXClientData client_data) {
     (void)parent;
     ImportContext* ctx = (ImportContext*)client_data;
@@ -305,6 +318,58 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             clang_disposeString(vtstr);
         }
         clang_disposeString(vname);
+    } else if (kind == CXCursor_MacroDefinition) {
+        if (!clang_Cursor_isMacroFunctionLike(cursor) && !clang_Cursor_isMacroBuiltin(cursor)) {
+            CXString mname = clang_getCursorSpelling(cursor);
+            const char* name = clang_getCString(mname);
+            if (name && name[0] && (name[0] != '_' || name[1] != '_')) {
+                CXSourceRange range = clang_getCursorExtent(cursor);
+                CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+                CXToken* tokens = NULL;
+                unsigned n_tokens = 0;
+                clang_tokenize(tu, range, &tokens, &n_tokens);
+                if (n_tokens >= 2) {
+                    int registered = 0;
+                    for (unsigned ti = 1; ti < n_tokens; ti++) {
+                        CXTokenKind tkind = clang_getTokenKind(tokens[ti]);
+                        if (tkind == CXToken_Literal) {
+                            CXString val_str = clang_getTokenSpelling(tu, tokens[ti]);
+                            const char* val = clang_getCString(val_str);
+                            if (val && is_c_num_literal(val)) {
+                                sema_register_cvar(ctx->sema, name, sema_mk_type("", "int", 0));
+                                registered = 1;
+                            }
+                            clang_disposeString(val_str);
+                            if (registered) break;
+                        }
+                    }
+                    if (!registered && n_tokens == 2) {
+                        CXTokenKind tkind = clang_getTokenKind(tokens[1]);
+                        if (tkind == CXToken_Identifier) {
+                            CXString val_str = clang_getTokenSpelling(tu, tokens[1]);
+                            const char* val = clang_getCString(val_str);
+                            if (val && sema_is_cfunc(val)) {
+                                const char* ret = sema_cfunc_ret(val);
+                                int np = sema_cfunc_nparams(val);
+                                int var = sema_cfunc_is_variadic(val);
+                                char ptypes[256] = "";
+                                for (int pi = 0; pi < np; pi++) {
+                                    const char* pt = sema_lookup_cfunc_param(val, pi);
+                                    if (pt) {
+                                        if (pi > 0) strncat(ptypes, "\x1f", sizeof(ptypes) - strlen(ptypes) - 1);
+                                        strncat(ptypes, pt, sizeof(ptypes) - strlen(ptypes) - 1);
+                                    }
+                                }
+                                sema_register_cfunc(name, ret ? ret : "void", ptypes, np, var);
+                            }
+                            clang_disposeString(val_str);
+                        }
+                    }
+                }
+                if (tokens) clang_disposeTokens(tu, tokens, n_tokens);
+            }
+            clang_disposeString(mname);
+        }
     }
 
     return CXChildVisit_Continue;
@@ -327,9 +392,28 @@ int c_import_code(Sema* sema, const char* code, const char** inc_dirs, size_t n_
     if (args) {
         args[n_args++] = "-std=c2x";
         args[n_args++] = "-w";
-        args[n_args++] = "-D_GNU_SOURCE";
-        args[n_args++] = "-D_DEFAULT_SOURCE";
-        args[n_args++] = "-D_POSIX_C_SOURCE=200809L";
+#ifdef _WIN32
+        args[n_args++] = "-target";
+        args[n_args++] = "x86_64-w64-windows-gnu";
+        args[n_args++] = "-fms-extensions";
+        args[n_args++] = "-fdeclspec";
+#else
+        if (strstr(code, "windows.h")) {
+            args[n_args++] = "-target";
+            args[n_args++] = "x86_64-w64-windows-gnu";
+            args[n_args++] = "-fms-extensions";
+            args[n_args++] = "-fdeclspec";
+            const char* mingw_sys = "/usr/x86_64-w64-mingw32/include";
+            if (access_file(mingw_sys, 0) == 0) {
+                args[n_args++] = "-isystem";
+                args[n_args++] = mingw_sys;
+            }
+        } else {
+            args[n_args++] = "-D_GNU_SOURCE";
+            args[n_args++] = "-D_DEFAULT_SOURCE";
+            args[n_args++] = "-D_POSIX_C_SOURCE=200809L";
+        }
+#endif
 
         const char* res = detect_clang_resource_dir();
         static char res_arg[300];

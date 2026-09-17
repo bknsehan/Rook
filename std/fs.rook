@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #comprise <std/result>
@@ -127,7 +126,7 @@ Str path_basename(const char* path) {
 
     size_t i = len;
     while (i > 0) {
-        if (path[i - 1] == '/') {
+        if (path[i - 1] == '/' || path[i - 1] == '\\') {
             return Str { data: path + i, len: len - i };
         }
         i = i - 1;
@@ -142,7 +141,7 @@ Str path_dirname(const char* path) {
 
     size_t i = len;
     while (i > 0) {
-        if (path[i - 1] == '/') {
+        if (path[i - 1] == '/' || path[i - 1] == '\\') {
             if (i - 1 == 0) return Str { data: "/", len: 1 };
             return Str { data: path, len: i - 1 };
         }
@@ -161,7 +160,7 @@ Str path_extension(const char* path) {
         if (path[i - 1] == '.') {
             return Str { data: path + i, len: len - i };
         }
-        if (path[i - 1] == '/') {
+        if (path[i - 1] == '/' || path[i - 1] == '\\') {
             break;
         }
         i = i - 1;

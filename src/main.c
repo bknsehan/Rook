@@ -48,11 +48,21 @@
 #include <mach-o/dyld.h>
 #endif
 
+static const char* rk_find_last_slash(const char* path) {
+    if (!path) return NULL;
+    const char* s1 = strrchr(path, '/');
+    const char* s2 = strrchr(path, '\\');
+    if (!s1) return s2;
+    if (!s2) return s1;
+    return (s1 > s2) ? s1 : s2;
+}
+
 /* Get the root installation directory of rokade.
    Returns 0 on success, -1 on failure. */
 static int rokade_get_install_root(char* buf, size_t cap) {
     /* 1. Explicit environment override */
     const char* env_home = getenv("ROOK_HOME");
+    if (!env_home || !env_home[0]) env_home = getenv("ROKADE_PATH");
     if (env_home && env_home[0]) {
         snprintf(buf, cap, "%s", env_home);
         return 0;
@@ -66,10 +76,18 @@ static int rokade_get_install_root(char* buf, size_t cap) {
         char* slash = strrchr(buf, '/');
         if (slash) {
             *slash = '\0'; /* strip executable name */
+            char check[4096];
+            snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+            if (access(check, R_OK) == 0) return 0;
+
             char* bin_slash = strrchr(buf, '/');
-            if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0)) {
-                *bin_slash = '\0'; /* strip /bin or /build to get install prefix */
-                return 0;
+            if (bin_slash) {
+                *bin_slash = '\0';
+                snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+                if (access(check, R_OK) == 0) return 0;
+                if (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0) {
+                    return 0;
+                }
             }
         }
     }
@@ -82,10 +100,18 @@ static int rokade_get_install_root(char* buf, size_t cap) {
             char* slash = strrchr(buf, '/');
             if (slash) {
                 *slash = '\0'; /* strip executable name */
+                char check[4096];
+                snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+                if (access(check, R_OK) == 0) return 0;
+
                 char* bin_slash = strrchr(buf, '/');
-                if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0)) {
-                    *bin_slash = '\0'; /* strip /bin or /build to get install prefix */
-                    return 0;
+                if (bin_slash) {
+                    *bin_slash = '\0';
+                    snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+                    if (access(check, R_OK) == 0) return 0;
+                    if (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "build") == 0) {
+                        return 0;
+                    }
                 }
             }
         }
@@ -94,33 +120,54 @@ static int rokade_get_install_root(char* buf, size_t cap) {
     /* 3. Windows GetModuleFileName */
     DWORD len = GetModuleFileNameA(NULL, buf, (DWORD)cap);
     if (len > 0) {
-        char* slash = strrchr(buf, '\\');
-        if (!slash) slash = strrchr(buf, '/');
+        for (char* p = buf; *p; p++) if (*p == '\\') *p = '/';
+        char* slash = strrchr(buf, '/');
         if (slash) {
             *slash = '\0';
-            char* bin_slash = strrchr(buf, '\\');
-            if (!bin_slash) bin_slash = strrchr(buf, '/');
-            if (bin_slash && (strcmp(bin_slash + 1, "bin") == 0 || strcmp(bin_slash + 1, "BIN") == 0 ||
-                              strcmp(bin_slash + 1, "build") == 0)) {
+            char check[4096];
+            /* 3a. Direct check in exe dir */
+            snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+            if (access(check, R_OK) == 0) return 0;
+
+            /* 3b. One level up (e.g. build/ or bin/) */
+            char* bin_slash = strrchr(buf, '/');
+            if (bin_slash) {
                 *bin_slash = '\0';
-                return 0;
+                snprintf(check, sizeof(check), "%s/std/result.rook", buf);
+                if (access(check, R_OK) == 0) return 0;
+                if (strcasecmp(bin_slash + 1, "bin") == 0 || strcasecmp(bin_slash + 1, "build") == 0) {
+                    return 0;
+                }
             }
         }
     }
 #endif
 
-    /* 4. $HOME/bin/Rook (common user install location) */
+    /* Check current working directory for std/ (e.g. running from repo root) */
+    if (access("std/result.rook", R_OK) == 0) {
+        snprintf(buf, cap, ".");
+        return 0;
+    }
+
+    /* 4. $HOME/bin/Rook, %USERPROFILE%/.rook, etc. */
     const char* home = getenv("HOME");
+#ifdef _WIN32
+    if (!home || !home[0]) home = getenv("USERPROFILE");
+#endif
     if (home && home[0]) {
         snprintf(buf, cap, "%s/bin/Rook", home);
         if (access(buf, R_OK) == 0) return 0;
 
-        /* 5. $HOME/.local/share/rook (XDG data dir) */
         snprintf(buf, cap, "%s/.local/share/rook", home);
         if (access(buf, R_OK) == 0) return 0;
+
+#ifdef _WIN32
+        snprintf(buf, cap, "%s/.rook", home);
+        if (access(buf, R_OK) == 0) return 0;
+#endif
     }
 
-    /* 6. System-wide install */
+    /* 5. System-wide install */
     if (access("/usr/local/lib/rook", R_OK) == 0) {
         snprintf(buf, cap, "/usr/local/lib/rook");
         return 0;
@@ -165,6 +212,21 @@ static int try_candidate(char* out, size_t out_cap, const char* fmt, ...) {
     return access(out, R_OK) == 0;
 }
 
+static int rk_path_prefix_eq(const char* cand, const char* prefix, size_t n) {
+#ifdef _WIN32
+    for (size_t i = 0; i < n; i++) {
+        char c1 = cand[i];
+        char c2 = prefix[i];
+        if (c1 == '\\') c1 = '/';
+        if (c2 == '\\') c2 = '/';
+        if (tolower((unsigned char)c1) != tolower((unsigned char)c2)) return 0;
+    }
+    return 1;
+#else
+    return strncmp(cand, prefix, n) == 0;
+#endif
+}
+
 /* Verify that a candidate path resides inside an allowed directory root (project, std, or dependencies). */
 static int is_path_in_jail(const char* candidate, const char* basedir, const char** inc_dirs, size_t n_inc) {
     char real_cand[4096];
@@ -175,7 +237,7 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
         char real_base[4096];
         if (rk_realpath(basedir, real_base)) {
             size_t blen = strlen(real_base);
-            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
+            if (rk_path_prefix_eq(real_cand, real_base, blen) && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
                 return 1;
             }
         }
@@ -183,7 +245,7 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
         snprintf(parent_base, sizeof(parent_base), "%s/..", basedir);
         if (rk_realpath(parent_base, real_base)) {
             size_t blen = strlen(real_base);
-            if (strncmp(real_cand, real_base, blen) == 0 && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
+            if (rk_path_prefix_eq(real_cand, real_base, blen) && (real_cand[blen] == '/' || real_cand[blen] == '\\' || real_cand[blen] == '\0')) {
                 return 1;
             }
         }
@@ -195,7 +257,7 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
         char real_std[4096];
         if (rk_realpath(std_dir, real_std)) {
             size_t slen = strlen(real_std);
-            if (strncmp(real_cand, real_std, slen) == 0 && (real_cand[slen] == '/' || real_cand[slen] == '\\' || real_cand[slen] == '\0')) {
+            if (rk_path_prefix_eq(real_cand, real_std, slen) && (real_cand[slen] == '/' || real_cand[slen] == '\\' || real_cand[slen] == '\0')) {
                 return 1;
             }
         }
@@ -207,7 +269,7 @@ static int is_path_in_jail(const char* candidate, const char* basedir, const cha
         char real_inc[4096];
         if (rk_realpath(inc_dirs[i], real_inc)) {
             size_t ilen = strlen(real_inc);
-            if (strncmp(real_cand, real_inc, ilen) == 0 && (real_cand[ilen] == '/' || real_cand[ilen] == '\\' || real_cand[ilen] == '\0')) {
+            if (rk_path_prefix_eq(real_cand, real_inc, ilen) && (real_cand[ilen] == '/' || real_cand[ilen] == '\\' || real_cand[ilen] == '\0')) {
                 return 1;
             }
         }
@@ -494,7 +556,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 return NULL;
                             }
                             /* Compute basedir for nested includes */
-                            char* slash = strrchr(resolved, '/');
+                            const char* slash = rk_find_last_slash(resolved);
                             char nested_dir[4096];
                             if (slash) {
                                 size_t dlen = (size_t)(slash - resolved);
@@ -1804,13 +1866,16 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         return 1;
     }
 
-    size_t total_inc_cap = cfg.n_include_dirs + 2;
+    size_t total_inc_cap = cfg.n_include_dirs + 3;
     const char** inc_dirs = (const char**)malloc(total_inc_cap * sizeof(const char*));
     size_t n_inc = 0;
     char gen_inc[4096];
     snprintf(gen_inc, sizeof(gen_inc), "%s/build/generated", proj_path);
     if (inc_dirs) {
         inc_dirs[n_inc++] = gen_inc;
+        if (src_dir[0]) {
+            inc_dirs[n_inc++] = src_dir;
+        }
         for (size_t i = 0; i < cfg.n_include_dirs; i++) {
             inc_dirs[n_inc++] = cfg.include_dirs[i];
         }
@@ -2023,7 +2088,7 @@ static int run_single_file_jit(const char* path, const char* cli_backend) {
         fprintf(stderr, "rokade: cannot read '%s'\n", path);
         return 1;
     }
-    char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     char basedir[4096];
     if (slash) {
         size_t dlen = (size_t)(slash - path);
@@ -2097,7 +2162,7 @@ static int run_single_file_native(const char* path, const char* active_backend) 
             return 1;
         }
         char basedir[4096];
-        char* slash = strrchr(path, '/');
+        const char* slash = rk_find_last_slash(path);
         if (slash) snprintf(basedir, sizeof(basedir), "%.*s", (int)(slash - path), path);
         else snprintf(basedir, sizeof(basedir), ".");
 
@@ -2154,6 +2219,11 @@ static int run_single_file_native(const char* path, const char* active_backend) 
 #endif
     } else {
         /* C backend */
+        char single_basedir[4096];
+        const char* bslash = rk_find_last_slash(path);
+        if (bslash) snprintf(single_basedir, sizeof(single_basedir), "%.*s", (int)(bslash - path), path);
+        else snprintf(single_basedir, sizeof(single_basedir), ".");
+
         int clen = 0;
         char* c = transpile_to_c(path, &clen, 0);
         if (!c) {
@@ -2168,7 +2238,13 @@ static int run_single_file_native(const char* path, const char* active_backend) 
             return 1;
         }
         free(c);
-        if (toolchain_compile_exe(exe_path, c_path) != 0) {
+
+        const char* single_inc[2];
+        size_t n_single_inc = 0;
+        if (single_basedir[0]) single_inc[n_single_inc++] = single_basedir;
+        if (strcmp(single_basedir, ".") != 0) single_inc[n_single_inc++] = ".";
+
+        if (toolchain_compile_exe_with_inc(exe_path, c_path, single_inc, n_single_inc) != 0) {
             unlink(c_path);
             rmdir(work);
             return 1;
@@ -2519,7 +2595,7 @@ static int cmd_doctor(void) {
    Returns malloc'd C via *out (len via *out_len), or NULL on failure
    (after printing a diagnostic if !silent). */
 static char* transpile_to_c(const char* path, int* out_len, int silent) {
-    char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     char basedir[4096];
     if (slash) {
         size_t dlen = (size_t)(slash - path);
@@ -2641,7 +2717,7 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 char* raw_src = util_read_file(src, &slen);
                 if (!raw_src) { fail++; if (!quiet) printf("  FAIL (read) %s\n", base); continue; }
                 char basedir[4096];
-                char* slash = strrchr(src, '/');
+                const char* slash = rk_find_last_slash(src);
                 if (slash) {
                     snprintf(basedir, sizeof(basedir), "%.*s", (int)(slash - src), src);
                 } else {
@@ -2690,7 +2766,16 @@ static int test_run_dir(const char* dir, int* o_pass, int* o_fail, int* o_skip, 
                 if (write_all(c_path, c, clen)) { free(c); fail++; if (!quiet) printf("  FAIL (write) %s\n", base); continue; }
                 free(c);
 
-                if (toolchain_compile_exe(exe_path, c_path) != 0) {
+                char test_basedir[4096];
+                const char* tslash = rk_find_last_slash(src);
+                if (tslash) snprintf(test_basedir, sizeof(test_basedir), "%.*s", (int)(tslash - src), src);
+                else snprintf(test_basedir, sizeof(test_basedir), ".");
+                const char* test_inc[2];
+                size_t n_test_inc = 0;
+                if (test_basedir[0]) test_inc[n_test_inc++] = test_basedir;
+                if (strcmp(test_basedir, ".") != 0) test_inc[n_test_inc++] = ".";
+
+                if (toolchain_compile_exe_with_inc(exe_path, c_path, test_inc, n_test_inc) != 0) {
                     fail++; if (!quiet) printf("  FAIL (compile) %s\n", base); continue;
                 }
             }
@@ -2772,7 +2857,7 @@ static int check_file(const char* path, int verbose) {
     }
 
     /* Resolve #include <file.rook> directives */
-    char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     char basedir[4096];
     if (slash) {
         size_t dlen = (size_t)(slash - path);
@@ -3282,7 +3367,7 @@ static int do_def_at(int argc, char** argv) {
         return 1;
     }
     char basedir[4096];
-    const char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     if (slash) {
         size_t dlen = (size_t)(slash - path);
         snprintf(basedir, sizeof(basedir), "%.*s", (int)dlen, path);
@@ -3344,7 +3429,7 @@ static int do_symbols(int argc, char** argv) {
         return 1;
     }
     char basedir[4096];
-    const char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     if (slash) {
         size_t dlen = (size_t)(slash - path);
         snprintf(basedir, sizeof(basedir), "%.*s", (int)dlen, path);
@@ -3613,7 +3698,7 @@ int main(int argc, char** argv) {
     }
 
     /* Resolve #include <file.rook> directives */
-    char* slash = strrchr(path, '/');
+    const char* slash = rk_find_last_slash(path);
     char basedir[4096];
     const char* env_base = getenv("ROKADE_BASE_DIR");
     if (env_base && env_base[0]) {
@@ -3704,8 +3789,8 @@ int main(int argc, char** argv) {
         if (out_obj_override) {
             snprintf(out_obj, sizeof(out_obj), "%s", out_obj_override);
         } else {
-            const char* base = strrchr(path, '/');
-            base = base ? base + 1 : path;
+            const char* bslash = rk_find_last_slash(path);
+            const char* base = bslash ? bslash + 1 : path;
             size_t blen = strlen(base);
             snprintf(out_obj, sizeof(out_obj), "%.*s.o", (int)(blen > 5 ? blen - 5 : blen), base);
         }

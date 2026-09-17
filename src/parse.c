@@ -1127,7 +1127,7 @@ static int parse_struct_field(Parser* p, StructField* f) {
             if (!f->dim) return 0;
             if (!expect_punct(p, "]")) return 0;
         }
-        if (tok_is(cur(p), ";")) adv(p);
+        while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
         return 1;
     }
 
@@ -1145,7 +1145,7 @@ static int parse_struct_field(Parser* p, StructField* f) {
             if (!f->dim) return 0;
             if (!expect_punct(p, "]")) return 0;
         }
-        if (tok_is(cur(p), ";")) adv(p);
+        while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
         return 1;
     }
 
@@ -1161,7 +1161,7 @@ static int parse_struct_field(Parser* p, StructField* f) {
         if (!f->dim) return 0;
         if (!expect_punct(p, "]")) return 0;
     }
-    if (tok_is(cur(p), ";")) adv(p);
+    while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
     return 1;
 }
 

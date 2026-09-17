@@ -54,6 +54,9 @@ char* toolchain_cc(void);
    status (0 on success). */
 int toolchain_compile_exe(const char* out_exe, const char* c_file);
 
+/* Compile a single .c file into an executable with custom include directories. */
+int toolchain_compile_exe_with_inc(const char* out_exe, const char* c_file, const char** inc_dirs, size_t n_inc);
+
 /* Compile a single .c file into a .o object file. */
 int toolchain_compile_obj(const char* out_obj, const char* c_file, const char** inc_dirs, size_t n_inc, const char* extra_cflags);
 

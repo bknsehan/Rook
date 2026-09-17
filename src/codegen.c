@@ -267,7 +267,26 @@ static AstType* cg_clone_type(AstType* src) {
 
 static AstType* infer_let_type(CG* g, Expr* init) {
     if (!init) return NULL;
-    if (init->type) return cg_clone_type(init->type);
+    if (init->type) {
+        if (init->type->name) {
+            const char* en = sema_lookup_variant(g->sema, init->type->name);
+            if (en) {
+                AstType* t = ast_type_new();
+                t->name = strdup(en);
+                t->ptrs = init->type->ptrs;
+                return t;
+            }
+        }
+        return cg_clone_type(init->type);
+    }
+    if (init->kind == E_IDENT && init->str) {
+        const char* en = sema_lookup_variant(g->sema, init->str);
+        if (en) {
+            AstType* t = ast_type_new();
+            t->name = strdup(en);
+            return t;
+        }
+    }
     if (init->kind == E_CALL && init->a && init->a->kind == E_IDENT) {
         Sym* sym = sema_lookup(g->sema, init->a->str);
         if (sym && sym->kind == SYM_FN && sym->fn && sym->fn->ret)
@@ -1426,7 +1445,52 @@ static void cg_stmt(CG* g, Stmt* s) {
 static void cg_program(CG* g, Program* prog);
 
 static void cg_program(CG* g, Program* prog) {
-    sb_append(&g->sb, "#define _DEFAULT_SOURCE\n#define _POSIX_C_SOURCE 200809L\n#ifdef _WIN32\n#include <direct.h>\n#define mkdir(p, m) _mkdir(p)\n#endif\n\n");
+    sb_append(&g->sb,
+              "#define _DEFAULT_SOURCE\n"
+              "#define _POSIX_C_SOURCE 200809L\n"
+              "#ifdef _WIN32\n"
+              "#define WIN32_LEAN_AND_MEAN\n"
+              "#define NOMINMAX\n"
+              "#include <windows.h>\n"
+              "#include <stdio.h>\n"
+              "#include <stdlib.h>\n"
+              "#include <direct.h>\n"
+              "#include <io.h>\n"
+              "#include <process.h>\n"
+              "#ifndef mkdir\n"
+              "#define mkdir(p, m) _mkdir(p)\n"
+              "#endif\n"
+              "#ifndef access\n"
+              "#define access _access\n"
+              "#endif\n"
+              "#ifndef unlink\n"
+              "#define unlink _unlink\n"
+              "#endif\n"
+              "#ifndef getcwd\n"
+              "#define getcwd _getcwd\n"
+              "#endif\n"
+              "#ifndef getpid\n"
+              "#define getpid _getpid\n"
+              "#endif\n"
+              "#ifndef usleep\n"
+              "#define usleep(u) Sleep((DWORD)(((u) + 999) / 1000))\n"
+              "#endif\n"
+              "static inline int rk_win_setenv(const char* n, const char* v, int o) {\n"
+              "    (void)o;\n"
+              "#if defined(_MSC_VER)\n"
+              "    return _putenv_s(n, v);\n"
+              "#else\n"
+              "    char buf[1024];\n"
+              "    snprintf(buf, sizeof(buf), \"%s=%s\", n, v);\n"
+              "    return _putenv(buf);\n"
+              "#endif\n"
+              "}\n"
+              "#ifndef setenv\n"
+              "#define setenv rk_win_setenv\n"
+              "#endif\n"
+              "#else\n"
+              "#include <unistd.h>\n"
+              "#endif\n\n");
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_RAW) {
@@ -1533,7 +1597,22 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
         else if (!((*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9'))) *p = '_';
     }
 
-    sb_appendf(&g.sb, "#ifndef %s\n#define %s\n\n#define _DEFAULT_SOURCE\n#define _POSIX_C_SOURCE 200809L\n#ifdef _WIN32\n#include <direct.h>\n#define mkdir(p, m) _mkdir(p)\n#endif\n\n", guard, guard);
+    sb_appendf(&g.sb,
+               "#ifndef %s\n#define %s\n\n"
+               "#define _DEFAULT_SOURCE\n"
+               "#define _POSIX_C_SOURCE 200809L\n"
+               "#ifdef _WIN32\n"
+               "#include <direct.h>\n"
+               "#include <io.h>\n"
+               "#define mkdir(p, m) _mkdir(p)\n"
+               "#ifndef access\n"
+               "#define access _access\n"
+               "#endif\n"
+               "#ifndef unlink\n"
+               "#define unlink _unlink\n"
+               "#endif\n"
+               "#endif\n\n",
+               guard, guard);
 
     /* Emit raw includes from TOP_RAW (e.g. #include <...>) */
     for (int i = 0; i < prog->nitems; i++) {

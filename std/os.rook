@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include <unistd.h>
 #comprise <std/io>
 
 void panic(const char* msg) {

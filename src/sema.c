@@ -520,6 +520,7 @@ Sym* sema_lookup(Sema* sema, const char* name) {
    `Enum_Variant` constants. */
 const char* sema_lookup_variant(Sema* sema, const char* name) {
     if (!sema || !sema->prog || !name) return NULL;
+    if (sema_lookup_struct(sema, name)) return NULL;
     for (int i = 0; i < sema->prog->nitems; i++) {
         Item* it = sema->prog->items[i];
         if (it->kind != TOP_ENUM) continue;
@@ -541,6 +542,13 @@ StructDef* sema_lookup_struct(Sema* sema, const char* name) {
         for (int i = 0; i < sema->prog->nitems; i++) {
             Item* it = sema->prog->items[i];
             if (it->kind == TOP_STRUCT && strcmp(it->st->name, name) == 0) return it->st;
+        }
+    }
+    if (sema->prog) {
+        for (int i = 0; i < sema->prog->nitems; i++) {
+            Item* it = sema->prog->items[i];
+            if (it->kind == TOP_STRUCT && it->st && strcmp(it->st->name, name) == 0)
+                return it->st;
         }
     }
     return NULL;
@@ -719,7 +727,6 @@ static Sym* ck_lookup_local(Checker* ck, const char* name) {
    struct fields) so the arm body can type-check against them. Unit-variant,
    wildcard, and integer/literal patterns bind nothing. */
 static void ck_bind_match_pattern(Checker* ck, Expr* p, AstType* scrut) {
-    (void)scrut;
     if (!p) return;
     if (p->kind == E_IDENT) return;                 /* wildcard "_" or unit variant */
     const char* vname = NULL;
@@ -727,12 +734,29 @@ static void ck_bind_match_pattern(Checker* ck, Expr* p, AstType* scrut) {
     EnumVariant* v = NULL;
     if (p->kind == E_NAMED_INIT && p->type && p->type->name) {  /* Circle { r: x } */
         vname = p->type->name;
-        Sym* vsym = sema_lookup(ck->s, vname);
-        if (!vsym || vsym->kind != SYM_ENUMVARIANT || !vsym->ed) return;
-        ed = vsym->ed;
-        int vi = vsym->variant_idx;
-        if (vi < 0 || vi >= ed->nvariants) return;
-        v = &ed->variants[vi];
+        if (scrut && scrut->name) {
+            EnumDef* cand_ed = sema_lookup_enum(ck->s, scrut->name);
+            if (cand_ed) {
+                for (int j = 0; j < cand_ed->nvariants; j++) {
+                    if (strcmp(cand_ed->variants[j].name, vname) == 0) {
+                        ed = cand_ed;
+                        v = &cand_ed->variants[j];
+                        break;
+                    }
+                }
+            }
+        }
+        if (!v) {
+            Sym* vsym = sema_lookup(ck->s, vname);
+            if (vsym && vsym->kind == SYM_ENUMVARIANT && vsym->ed) {
+                ed = vsym->ed;
+                int vi = vsym->variant_idx;
+                if (vi >= 0 && vi < ed->nvariants) {
+                    v = &ed->variants[vi];
+                }
+            }
+        }
+        if (!v || !ed) return;
         for (int i = 0; i < p->nnfields && i < v->nfields; i++) {
             NamedInitField* sf = &p->nfields[i];
             if (!sf->e || sf->e->kind != E_IDENT || strcmp(sf->e->str, "_") == 0) continue;
@@ -775,6 +799,8 @@ static const char* const BUILTIN_NAMES[] = {
     "__atomic_compare_exchange_n", "__atomic_exchange_n",
     "__ATOMIC_RELAXED", "__ATOMIC_CONSUME", "__ATOMIC_ACQUIRE",
     "__ATOMIC_RELEASE", "__ATOMIC_ACQ_REL", "__ATOMIC_SEQ_CST",
+    "setenv", "usleep", "getcwd", "getpid", "access", "unlink", "mkdir",
+    "clock_gettime", "CLOCK_MONOTONIC",
     NULL
 };
 
