@@ -6,10 +6,10 @@
 #include <string.h>
 #comprise <std/io>
 
-object TestSuite {
-    pass: int
-    fail: int
-}
+struct TestSuite {
+    pass: int;
+    fail: int;
+};
 
 TestSuite test_new() {
     return TestSuite { pass: 0, fail: 0 };

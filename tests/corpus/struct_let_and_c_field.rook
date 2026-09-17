@@ -10,15 +10,15 @@ struct PointLet {
     let y: int;
 };
 
-object AnimalC {
+struct AnimalC {
     const char* name;
     int legs;
-}
+};
 
-object AnimalLet {
+struct AnimalLet {
     let name: const char*;
     let legs: int;
-}
+};
 
 sum Shape {
     CircleC { float r; };

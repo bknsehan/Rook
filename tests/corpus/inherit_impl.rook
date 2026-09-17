@@ -1,9 +1,9 @@
 #include <stdio.h>
 
-object Animal {
-    name: const char*
-    legs: int
-}
+struct Animal {
+    name: const char*;
+    legs: int;
+};
 
 impl Animal {
     void speak(Animal* self) {
@@ -14,9 +14,9 @@ impl Animal {
     }
 }
 
-object Cat : Animal {
-    lives: int
-}
+struct Cat : Animal {
+    lives: int;
+};
 
 impl Cat {
     void meow(Cat* self) {
@@ -24,13 +24,13 @@ impl Cat {
     }
 }
 
-object Pet : Animal {
-    owner: const char*
-}
+struct Pet : Animal {
+    owner: const char*;
+};
 
-object Siamese : Pet {
-    color: const char*
-}
+struct Siamese : Pet {
+    color: const char*;
+};
 
 int main() {
     Cat c;

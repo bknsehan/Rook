@@ -2,12 +2,12 @@
 #comprise <std/atomic>
 #comprise <std/sync>
 
-object ThreadContext {
-    counter: AtomicInt
-    lock: Mutex
-    cv: CondVar
-    ready: bool
-}
+struct ThreadContext {
+    counter: AtomicInt;
+    lock: Mutex;
+    cv: CondVar;
+    ready: bool;
+};
 
 void* counter_worker(void* arg) {
     ThreadContext* ctx = (ThreadContext*)arg;

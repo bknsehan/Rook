@@ -7,11 +7,11 @@
 #include <stdbool.h>
 #comprise <std/str>
 
-object Vec {
-    items: void**
-    len: size_t
-    cap: size_t
-}
+struct Vec {
+    items: void**;
+    len: size_t;
+    cap: size_t;
+};
 
 Vec vec_new(size_t cap) {
     if (cap < 4) cap = 4;
@@ -100,11 +100,11 @@ impl Vec {
     }
 }
 
-object StringBuilder {
-    buf: char*
-    len: size_t
-    cap: size_t
-}
+struct StringBuilder {
+    buf: char*;
+    len: size_t;
+    cap: size_t;
+};
 
 StringBuilder sb_new(size_t cap) {
     if (cap < 16) cap = 16;

@@ -2420,15 +2420,7 @@ static void ck_stmt(Checker* ck, Stmt* s) {
 static void ck_check_impl(Checker* ck, ImplDef* im) {
     /* receiver type: target name */
     AstType* recv = im->target;
-    /* `impl` is allowed on `object` and on `sum` (tagged unions); plain C
-       `struct` cannot carry methods (use `object` instead). */
-    if (recv && recv->name) {
-        StructDef* st = sema_lookup_struct(ck->s, recv->name);
-        if (st && !st->is_object) {
-            ck_err_at(ck, im->start, 4,
-                "plain C 'struct' cannot have methods; use 'object' (or 'sum') for impl");
-        }
-    }
+    /* `impl` is allowed on all `struct` and `sum` types. */
 
     for (int i = 0; i < im->nmethods; i++) {
         FnDef* m = im->methods[i];

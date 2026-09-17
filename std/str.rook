@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-object Str {
-    data: const char*
-    len: size_t
-}
+struct Str {
+    data: const char*;
+    len: size_t;
+};
 
 Str str_from_cstr(const char* s) {
     if (s == NULL) return Str { data: "", len: 0 };

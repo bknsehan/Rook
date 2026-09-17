@@ -1516,14 +1516,24 @@ static void cg_program(CG* g, Program* prog) {
                   "}\n\n");
     }
 
-    /* Forward struct declarations */
+    /* Forward struct and enum declarations */
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_STRUCT) {
             sb_appendf(&g->sb, "typedef struct %s %s;\n", it->st->name, it->st->name);
+        } else if (it->kind == TOP_ENUM && enum_has_payload(it->ed)) {
+            sb_appendf(&g->sb, "typedef struct %s %s;\n", it->ed->name, it->ed->name);
         }
     }
     sb_append(&g->sb, "\n");
+
+    /* Plain enum definitions — emitted as C enums / tagged unions. */
+    for (int i = 0; i < prog->nitems; i++) {
+        Item* it = prog->items[i];
+        if (it->kind == TOP_ENUM) {
+            cg_enum(g, it->ed);
+        }
+    }
 
     /* Plain struct definitions (ordered base first). */
     const char* emitted_structs[256];
@@ -1532,14 +1542,6 @@ static void cg_program(CG* g, Program* prog) {
         Item* it = prog->items[i];
         if (it->kind == TOP_STRUCT) {
             cg_struct_ordered(g, it->st, emitted_structs, &nemitted_structs);
-        }
-    }
-
-    /* Plain enum definitions — emitted as C enums / tagged unions. */
-    for (int i = 0; i < prog->nitems; i++) {
-        Item* it = prog->items[i];
-        if (it->kind == TOP_ENUM) {
-            cg_enum(g, it->ed);
         }
     }
 
@@ -1634,14 +1636,24 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
     }
     sb_append(&g.sb, "\n");
 
-    /* Forward struct declarations */
+    /* Forward struct and enum declarations */
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_STRUCT) {
             sb_appendf(&g.sb, "typedef struct %s %s;\n", it->st->name, it->st->name);
+        } else if (it->kind == TOP_ENUM && enum_has_payload(it->ed)) {
+            sb_appendf(&g.sb, "typedef struct %s %s;\n", it->ed->name, it->ed->name);
         }
     }
     sb_append(&g.sb, "\n");
+
+    /* Enum definitions */
+    for (int i = 0; i < prog->nitems; i++) {
+        Item* it = prog->items[i];
+        if (it->kind == TOP_ENUM) {
+            cg_enum(&g, it->ed);
+        }
+    }
 
     /* Struct definitions */
     const char* emitted_structs[256];
@@ -1650,14 +1662,6 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
         Item* it = prog->items[i];
         if (it->kind == TOP_STRUCT) {
             cg_struct_ordered(&g, it->st, emitted_structs, &nemitted_structs);
-        }
-    }
-
-    /* Enum definitions */
-    for (int i = 0; i < prog->nitems; i++) {
-        Item* it = prog->items[i];
-        if (it->kind == TOP_ENUM) {
-            cg_enum(&g, it->ed);
         }
     }
 

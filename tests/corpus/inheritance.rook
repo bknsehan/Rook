@@ -1,13 +1,13 @@
 #include <stdio.h>
 
 struct Entity {
-    x: int
-    y: int
-}
+    x: int;
+    y: int;
+};
 
-object Player : Entity {
-    hp: int
-}
+struct Player : Entity {
+    hp: int;
+};
 
 int main() {
     Player p;

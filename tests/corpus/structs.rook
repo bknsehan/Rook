@@ -1,9 +1,9 @@
 #include <stdio.h>
 
-object Point {
-    x: int
-    y: int
-}
+struct Point {
+    x: int;
+    y: int;
+};
 
 impl Point {
     int len2(Point* self) {

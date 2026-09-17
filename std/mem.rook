@@ -6,11 +6,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-object Arena {
-    buffer: char*
-    capacity: size_t
-    offset: size_t
-}
+struct Arena {
+    buffer: char*;
+    capacity: size_t;
+    offset: size_t;
+};
 
 Arena arena_new(size_t capacity) {
     char* buf = (char*)malloc(capacity);
@@ -77,10 +77,10 @@ impl Arena {
 }
 
 // Scoped scratchpad allocator for fast temporary allocations
-object ArenaTemp {
-    arena: Arena*
-    prev_offset: size_t
-}
+struct ArenaTemp {
+    arena: Arena*;
+    prev_offset: size_t;
+};
 
 ArenaTemp arena_temp_begin(Arena* arena) {
     size_t prev = 0;
@@ -98,13 +98,13 @@ void arena_temp_end(ArenaTemp* temp) {
 }
 
 // Fixed-size chunked slot allocator with free-list recycling (Element Pool)
-object ElementPool {
-    buffer: char*
-    slot_size: size_t
-    capacity: size_t
-    free_head: void*
-    allocated_count: size_t
-}
+struct ElementPool {
+    buffer: char*;
+    slot_size: size_t;
+    capacity: size_t;
+    free_head: void*;
+    allocated_count: size_t;
+};
 
 ElementPool pool_new(size_t slot_size, size_t capacity) {
     if (slot_size < sizeof(void*)) {

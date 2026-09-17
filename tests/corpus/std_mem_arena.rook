@@ -1,11 +1,11 @@
 #include <stdio.h>
 #comprise <std/mem>
 
-object Particle {
-    x: float
-    y: float
-    id: int
-}
+struct Particle {
+    x: float;
+    y: float;
+    id: int;
+};
 
 int main() {
     Arena arena = arena_new(1024);

@@ -1,7 +1,7 @@
-object Vec2 {
-    x: float
-    y: float
-}
+struct Vec2 {
+    x: float;
+    y: float;
+};
 
 impl Vec2 {
     Vec2 add(self, Vec2 other) {

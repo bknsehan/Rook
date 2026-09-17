@@ -5,17 +5,17 @@ sum BigPayload {
     B { val: int; };
 }
 
-object BaseA {
-    a: int
-}
+struct BaseA {
+    a: int;
+};
 
-object MidB : BaseA {
-    b: int
-}
+struct MidB : BaseA {
+    b: int;
+};
 
-object SubC : MidB {
-    c: int
-}
+struct SubC : MidB {
+    c: int;
+};
 
 impl SubC {
     void print_all(self) {

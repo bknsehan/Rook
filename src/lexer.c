@@ -124,22 +124,32 @@ static Token lex_number(Lx* lx) {
     Token t;
     t.kind = TK_NUMBER;
     tok_begin(&t, lx);
-    while (lx->pos < lx->len && is_digit(lx->src[lx->pos])) adv(lx);
-    /* only consume '.' for float literals, not for range operators like ..= */
-    if (lx->pos < lx->len && lx->src[lx->pos] == '.' &&
-        lx->pos + 1 < lx->len && is_digit(lx->src[lx->pos + 1])) {
-        adv(lx);
-        while (lx->pos < lx->len && is_digit(lx->src[lx->pos])) adv(lx);
-    }
-    if (lx->pos < lx->len && (lx->src[lx->pos] == 'e' || lx->src[lx->pos] == 'E')) {
-        int save = lx->pos;
-        adv(lx);
-        if (lx->pos < lx->len && (lx->src[lx->pos] == '+' || lx->src[lx->pos] == '-'))
+    if (lx->pos + 1 < lx->len && lx->src[lx->pos] == '0' && (lx->src[lx->pos + 1] == 'x' || lx->src[lx->pos + 1] == 'X')) {
+        adv(lx); /* consume '0' */
+        adv(lx); /* consume 'x' or 'X' */
+        while (lx->pos < lx->len && (is_digit(lx->src[lx->pos]) ||
+               (lx->src[lx->pos] >= 'a' && lx->src[lx->pos] <= 'f') ||
+               (lx->src[lx->pos] >= 'A' && lx->src[lx->pos] <= 'F'))) {
             adv(lx);
-        if (lx->pos < lx->len && is_digit(lx->src[lx->pos])) {
+        }
+    } else {
+        while (lx->pos < lx->len && is_digit(lx->src[lx->pos])) adv(lx);
+        /* only consume '.' for float literals, not for range operators like ..= */
+        if (lx->pos < lx->len && lx->src[lx->pos] == '.' &&
+            lx->pos + 1 < lx->len && is_digit(lx->src[lx->pos + 1])) {
+            adv(lx);
             while (lx->pos < lx->len && is_digit(lx->src[lx->pos])) adv(lx);
-        } else {
-            lx->pos = save;
+        }
+        if (lx->pos < lx->len && (lx->src[lx->pos] == 'e' || lx->src[lx->pos] == 'E')) {
+            int save = lx->pos;
+            adv(lx);
+            if (lx->pos < lx->len && (lx->src[lx->pos] == '+' || lx->src[lx->pos] == '-'))
+                adv(lx);
+            if (lx->pos < lx->len && is_digit(lx->src[lx->pos])) {
+                while (lx->pos < lx->len && is_digit(lx->src[lx->pos])) adv(lx);
+            } else {
+                lx->pos = save;
+            }
         }
     }
     /* consume optional literal suffix (e.g. 1.0f, 100u, 1000L, 1ULL) */

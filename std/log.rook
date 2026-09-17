@@ -27,9 +27,9 @@ int log_level_error() {
     return 3;
 }
 
-object Logger {
-    level: int
-}
+struct Logger {
+    level: int;
+};
 
 Logger log_new(int level) {
     int lvl = level;

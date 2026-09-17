@@ -384,7 +384,7 @@ static void e_fn(Emit* e, FnDef* f, int ind) {
 }
 
 static void e_struct(Emit* e, StructDef* st) {
-    sb_append(&e->sb, st->is_object ? "object " : "struct ");
+    sb_append(&e->sb, "struct ");
     sb_append(&e->sb, st->name);
     if (st->parent) {
         sb_append(&e->sb, " : ");
@@ -399,11 +399,11 @@ static void e_struct(Emit* e, StructDef* st) {
         StructField* f = &st->fields[i];
         e_indent(e, 1);
         if (f->style == FIELD_COLON) {
-            /* Preserve Rook-style: name: Type (round-trip stable). */
+            /* Preserve Rook-style: name: Type; */
             sb_append(&e->sb, f->name);
             sb_append(&e->sb, ": ");
             e_type(e, f->type);
-            sb_append(&e->sb, "\n");
+            sb_append(&e->sb, ";\n");
         } else {
             /* C-style: type name[dim]; */
             e_type(e, f->type);
@@ -417,7 +417,7 @@ static void e_struct(Emit* e, StructDef* st) {
             sb_append(&e->sb, ";\n");
         }
     }
-    sb_append(&e->sb, "}");
+    sb_append(&e->sb, "};");
 }
 
 static void e_enum(Emit* e, EnumDef* ed) {

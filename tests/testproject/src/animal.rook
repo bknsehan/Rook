@@ -1,10 +1,10 @@
 #include <stdio.h>
 #comprise base
 
-object Animal {
-    name: const char*
-    age: int
-}
+struct Animal {
+    name: const char*;
+    age: int;
+};
 
 impl Animal {
     void speak(self) {
@@ -12,9 +12,9 @@ impl Animal {
     }
 }
 
-object Dog : Animal {
-    breed: const char*
-}
+struct Dog : Animal {
+    breed: const char*;
+};
 
 impl Dog {
     void bark(self) {

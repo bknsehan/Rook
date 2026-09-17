@@ -1,8 +1,8 @@
 //! `rook-lsp` — the Rook language server (JSON-RPC over stdio).
 //!
 //! Implements:
-//!   * **Rook Syntax Autocompletion & Snippets** — keywords, types, object/impl/match snippets.
-//!   * **Comprise Collaboration** — automatically indexes functions, objects, and methods
+//!   * **Rook Syntax Autocompletion & Snippets** — keywords, types, struct/impl/match snippets.
+//!   * **Comprise Collaboration** — automatically indexes functions, structs, and methods
 //!     from comprised Rook files (including standard library `<std/...>`).
 //!   * **C Header Collaboration** — scans `#include` C headers (like `<raylib.h>`, `<stdio.h>`)
 //!     and extracts functions, structs, typedefs, and `#define` constants with hover signatures.
@@ -55,7 +55,7 @@ pub struct CSymbol {
 #[derive(Debug, Clone)]
 pub enum RookSymbolKind {
     Function { sig: String },
-    Object { fields: Vec<(String, String)> },
+    Struct { fields: Vec<(String, String)> },
     Method { obj: String, sig: String },
     Enum { variants: Vec<String> },
     Variable { type_name: Option<String> },
@@ -171,8 +171,8 @@ pub fn extract_directives(text: &str) -> (Vec<String>, Vec<String>) {
 pub fn scan_rook_symbols(text: &str, file_path: &Path) -> Vec<RookSymbol> {
     let mut symbols = Vec::new();
     let mut current_impl: Option<String> = None;
-    let mut in_object: Option<String> = None;
-    let mut obj_fields: Vec<(String, String)> = Vec::new();
+    let mut in_struct: Option<String> = None;
+    let mut struct_fields: Vec<(String, String)> = Vec::new();
 
     for (idx, raw_line) in text.lines().enumerate() {
         let line_num = idx as u32 + 1;
@@ -185,10 +185,10 @@ pub fn scan_rook_symbols(text: &str, file_path: &Path) -> Vec<RookSymbol> {
         if line.is_empty() { continue; }
 
         if line.contains('}') {
-            if let Some(obj_name) = in_object.take() {
+            if let Some(st_name) = in_struct.take() {
                 symbols.push(RookSymbol {
-                    name: obj_name,
-                    kind: RookSymbolKind::Object { fields: std::mem::take(&mut obj_fields) },
+                    name: st_name,
+                    kind: RookSymbolKind::Struct { fields: std::mem::take(&mut struct_fields) },
                     file_path: file_path.to_path_buf(),
                     line: line_num,
                     col: 1,
@@ -199,21 +199,28 @@ pub fn scan_rook_symbols(text: &str, file_path: &Path) -> Vec<RookSymbol> {
             }
         }
 
-        if let Some(rest) = line.strip_prefix("object ") {
-            let name = rest.split(['{', ' ']).next().unwrap_or("").trim().to_string();
+        if let Some(rest) = line.strip_prefix("struct ") {
+            let name = rest.split(['{', ' ', ':']).next().unwrap_or("").trim().to_string();
             if !name.is_empty() {
-                in_object = Some(name);
-                obj_fields.clear();
+                in_struct = Some(name);
+                struct_fields.clear();
             }
             continue;
         }
 
-        if in_object.is_some() {
-            if let Some((fname, ftype)) = line.split_once(':') {
+        if in_struct.is_some() {
+            let clean_line = line.strip_prefix("let ").unwrap_or(line).trim();
+            if let Some((fname, ftype)) = clean_line.split_once(':') {
                 let fname = fname.trim().to_string();
-                let ftype = ftype.trim().trim_end_matches(',').trim().to_string();
+                let ftype = ftype.trim().trim_end_matches([';', ',']).trim().to_string();
                 if !fname.is_empty() {
-                    obj_fields.push((fname, ftype));
+                    struct_fields.push((fname, ftype));
+                }
+            } else if clean_line.ends_with(';') {
+                let trimmed = clean_line.trim_end_matches(';').trim();
+                let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                if parts.len() == 2 {
+                    struct_fields.push((parts[1].to_string(), parts[0].to_string()));
                 }
             }
             continue;
@@ -474,17 +481,17 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
     vec![
         // Rook Keywords
         CompletionItem {
-            label: "object".to_string(),
+            label: "struct".to_string(),
             kind: Some(CompletionItemKind::KEYWORD),
-            detail: Some("Define a Rook object (OOP struct)".to_string()),
-            insert_text: Some("object ${1:Name} {\n\t${0}\n}".to_string()),
+            detail: Some("Define a Rook struct (supports fields, inheritance, and impl)".to_string()),
+            insert_text: Some("struct ${1:Name} {\n\t${0}\n};".to_string()),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             ..Default::default()
         },
         CompletionItem {
             label: "impl".to_string(),
             kind: Some(CompletionItemKind::KEYWORD),
-            detail: Some("Implement methods for a Rook object".to_string()),
+            detail: Some("Implement methods for a Rook struct".to_string()),
             insert_text: Some("impl ${1:Name} {\n\t${0}\n}".to_string()),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             ..Default::default()
@@ -630,7 +637,7 @@ pub fn get_completions(state: &mut ServerState, uri: &str, content: &str) -> Vec
         if seen.insert(sym.name.clone()) {
             let (kind, detail) = match sym.kind {
                 RookSymbolKind::Function { sig } => (CompletionItemKind::FUNCTION, sig),
-                RookSymbolKind::Object { .. } => (CompletionItemKind::CLASS, format!("object {}", sym.name)),
+                RookSymbolKind::Struct { .. } => (CompletionItemKind::STRUCT, format!("struct {}", sym.name)),
                 RookSymbolKind::Method { obj, sig } => (CompletionItemKind::METHOD, format!("{}.{}", obj, sig)),
                 RookSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, format!("enum {}", sym.name)),
                 RookSymbolKind::Variable { type_name } => (
@@ -657,7 +664,7 @@ pub fn get_completions(state: &mut ServerState, uri: &str, content: &str) -> Vec
             if seen.insert(sym.name.clone()) {
                 let (kind, detail) = match sym.kind {
                     RookSymbolKind::Function { sig } => (CompletionItemKind::FUNCTION, format!("{} [{}]", sig, module)),
-                    RookSymbolKind::Object { .. } => (CompletionItemKind::CLASS, format!("object {} [{}]", sym.name, module)),
+                    RookSymbolKind::Struct { .. } => (CompletionItemKind::STRUCT, format!("struct {} [{}]", sym.name, module)),
                     RookSymbolKind::Method { obj, sig } => (CompletionItemKind::METHOD, format!("{}.{} [{}]", obj, sig, module)),
                     RookSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, format!("enum {} [{}]", sym.name, module)),
                     RookSymbolKind::Variable { type_name } => (
@@ -730,9 +737,9 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
     if let Some(sym) = cur_symbols.iter().find(|s| s.name == word) {
         let desc = match &sym.kind {
             RookSymbolKind::Function { sig } => format!("```rook\n{}\n```\nDefined in current file.", sig),
-            RookSymbolKind::Object { fields } => {
-                let flds: Vec<String> = fields.iter().map(|(f, t)| format!("    {}: {}", f, t)).collect();
-                format!("```rook\nobject {} {{\n{}\n}}\n```", sym.name, flds.join("\n"))
+            RookSymbolKind::Struct { fields } => {
+                let flds: Vec<String> = fields.iter().map(|(f, t)| format!("    {}: {};", f, t)).collect();
+                format!("```rook\nstruct {} {{\n{}\n}};\n```", sym.name, flds.join("\n"))
             }
             RookSymbolKind::Method { obj, sig } => format!("```rook\n// Method on {}\n{}\n```", obj, sig),
             RookSymbolKind::Enum { .. } => format!("```rook\nenum {}\n```", sym.name),
@@ -749,9 +756,9 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
         if let Some(sym) = mod_syms.iter().find(|s| s.name == word) {
             let desc = match &sym.kind {
                 RookSymbolKind::Function { sig } => format!("```rook\n{}\n```\n*Imported from module `{}`*", sig, module),
-                RookSymbolKind::Object { fields } => {
-                    let flds: Vec<String> = fields.iter().map(|(f, t)| format!("    {}: {}", f, t)).collect();
-                    format!("```rook\nobject {} {{\n{}\n}}\n```\n*Imported from module `{}`*", sym.name, flds.join("\n"), module)
+                RookSymbolKind::Struct { fields } => {
+                    let flds: Vec<String> = fields.iter().map(|(f, t)| format!("    {}: {};", f, t)).collect();
+                    format!("```rook\nstruct {} {{\n{}\n}};\n```\n*Imported from module `{}`*", sym.name, flds.join("\n"), module)
                 }
                 RookSymbolKind::Method { obj, sig } => format!("```rook\n// Method on {}\n{}\n```\n*Imported from module `{}`*", obj, sig, module),
                 RookSymbolKind::Enum { .. } => format!("```rook\nenum {}\n```\n*Imported from module `{}`*", sym.name, module),
@@ -789,8 +796,9 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
     // 5. Rook Keywords info
     let kw_doc = match word.as_str() {
         "defer" => Some("`defer <statement>`\n\nSchedules a statement to execute automatically when exiting the current enclosing block scope."),
-        "object" => Some("`object <Name> { <fields> }`\n\nDeclares a Rook object with typed fields."),
-        "impl" => Some("`impl <Name> { <methods> }`\n\nImplements static compile-time methods for a Rook object."),
+        "struct" => Some("`struct <Name> { <fields>; };`\n\nDeclares a Rook struct with typed fields. Fields must be terminated with semicolons."),
+        "object" => Some("⚠️ **Removed in Rook**\n\n`object` has been replaced by `struct`. Use `struct <Name> { <fields>; };`."),
+        "impl" => Some("`impl <Name> { <methods> }`\n\nImplements compile-time methods for a Rook struct."),
         "sum" => Some("`sum <Name> { <variants> }`\n\nDeclares an algebraic sum type (tagged union)."),
         "match" => Some("`match <expr> { <pattern> => <stmt> }`\n\nPattern matches on a value or sum type."),
         "let" => Some("`let <name> [: <type>] = <expr>;`\n\nDeclares a local variable with optional type inference."),
@@ -1409,10 +1417,10 @@ mod tests {
     #[test]
     fn test_scan_rook_symbols() {
         let code = r#"
-        object Player {
-            id: int
-            name: char*
-        }
+        struct Player {
+            id: int;
+            name: char*;
+        };
 
         impl Player {
             void greet(self) {
@@ -1426,13 +1434,13 @@ mod tests {
         }
         "#;
         let syms = scan_rook_symbols(code, Path::new("test.rook"));
-        let obj = syms.iter().find(|s| s.name == "Player").expect("Player object found");
+        let obj = syms.iter().find(|s| s.name == "Player").expect("Player struct found");
         match &obj.kind {
-            RookSymbolKind::Object { fields } => {
+            RookSymbolKind::Struct { fields } => {
                 assert_eq!(fields.len(), 2);
                 assert_eq!(fields[0], ("id".to_string(), "int".to_string()));
             }
-            _ => panic!("expected object"),
+            _ => panic!("expected struct"),
         }
         let greet = syms.iter().find(|s| s.name == "greet").expect("greet method found");
         match &greet.kind {
@@ -1487,7 +1495,7 @@ mod tests {
         #comprise <std/io>
         #include <stdio.h>
 
-        object Enemy { hp: int }
+        struct Enemy { hp: int; };
 
         int main() {
             let e = Enemy { hp: 100 };
@@ -1499,7 +1507,7 @@ mod tests {
         let labels: Vec<String> = items.into_iter().map(|i| i.label).collect();
 
         // 1. Keywords & snippets
-        assert!(labels.contains(&"object".to_string()));
+        assert!(labels.contains(&"struct".to_string()));
         assert!(labels.contains(&"impl".to_string()));
         assert!(labels.contains(&"defer".to_string()));
         assert!(labels.contains(&"match".to_string()));

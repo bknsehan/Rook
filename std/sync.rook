@@ -8,10 +8,10 @@
 
 typedef void* (*ThreadWorkerFn)(void*);
 
-object Mutex {
-    handle: pthread_mutex_t
-    initialized: bool
-}
+struct Mutex {
+    handle: pthread_mutex_t;
+    initialized: bool;
+};
 
 Mutex mutex_new() {
     Mutex m;
@@ -59,10 +59,10 @@ impl Mutex {
     }
 }
 
-object CondVar {
-    handle: pthread_cond_t
-    initialized: bool
-}
+struct CondVar {
+    handle: pthread_cond_t;
+    initialized: bool;
+};
 
 CondVar cond_new() {
     CondVar cv;
@@ -112,10 +112,10 @@ impl CondVar {
     }
 }
 
-object Thread {
-    handle: pthread_t
-    alive: bool
-}
+struct Thread {
+    handle: pthread_t;
+    alive: bool;
+};
 
 Thread thread_spawn(ThreadWorkerFn worker, void* arg) {
     Thread t;

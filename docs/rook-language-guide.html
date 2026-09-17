@@ -943,17 +943,17 @@
 // Total size: 16 bytes, alignment: 8 bytes</code></pre></div>
 
 <h3>4.3 Single Inheritance Layout (Prefix Subtyping)</h3>
-<p>When an <code>object</code> inherits from another <code>object</code> or <code>struct</code>, the parent's fields are embedded at the very beginning of the child struct (offset 0):</p>
+<p>When a <code>struct</code> inherits from another <code>struct</code>, the parent's fields are embedded at the very beginning of the child struct (offset 0):</p>
 
-<div class="code-block"><div class="code-header"><span class="code-lang">Prefix Subtyping</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Entity {
-    id: int
-    active: bool
-}
+<div class="code-block"><div class="code-header"><span class="code-lang">Prefix Subtyping</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}</code></pre></div>
+struct Player : Entity {
+    health: int;
+    score: int;
+};</code></pre></div>
 
 <div class="table-container">
 <table>
@@ -971,15 +971,15 @@ object Player : Entity {
 </div>
 
 <p>Because the parent struct is at byte offset 0, casting a child pointer to a parent pointer requires no pointer arithmetic:</p>
-<div class="code-block"><div class="code-header"><span class="code-lang">Zero-Offset Upcasting</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Entity {
-    id: int
-    active: bool
-}
+<div class="code-block"><div class="code-header"><span class="code-lang">Zero-Offset Upcasting</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}
+struct Player : Entity {
+    health: int;
+    score: int;
+};
 
 int main() {
     Player p;
@@ -1294,10 +1294,10 @@ pkg-config = ["raylib"]</code></pre></div>
 
 <p>In <code>src/engine/math.rook</code>, we define local geometry types:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">src/engine/math.rook</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">// src/engine/math.rook
-object Vec2 {
-    x: float
-    y: float
-}
+struct Vec2 {
+    x: float;
+    y: float;
+};
 
 Vec2 vec2_new(float x, float y) {
     return Vec2 { x: x, y: y };
@@ -1309,11 +1309,11 @@ Vec2 vec2_new(float x, float y) {
 #comprise &lt;std/str&gt;
 #comprise "math.rook"       // Sibling comprise inside engine/
 
-object RenderContext {
-    width: int
-    height: int
-    title: Str
-}
+struct RenderContext {
+    width: int;
+    height: int;
+    title: Str;
+};
 
 RenderContext renderer_create(int w, int h, Str title) {
     char* c_title = title.to_cstr();
@@ -1357,10 +1357,10 @@ int main() {
 <h3>10.1 Safe String Slices: <code>std/str</code></h3>
 <p>C strings (<code>char*</code>) are null-terminated, requiring <code>O(n)</code> scans for length calculations and risking buffer overflows. Rook's <code>Str</code> provides a safe, non-owning slice holding a pointer and an explicit length:</p>
 
-<div class="code-block"><div class="code-header"><span class="code-lang">Str Internal Representation</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">object Str {
-    data: const char*
-    len: size_t
-}</code></pre></div>
+<div class="code-block"><div class="code-header"><span class="code-lang">Str Internal Representation</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">struct Str {
+    data: const char*;
+    len: size_t;
+};</code></pre></div>
 
 <h4>Core Capabilities of <code>Str</code>:</h4>
 <ul>
@@ -1496,10 +1496,10 @@ int main() {
 #comprise &lt;std/sync&gt;
 #comprise &lt;std/atomic&gt;
 
-object CounterTask {
-    counter: AtomicInt
-    lock: Mutex
-}
+struct CounterTask {
+    counter: AtomicInt;
+    lock: Mutex;
+};
 
 void* worker(void* arg) {
     CounterTask* task = (CounterTask*)arg;
@@ -1541,7 +1541,7 @@ int main() {
 <section class="chapter-section" id="data-structures">
   <h1>11. Idiomatic Data Structure Implementation in Rook</h1>
   
-<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, object methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
+<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, struct methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
 
 <h3>11.1 Dynamic Array (Vector)</h3>
 <p>Here is an idiomatic resizable integer vector demonstrating explicit allocation, growth doubling, and bounds checking:</p>
@@ -1550,11 +1550,11 @@ int main() {
 #include &lt;stdlib.h&gt;
 #include &lt;stdbool.h&gt;
 
-object IntVector {
-    items: int*
-    count: size_t
-    capacity: size_t
-}
+struct IntVector {
+    items: int*;
+    count: size_t;
+    capacity: size_t;
+};
 
 IntVector vec_new() {
     return IntVector { items: NULL, count: 0, capacity: 0 };
@@ -1607,14 +1607,14 @@ int main() {
 #comprise &lt;std/mem&gt;
 
 struct ListNode {
-    value: int
-    next: ListNode*
-}
+    value: int;
+    next: ListNode*;
+};
 
-object LinkedList {
-    head: ListNode*
-    pool: ElementPool*
-}
+struct LinkedList {
+    head: ListNode*;
+    pool: ElementPool*;
+};
 
 LinkedList list_create(ElementPool* pool) {
     return LinkedList { head: NULL, pool: pool };
@@ -1859,7 +1859,7 @@ rokade toolchain set cc /usr/bin/clang</code></pre></div>
   }
 
   function highlightCAndRook(src) {
-    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:fn|int|float|double|char|void|bool|size_t|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|object|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
+    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:fn|int|float|double|char|void|bool|size_t|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
     var lastIndex = 0;
     var out = "";
     var match;

@@ -299,6 +299,8 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             clang_disposeString(utstr);
         }
         clang_disposeString(tname);
+    } else if (kind == CXCursor_EnumDecl) {
+        clang_visitChildren(cursor, tu_visitor, client_data);
     } else if (kind == CXCursor_EnumConstantDecl) {
         CXString ename = clang_getCursorSpelling(cursor);
         const char* name = clang_getCString(ename);

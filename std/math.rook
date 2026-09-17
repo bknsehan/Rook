@@ -5,10 +5,10 @@
 #include <math.h>
 #include <stdbool.h>
 
-object Vec2 {
-    x: float
-    y: float
-}
+struct Vec2 {
+    x: float;
+    y: float;
+};
 
 impl Vec2 {
     Vec2 add(self, Vec2 other) {
@@ -33,11 +33,11 @@ impl Vec2 {
     }
 }
 
-object Vec3 {
-    x: float
-    y: float
-    z: float
-}
+struct Vec3 {
+    x: float;
+    y: float;
+    z: float;
+};
 
 impl Vec3 {
     Vec3 add(self, Vec3 other) {
@@ -69,12 +69,12 @@ impl Vec3 {
     }
 }
 
-object Rect {
-    x: float
-    y: float
-    w: float
-    h: float
-}
+struct Rect {
+    x: float;
+    y: float;
+    w: float;
+    h: float;
+};
 
 impl Rect {
     bool contains(self, Vec2 p) {

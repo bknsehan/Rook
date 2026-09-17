@@ -104,18 +104,18 @@ struct Node {
 ```
 
 ### 4.3 Prefix Subtyping (Single Inheritance)
-When an `object` inherits from a parent struct, the parent fields are placed at byte offset 0:
+When a `struct` inherits from a parent struct, the parent fields are placed at byte offset 0:
 
 ```rook
-object Entity {
-    id: int
-    active: bool
-}
+struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}
+struct Player : Entity {
+    health: int;
+    score: int;
+};
 
 int main() {
     Player p;
@@ -399,10 +399,10 @@ my_game/
 In `src/engine/math.rook`:
 ```rook
 // src/engine/math.rook
-object Vec2 {
-    x: float
-    y: float
-}
+struct Vec2 {
+    x: float;
+    y: float;
+};
 
 Vec2 vec2_new(float x, float y) {
     return Vec2 { x: x, y: y };
@@ -416,11 +416,11 @@ In `src/engine/renderer.rook`:
 #comprise <std/str>
 #comprise "math.rook"       // Sibling comprise inside engine/
 
-object RenderContext {
-    width: int
-    height: int
-    title: Str
-}
+struct RenderContext {
+    width: int;
+    height: int;
+    title: Str;
+};
 
 RenderContext renderer_create(int w, int h, Str title) {
     char* c_title = title.to_cstr();
@@ -466,10 +466,10 @@ The Rook Standard Library resides in `std/`. It is written purely in Rook, carri
 C strings (`char*`) are null-terminated, requiring $O(n)$ scans for length calculations and risking buffer overflows. Rook's `Str` provides a safe, non-owning slice holding a pointer and an explicit length:
 
 ```rook
-object Str {
-    data: const char*
-    len: size_t
-}
+struct Str {
+    data: const char*;
+    len: size_t;
+};
 ```
 
 #### Core Capabilities of `Str`:
@@ -581,10 +581,10 @@ When developing concurrent software in Rook, developers must enforce the followi
 #comprise <std/sync>
 #comprise <std/atomic>
 
-object CounterTask {
-    counter: AtomicInt
-    lock: Mutex
-}
+struct CounterTask {
+    counter: AtomicInt;
+    lock: Mutex;
+};
 
 void* worker(void* arg) {
     CounterTask* task = (CounterTask*)arg;
@@ -623,7 +623,7 @@ int main() {
 
 ## 11. Idiomatic Data Structure Implementation in Rook
 
-Building high-performance data structures in Rook leverages explicit memory allocation, pointers, object methods via `impl`, and deterministic cleanup via `defer`.
+Building high-performance data structures in Rook leverages explicit memory allocation, pointers, struct methods via `impl`, and deterministic cleanup via `defer`.
 
 ### 11.1 Dynamic Array (Vector)
 Here is an idiomatic resizable integer vector demonstrating explicit allocation, growth doubling, and bounds checking:
@@ -633,11 +633,11 @@ Here is an idiomatic resizable integer vector demonstrating explicit allocation,
 #include <stdlib.h>
 #include <stdbool.h>
 
-object IntVector {
-    items: int*
-    count: size_t
-    capacity: size_t
-}
+struct IntVector {
+    items: int*;
+    count: size_t;
+    capacity: size_t;
+};
 
 IntVector vec_new() {
     return IntVector { items: NULL, count: 0, capacity: 0 };
@@ -692,14 +692,14 @@ By pairing custom node structures with `ElementPool` from `std/mem`, linked list
 #comprise <std/mem>
 
 struct ListNode {
-    value: int
-    next: ListNode*
-}
+    value: int;
+    next: ListNode*;
+};
 
-object LinkedList {
-    head: ListNode*
-    pool: ElementPool*
-}
+struct LinkedList {
+    head: ListNode*;
+    pool: ElementPool*;
+};
 
 LinkedList list_create(ElementPool* pool) {
     return LinkedList { head: NULL, pool: pool };

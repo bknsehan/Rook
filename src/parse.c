@@ -679,7 +679,7 @@ static Stmt* parse_stmt(Parser* p) {
     Token* t = cur(p);
     if (tok_is(t, "{")) return parse_block(p);
     if (is_kw(t, "object")) {
-        error_at(p, t, "'object' declarations are only allowed at file scope (outside functions)");
+        error_at(p, t, "'object' has been removed; use 'struct' instead");
         return NULL;
     }
     if (is_kw(t, "impl")) {
@@ -1127,7 +1127,8 @@ static int parse_struct_field(Parser* p, StructField* f) {
             if (!f->dim) return 0;
             if (!expect_punct(p, "]")) return 0;
         }
-        while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
+        if (!expect_punct(p, ";")) return 0;
+        while (tok_is(cur(p), ";")) adv(p);
         return 1;
     }
 
@@ -1145,7 +1146,8 @@ static int parse_struct_field(Parser* p, StructField* f) {
             if (!f->dim) return 0;
             if (!expect_punct(p, "]")) return 0;
         }
-        while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
+        if (!expect_punct(p, ";")) return 0;
+        while (tok_is(cur(p), ";")) adv(p);
         return 1;
     }
 
@@ -1161,7 +1163,8 @@ static int parse_struct_field(Parser* p, StructField* f) {
         if (!f->dim) return 0;
         if (!expect_punct(p, "]")) return 0;
     }
-    while (tok_is(cur(p), ";") || tok_is(cur(p), ",")) adv(p);
+    if (!expect_punct(p, ";")) return 0;
+    while (tok_is(cur(p), ";")) adv(p);
     return 1;
 }
 
@@ -1291,21 +1294,20 @@ static Item* parse_top(Parser* p) {
         it->fn = f;
         return it;
     }
-    if (is_kw(t, "object") || is_kw(t, "struct")) {
+    if (is_kw(t, "object")) {
+        error_at(p, t, "'object' has been removed; use 'struct' instead (structs now support inheritance and impl)");
+        return NULL;
+    }
+    if (is_kw(t, "struct")) {
         adv(p);
         StructDef* st = calloc(1, sizeof *st);
         if (!st) exit(1);
-        st->is_object = is_kw(t, "object");
+        st->is_object = 1; /* all structs now support OOP prefix-subtyping and impl */
         Token* name_tok = cur(p);
         st->name = ident(p);
         if (!st->name) { free(st); return NULL; }
         if (name_tok) { st->line = name_tok->line; st->col = name_tok->col; }
         if (tok_is(cur(p), ":")) {
-            if (!st->is_object) {
-                error_at(p, cur(p),
-                    "plain C 'struct' cannot inherit; use 'object Name : Parent' for OOP");
-                free(st->name); free(st); return NULL;
-            }
             adv(p);
             st->parent = ident(p);
             if (!st->parent) return NULL;
@@ -1319,6 +1321,7 @@ static Item* parse_top(Parser* p) {
             st->fields[st->nfields++] = f;
         }
         if (!expect_punct(p, "}")) return NULL;
+        if (tok_is(cur(p), ";")) adv(p);
         Item* it = ast_item_new(TOP_STRUCT);
         it->st = st;
         return it;
@@ -1355,11 +1358,11 @@ static Item* parse_top(Parser* p) {
         return it;
     }
      if (is_kw(t, "trait")) {
-         error_at(p, t, "'trait' is not supported; Rook is plain C + object/impl");
+         error_at(p, t, "'trait' is not supported; Rook is plain C + struct/impl");
          return NULL;
      }
      if (is_kw(t, "class")) {
-         error_at(p, t, "'class' is not supported; use 'object Name { ... }'");
+         error_at(p, t, "'class' is not supported; use 'struct Name { ... };'");
          return NULL;
      }
      if (is_kw(t, "fn")) {
@@ -1385,7 +1388,7 @@ static Item* parse_top(Parser* p) {
         }
         if (rt) { ast_type_free(rt); p->idx = save; }
     }
-    error_at(p, t, "expected 'struct', 'object', 'impl', 'sum' or 'extern'");
+    error_at(p, t, "expected 'struct', 'impl', 'sum' or 'extern'");
     return NULL;
 }
 

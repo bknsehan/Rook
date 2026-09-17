@@ -139,18 +139,18 @@ int main() {
 
 ### 5.2 Single Inheritance with Prefix Subtyping
 
-Single inheritance is supported for `object` types. The parent object's memory layout is embedded at byte offset 0 of the child object:
+Single inheritance is supported for `struct` types. The parent struct's memory layout is embedded at byte offset 0 of the child struct:
 
 ```rook
-object Entity {
-    id: int
-    active: bool
-}
+struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}
+struct Player : Entity {
+    health: int;
+    score: int;
+};
 
 impl Player {
     void take_damage(Player* self, int amount) {

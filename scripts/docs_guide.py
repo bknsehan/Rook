@@ -217,18 +217,18 @@ struct Node {
 """, "Struct Memory Layout Example")}
 
 <h3>4.3 Single Inheritance Layout (Prefix Subtyping)</h3>
-<p>When an <code>object</code> inherits from another <code>object</code> or <code>struct</code>, the parent's fields are embedded at the very beginning of the child struct (offset 0):</p>
+<p>When a <code>struct</code> inherits from another <code>struct</code>, the parent's fields are embedded at the very beginning of the child struct (offset 0):</p>
 
 {make_code_box("rook", """
-object Entity {
-    id: int
-    active: bool
-}
+struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}
+struct Player : Entity {
+    health: int;
+    score: int;
+};
 """, "Prefix Subtyping")}
 
 <div class="table-container">
@@ -248,15 +248,15 @@ object Player : Entity {
 
 <p>Because the parent struct is at byte offset 0, casting a child pointer to a parent pointer requires no pointer arithmetic:</p>
 {make_code_box("rook", """
-object Entity {
-    id: int
-    active: bool
-}
+struct Entity {
+    id: int;
+    active: bool;
+};
 
-object Player : Entity {
-    health: int
-    score: int
-}
+struct Player : Entity {
+    health: int;
+    score: int;
+};
 
 int main() {
     Player p;
@@ -601,10 +601,10 @@ my_game/
 <p>In <code>src/engine/math.rook</code>, we define local geometry types:</p>
 {make_code_box("rook", """
 // src/engine/math.rook
-object Vec2 {
-    x: float
-    y: float
-}
+struct Vec2 {
+    x: float;
+    y: float;
+};
 
 Vec2 vec2_new(float x, float y) {
     return Vec2 { x: x, y: y };
@@ -618,11 +618,11 @@ Vec2 vec2_new(float x, float y) {
 #comprise <std/str>
 #comprise "math.rook"       // Sibling comprise inside engine/
 
-object RenderContext {
-    width: int
-    height: int
-    title: Str
-}
+struct RenderContext {
+    width: int;
+    height: int;
+    title: Str;
+};
 
 RenderContext renderer_create(int w, int h, Str title) {
     char* c_title = title.to_cstr();
@@ -670,10 +670,10 @@ int main() {
 <p>C strings (<code>char*</code>) are null-terminated, requiring <code>O(n)</code> scans for length calculations and risking buffer overflows. Rook's <code>Str</code> provides a safe, non-owning slice holding a pointer and an explicit length:</p>
 
 {make_code_box("rook", """
-object Str {
-    data: const char*
-    len: size_t
-}
+struct Str {
+    data: const char*;
+    len: size_t;
+};
 """, "Str Internal Representation")}
 
 <h4>Core Capabilities of <code>Str</code>:</h4>
@@ -815,10 +815,10 @@ int main() {
 #comprise <std/sync>
 #comprise <std/atomic>
 
-object CounterTask {
-    counter: AtomicInt
-    lock: Mutex
-}
+struct CounterTask {
+    counter: AtomicInt;
+    lock: Mutex;
+};
 
 void* worker(void* arg) {
     CounterTask* task = (CounterTask*)arg;
@@ -861,7 +861,7 @@ int main() {
     # Chapter 11: Idiomatic Data Structure Implementation in Rook
     # ==========================================
     ch11 = f"""
-<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, object methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
+<p>Building high-performance data structures in Rook leverages explicit memory allocation, pointers, struct methods via <code>impl</code>, and deterministic cleanup via <code>defer</code>.</p>
 
 <h3>11.1 Dynamic Array (Vector)</h3>
 <p>Here is an idiomatic resizable integer vector demonstrating explicit allocation, growth doubling, and bounds checking:</p>
@@ -871,11 +871,11 @@ int main() {
 #include <stdlib.h>
 #include <stdbool.h>
 
-object IntVector {
-    items: int*
-    count: size_t
-    capacity: size_t
-}
+struct IntVector {
+    items: int*;
+    count: size_t;
+    capacity: size_t;
+};
 
 IntVector vec_new() {
     return IntVector { items: NULL, count: 0, capacity: 0 };
@@ -930,14 +930,14 @@ int main() {
 #comprise <std/mem>
 
 struct ListNode {
-    value: int
-    next: ListNode*
-}
+    value: int;
+    next: ListNode*;
+};
 
-object LinkedList {
-    head: ListNode*
-    pool: ElementPool*
-}
+struct LinkedList {
+    head: ListNode*;
+    pool: ElementPool*;
+};
 
 LinkedList list_create(ElementPool* pool) {
     return LinkedList { head: NULL, pool: pool };

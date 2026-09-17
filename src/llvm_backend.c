@@ -2108,6 +2108,8 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
                 init_val = cast_to_type(g, init_val, rt, vt);
                 LLVMBuildStore(g->builder, init_val, alloca_ref);
             }
+        } else {
+            LLVMBuildStore(g->builder, LLVMConstNull(vt), alloca_ref);
         }
         break;
     }

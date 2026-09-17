@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-object AtomicInt {
-    value: int
-}
+struct AtomicInt {
+    value: int;
+};
 
 AtomicInt atomic_int_new(int val) {
     return AtomicInt { value: val };
@@ -38,9 +38,9 @@ impl AtomicInt {
     }
 }
 
-object AtomicBool {
-    value: bool
-}
+struct AtomicBool {
+    value: bool;
+};
 
 AtomicBool atomic_bool_new(bool val) {
     return AtomicBool { value: val };
@@ -60,9 +60,9 @@ impl AtomicBool {
     }
 }
 
-object AtomicPtr {
-    value: void*
-}
+struct AtomicPtr {
+    value: void*;
+};
 
 AtomicPtr atomic_ptr_new(void* ptr) {
     return AtomicPtr { value: ptr };
