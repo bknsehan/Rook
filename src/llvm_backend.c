@@ -101,7 +101,7 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type);
 static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type);
 static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int nmarms, AstType* result_ast_type, LLVMTypeRef* out_type);
 static void gen_stmt(LLVMGen* g, Stmt* s);
-static long eval_const_expr(Expr* e);
+static long eval_const_expr(LLVMGen* g, Expr* e);
 
 static int is_block_terminated(LLVMGen* g) {
     LLVMBasicBlockRef cur = LLVMGetInsertBlock(g->builder);
@@ -309,7 +309,7 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
         }
         for (int i = 0; i < st->nfields; i++) {
             if (st->fields[i].dim) {
-                long d = eval_const_expr(st->fields[i].dim);
+                long d = eval_const_expr(g, st->fields[i].dim);
                 if (d > 0) {
                     elem_types[fidx++] = LLVMArrayType(gen_llvm_type(g, st->fields[i].type), (unsigned)d);
                     continue;
@@ -566,7 +566,10 @@ static AstType* llvm_resolve_expr_type(LLVMGen* g, Expr* e) {
         const char* s = e->str;
         if (s[0] == '"') return sema_mk_type("const ", "char", 1);
         if (s[0] == '\'') return sema_mk_type("", "char", 0);
-        if (strchr(s, '.') || strchr(s, 'e') || strchr(s, 'E')) {
+        int is_hex = (s[0] == '0' && (s[1] == 'x' || s[1] == 'X'));
+        int is_fp = is_hex ? (strchr(s, 'p') != NULL || strchr(s, 'P') != NULL)
+                           : (strchr(s, '.') != NULL || strchr(s, 'e') != NULL || strchr(s, 'E') != NULL);
+        if (is_fp) {
             size_t sl = strlen(s);
             if (s[sl - 1] == 'f' || s[sl - 1] == 'F') return sema_mk_type("", "float", 0);
             return sema_mk_type("", "double", 0);
@@ -654,7 +657,15 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 LLVMTypeRef cur_st_ll = gen_llvm_type(g, &cur_unptr);
                 if (found >= 0) {
                     LLVMValueRef fptr = LLVMBuildStructGEP2(g->builder, cur_st_ll, cur_ptr, found + offset, e->str);
-                    if (out_type) *out_type = gen_llvm_type(g, cur_st->fields[found].type);
+                    if (out_type) {
+                        if (cur_st->fields[found].dim) {
+                            long d = eval_const_expr(g, cur_st->fields[found].dim);
+                            if (d <= 0) d = 1;
+                            *out_type = LLVMArrayType(gen_llvm_type(g, cur_st->fields[found].type), (unsigned)d);
+                        } else {
+                            *out_type = gen_llvm_type(g, cur_st->fields[found].type);
+                        }
+                    }
                     return fptr;
                 }
                 if (has_parent) {
@@ -679,7 +690,7 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                     } else {
                         Sym* sym = sema_lookup(g->sema, e->a->str);
                         if (sym && sym->decl && sym->decl->dim) {
-                            bound_sz = eval_const_expr(sym->decl->dim);
+                            bound_sz = eval_const_expr(g, sym->decl->dim);
                         }
                     }
                 }
@@ -711,12 +722,13 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             if (e->a && e->a->kind == E_IDENT) {
                 int li = gen_find_local(g, e->a->str);
                 if (li >= 0) at = g->local_ast_types[li];
-            } else if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
-                AstType* parent_at = NULL;
-                if (e->a->a && e->a->a->kind == E_IDENT) {
-                    int li = gen_find_local(g, e->a->a->str);
-                    if (li >= 0) parent_at = g->local_ast_types[li];
+                else {
+                    Sym* sym = sema_lookup(g->sema, e->a->str);
+                    if (sym && sym->type) at = sym->type;
+                    else if (sym && sym->decl && sym->decl->type) at = sym->decl->type;
                 }
+            } else if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
+                AstType* parent_at = llvm_resolve_expr_type(g, e->a->a);
                 if (parent_at && parent_at->name) {
                     StructDef* pst = sema_lookup_struct(g->sema, parent_at->name);
                     while (pst) {
@@ -740,7 +752,19 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 elem_at.name = at->name;
                 elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
             }
-            LLVMTypeRef elem_type = at ? gen_llvm_type(g, &elem_at) : LLVMInt8TypeInContext(g->ctx);
+            LLVMTypeRef elem_type = NULL;
+            if (at) {
+                elem_type = gen_llvm_type(g, &elem_at);
+            } else if (e->a && e->a->kind == E_IDENT) {
+                LLVMValueRef gv = LLVMGetNamedGlobal(g->module, e->a->str);
+                if (gv) {
+                    LLVMTypeRef gvt = LLVMGlobalGetValueType(gv);
+                    if (LLVMGetTypeKind(gvt) == LLVMArrayTypeKind) {
+                        elem_type = LLVMGetElementType(gvt);
+                    }
+                }
+            }
+            if (!elem_type) elem_type = LLVMInt8TypeInContext(g->ctx);
             LLVMValueRef indices[1] = { idx_val };
             LLVMValueRef gep = LLVMBuildGEP2(g->builder, elem_type, base_ptr, indices, 1, "idxgep");
             if (out_type) *out_type = elem_type;
@@ -808,7 +832,10 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             if (out_type) *out_type = LLVMInt8TypeInContext(g->ctx);
             return c_val;
         }
-        if (strchr(s, '.') || strchr(s, 'e') || strchr(s, 'E')) {
+        int is_hex = (s[0] == '0' && (s[1] == 'x' || s[1] == 'X'));
+        int is_fp = is_hex ? (strchr(s, 'p') != NULL || strchr(s, 'P') != NULL)
+                           : (strchr(s, '.') != NULL || strchr(s, 'e') != NULL || strchr(s, 'E') != NULL);
+        if (is_fp) {
             double d = strtod(s, NULL);
             size_t sl = strlen(s);
             if (s[sl - 1] == 'f' || s[sl - 1] == 'F') {
@@ -876,21 +903,48 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMValueRef gv = LLVMGetNamedGlobal(g->module, name);
         if (gv) {
             LLVMTypeRef vt = LLVMGlobalGetValueType(gv);
+            if (LLVMGetTypeKind(vt) == LLVMArrayTypeKind) {
+                if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
+                LLVMValueRef indices[2] = {
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0),
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0)
+                };
+                return LLVMBuildGEP2(g->builder, vt, gv, indices, 2, name);
+            }
             if (out_type) *out_type = vt;
             return LLVMBuildLoad2(g->builder, vt, gv, name);
         }
 
         Sym* sym = sema_lookup(g->sema, name);
         if (sym && sym->kind == SYM_VAR) {
+            if (sym->decl && sym->decl->init) {
+                return gen_expr(g, sym->decl->init, out_type);
+            }
             LLVMValueRef existing_gv = LLVMGetNamedGlobal(g->module, name);
             if (existing_gv) {
                 LLVMTypeRef gvt = LLVMGlobalGetValueType(existing_gv);
+                if (LLVMGetTypeKind(gvt) == LLVMArrayTypeKind) {
+                    if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
+                    LLVMValueRef indices[2] = {
+                        LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0),
+                        LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0)
+                    };
+                    return LLVMBuildGEP2(g->builder, gvt, existing_gv, indices, 2, name);
+                }
                 if (out_type) *out_type = gvt;
                 return LLVMBuildLoad2(g->builder, gvt, existing_gv, name);
             }
             LLVMTypeRef gvt = sym->type ? gen_llvm_type(g, sym->type) : LLVMPointerTypeInContext(g->ctx, 0);
             LLVMValueRef new_gv = LLVMAddGlobal(g->module, gvt, name);
             LLVMSetLinkage(new_gv, LLVMExternalLinkage);
+            if (LLVMGetTypeKind(gvt) == LLVMArrayTypeKind) {
+                if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
+                LLVMValueRef indices[2] = {
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0),
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0)
+                };
+                return LLVMBuildGEP2(g->builder, gvt, new_gv, indices, 2, name);
+            }
             if (out_type) *out_type = gvt;
             return LLVMBuildLoad2(g->builder, gvt, new_gv, name);
         }
@@ -1367,6 +1421,28 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 return success_i1;
             }
         }
+        if (strcmp(fn_name, "assert") == 0 && e->nitems >= 1) {
+            LLVMTypeRef ct = NULL;
+            LLVMValueRef cond = gen_expr(g, e->items[0], &ct);
+            LLVMTypeRef i1_t = LLVMInt1TypeInContext(g->ctx);
+            LLVMValueRef cond_i1 = cast_to_type(g, cond, ct, i1_t);
+            LLVMValueRef is_zero = LLVMBuildICmp(g->builder, LLVMIntEQ, cond_i1, LLVMConstNull(i1_t), "assert_fail");
+
+            LLVMBasicBlockRef fail_bb = LLVMAppendBasicBlockInContext(g->ctx, g->cur_fn, "assert_fail");
+            LLVMBasicBlockRef ok_bb = LLVMAppendBasicBlockInContext(g->ctx, g->cur_fn, "assert_ok");
+            LLVMBuildCondBr(g->builder, is_zero, fail_bb, ok_bb);
+
+            LLVMPositionBuilderAtEnd(g->builder, fail_bb);
+            LLVMTypeRef trap_ty = LLVMFunctionType(LLVMVoidTypeInContext(g->ctx), NULL, 0, 0);
+            LLVMValueRef trap_fn = LLVMGetNamedFunction(g->module, "llvm.trap");
+            if (!trap_fn) trap_fn = LLVMAddFunction(g->module, "llvm.trap", trap_ty);
+            LLVMBuildCall2(g->builder, trap_ty, trap_fn, NULL, 0, "");
+            LLVMBuildUnreachable(g->builder);
+
+            LLVMPositionBuilderAtEnd(g->builder, ok_bb);
+            if (out_type) *out_type = LLVMVoidTypeInContext(g->ctx);
+            return NULL;
+        }
         LLVMValueRef fn_val = LLVMGetNamedFunction(g->module, fn_name);
         LLVMTypeRef fn_type = NULL;
 
@@ -1536,6 +1612,11 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
             int l_idx = gen_find_local(g, e->a->str);
             if (l_idx >= 0) {
                 lt = g->local_types[l_idx];
+            } else {
+                LLVMValueRef gv = LLVMGetNamedGlobal(g->module, e->a->str);
+                if (gv) {
+                    lt = LLVMGlobalGetValueType(gv);
+                }
             }
         }
         if (!lt) {
@@ -1551,6 +1632,14 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMTypeRef elem_type = NULL;
         LLVMValueRef lptr = gen_lvalue(g, e, &elem_type);
         if (lptr && elem_type) {
+            if (LLVMGetTypeKind(elem_type) == LLVMArrayTypeKind) {
+                if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
+                LLVMValueRef indices[2] = {
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0),
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0)
+                };
+                return LLVMBuildGEP2(g->builder, elem_type, lptr, indices, 2, e->str ? e->str : "member_arr");
+            }
             if (out_type) *out_type = elem_type;
             return LLVMBuildLoad2(g->builder, elem_type, lptr, e->str);
         }
@@ -1561,6 +1650,14 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMTypeRef elem_type = NULL;
         LLVMValueRef lptr = gen_lvalue(g, e, &elem_type);
         if (lptr && elem_type) {
+            if (LLVMGetTypeKind(elem_type) == LLVMArrayTypeKind) {
+                if (out_type) *out_type = LLVMPointerTypeInContext(g->ctx, 0);
+                LLVMValueRef indices[2] = {
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0),
+                    LLVMConstInt(LLVMInt64TypeInContext(g->ctx), 0, 0)
+                };
+                return LLVMBuildGEP2(g->builder, elem_type, lptr, indices, 2, "sub_arr");
+            }
             if (out_type) *out_type = elem_type;
             return LLVMBuildLoad2(g->builder, elem_type, lptr, "load_idx");
         }
@@ -2047,21 +2144,27 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
 
 /* Evaluate a constant integer expression (E_LITERAL, unary minus, E_BINARY with +, -, multiply, divide)
    at codegen time. Returns the computed value, or 1 on failure (safe default for array dimensions). */
-static long eval_const_expr(Expr* e) {
+static long eval_const_expr(LLVMGen* g, Expr* e) {
     if (!e) return 1;
     if (e->kind == E_LITERAL && e->str) {
-        long v = atol(e->str);
-        return v > 0 ? v : 1;
+        long v = strtol(e->str, NULL, 0);
+        return v;
+    }
+    if (e->kind == E_IDENT && e->str && g && g->sema) {
+        Sym* sym = sema_lookup(g->sema, e->str);
+        if (sym && sym->decl && sym->decl->init) {
+            return eval_const_expr(g, sym->decl->init);
+        }
     }
     if (e->kind == E_UNARY && e->str && strcmp(e->str, "-") == 0 && e->a) {
-        return -eval_const_expr(e->a);
+        return -eval_const_expr(g, e->a);
     }
     if (e->kind == E_PAREN && e->a) {
-        return eval_const_expr(e->a);
+        return eval_const_expr(g, e->a);
     }
     if (e->kind == E_BINARY && e->str && e->a && e->b) {
-        long lhs = eval_const_expr(e->a);
-        long rhs = eval_const_expr(e->b);
+        long lhs = eval_const_expr(g, e->a);
+        long rhs = eval_const_expr(g, e->b);
         if (strcmp(e->str, "+") == 0) return lhs + rhs;
         if (strcmp(e->str, "-") == 0) return lhs - rhs;
         if (strcmp(e->str, "*") == 0) return lhs * rhs;
@@ -2091,7 +2194,7 @@ static void gen_stmt(LLVMGen* g, Stmt* s) {
             vt = LLVMInt32TypeInContext(g->ctx);
         }
         if (d->dim) {
-            long dim_sz = eval_const_expr(d->dim);
+            long dim_sz = eval_const_expr(g, d->dim);
             if (dim_sz <= 0) dim_sz = 1;
             vt = LLVMArrayType(vt, (unsigned)dim_sz);
         }
@@ -2534,6 +2637,7 @@ static void llvm_backend_compile_and_link_raw_c(LLVMGen* g, Program* prog) {
         argvec_add(&av, target_arg);
     }
     argvec_add(&av, "-Dstatic=");
+    argvec_add(&av, "-Dinline=");
     argvec_add(&av, "-S");
     argvec_add(&av, "-emit-llvm");
     argvec_add(&av, "-O0");

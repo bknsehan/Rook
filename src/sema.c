@@ -209,6 +209,7 @@ static void cl_load(const char* basedir, const char* override) {
         i++;
     }
     free(buf);
+    sema_register_cfunc("assert", "void", "int", 1, 0);
 }
 
 const char* sema_lookup_cfunc(const char* name) {
@@ -402,6 +403,7 @@ static Sym* sym_new_var(const char* name, Decl* decl) {
     s->name = strdup(name);
     s->kind = SYM_VAR;
     s->decl = decl;
+    if (decl) s->type = decl->type;
     return s;
 }
 
@@ -465,6 +467,37 @@ int sema_register_cvar(Sema* s, const char* name, AstType* type) {
     d->name = strdup(name);
     d->type = type;
     Sym* sym = sym_new_var(name, d);
+    sym->type = type;
+    scope_add(s->scope, sym);
+    return 1;
+}
+
+int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* val_str) {
+    if (!s || !s->scope || !name || !name[0] || !type) return 0;
+    Sym* existing = sema_lookup(s, name);
+    if (existing) {
+        if (!existing->decl) {
+            existing->decl = calloc(1, sizeof *existing->decl);
+            existing->decl->name = strdup(name);
+            existing->decl->type = type;
+        }
+        if (val_str && !existing->decl->init) {
+            Expr* lit = ast_expr_new(E_LITERAL);
+            lit->str = strdup(val_str);
+            existing->decl->init = lit;
+        }
+        return 1;
+    }
+    Decl* d = calloc(1, sizeof *d);
+    d->name = strdup(name);
+    d->type = type;
+    if (val_str) {
+        Expr* lit = ast_expr_new(E_LITERAL);
+        lit->str = strdup(val_str);
+        d->init = lit;
+    }
+    Sym* sym = sym_new_var(name, d);
+    sym->type = type;
     scope_add(s->scope, sym);
     return 1;
 }
@@ -1318,6 +1351,20 @@ static void scan_raw_region(Checker* ck, const char* raw, int len, int scan_incl
                         memcpy(w, id_start, id_len);
                         w[id_len] = '\0';
                         raw_add(w);
+                        while (*cur == ' ' || *cur == '\t') cur++;
+                        if (*cur == '-' || *cur == '+' || (*cur >= '0' && *cur <= '9')) {
+                            const char* vstart = cur;
+                            while (*cur && *cur != '\n' && *cur != ' ' && *cur != '\t' && *cur != '\r') cur++;
+                            int vlen = (int)(cur - vstart);
+                            if (vlen > 0 && vlen < 64) {
+                                char vbuf[64];
+                                memcpy(vbuf, vstart, vlen);
+                                vbuf[vlen] = '\0';
+                                if (ck && ck->s) {
+                                    sema_register_cconst(ck->s, w, sema_mk_type("", "int", 0), vbuf);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2216,7 +2263,7 @@ static int ck_block_returns(Checker* ck, Stmt* s) {
 
 static void ck_check_returns(Checker* ck, FnDef* f) {
     if (!f || !f->body || !f->ret) return;
-    if (strcmp(f->ret->name, "void") == 0) return;
+    if (f->ret->ptrs == 0 && strcmp(f->ret->name, "void") == 0) return;
     if (f->nparams > 0 && strcmp(f->params[0].name, "self") == 0 && !f->body) return;
     if (ck_block_returns(ck, f->body)) return;
     char msg[256];
@@ -2351,17 +2398,20 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         if (s->e) ck_expr(ck, s->e);
         if (ck->cur_fn) {
             AstType* want = ck_fn_ret_instantiated(ck, ck->cur_fn);
-            if (want && strcmp(want->name, "void") != 0) {
+            int is_void = want && want->ptrs == 0 && strcmp(want->name, "void") == 0;
+            if (want && !is_void) {
                 if (!s->e) {
+                    char* ws = ck_type_str(want);
                     char msg[256];
                     snprintf(msg, sizeof msg, "function '%s' returns %s but 'return' has no value",
-                             ck->cur_fn->name, want->name);
+                             ck->cur_fn->name, ws ? ws : want->name);
                     ck_err_at(ck, s->start, s->len >= 1 ? s->len : 1, msg);
+                    free(ws);
                 }
-            } else if (want && s->e) {
+            } else if (want && is_void && s->e) {
                 /* returning a value from a void function */
                 AstType* got = ck_resolve_type(ck, s->e);
-                if (got && strcmp(got->name, "void") != 0) {
+                if (got && (got->ptrs > 0 || strcmp(got->name, "void") != 0)) {
                     char msg[256];
                     snprintf(msg, sizeof msg, "function '%s' returns void but 'return' has a value",
                              ck->cur_fn->name);
@@ -2369,9 +2419,9 @@ static void ck_stmt(Checker* ck, Stmt* s) {
                 }
                 free(got);
             }
-            if (want && s->e) {
+            if (want && !is_void && s->e) {
                 AstType* got = ck_resolve_type(ck, s->e);
-                if (want && got && strcmp(want->name, "void") != 0) {
+                if (got) {
                     int ok = ck_types_compatible(ck, want, got);
                     if (!ok) {
                         char* ws = ck_type_str(want);
@@ -2382,8 +2432,8 @@ static void ck_stmt(Checker* ck, Stmt* s) {
                         ck_err_expr(ck, s->e, msg);
                         free(ws); free(gs);
                     }
+                    free(got);
                 }
-                free(got);
             }
             free(want);
         }
@@ -2420,7 +2470,26 @@ static void ck_stmt(Checker* ck, Stmt* s) {
 static void ck_check_impl(Checker* ck, ImplDef* im) {
     /* receiver type: target name */
     AstType* recv = im->target;
-    /* `impl` is allowed on all `struct` and `sum` types. */
+    if (!recv || !recv->name) return;
+
+    StructDef* st = sema_lookup_struct(ck->s, recv->name);
+    EnumDef* ed = sema_lookup_enum(ck->s, recv->name);
+    if (!st && !ed && !is_enum_type(ck->s, recv->name)) {
+        Sym* sym = sema_lookup(ck->s, recv->name);
+        if (!sym || (sym->kind != SYM_STRUCT && sym->kind != SYM_ENUM && sym->kind != SYM_TYPE)) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "cannot implement methods for undefined type '%s'", recv->name);
+            int tn = 0;
+            const char** tc = collect_type_names(ck->s->prog, &tn);
+            const char* closest = lev_nearest(recv->name, tc, tn);
+            char* full = with_suggestion(msg, closest);
+            free(tc);
+            int rlen = (recv && recv->name) ? (int)strlen(recv->name) : 1;
+            ck_err_at(ck, im->start, rlen, full ? full : msg);
+            free(full);
+            return;
+        }
+    }
 
     for (int i = 0; i < im->nmethods; i++) {
         FnDef* m = im->methods[i];

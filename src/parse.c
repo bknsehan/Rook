@@ -356,6 +356,7 @@ static Expr* parse_unary(Parser* p) {
     if (is_kw(t, "sizeof")) {
         adv(p);
         if (!expect_punct(p, "(")) return NULL;
+        int save = p->idx;
         AstType* ty = try_parse_type(p);
         if (ty && tok_is(cur(p), ")")) {
             adv(p);
@@ -364,6 +365,7 @@ static Expr* parse_unary(Parser* p) {
             return e;
         }
         free(ty);
+        p->idx = save;
         Expr* inner = parse_expr(p);
         if (!inner) return NULL;
         if (!expect_punct(p, ")")) return NULL;

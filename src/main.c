@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include <dirent.h>
+#include "rk_dirent.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1726,12 +1726,13 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         char* source = util_read_file(rook_path, &len);
         if (!source) { fprintf(stderr, "warning: could not read %s\n", rook_path); continue; }
 
-        const char** inc_list = NULL;
-        if (cfg.n_include_dirs > 0) {
-            inc_list = (const char**)malloc(cfg.n_include_dirs * sizeof(const char*));
-            for (size_t j = 0; j < cfg.n_include_dirs; j++) inc_list[j] = cfg.include_dirs[j];
-        }
-        char* expanded = resolve_includes(source, len, src_dir, inc_list, cfg.n_include_dirs, 0, rook_path);
+        size_t n_inc_total = cfg.n_include_dirs + (src_dir[0] ? 1 : 0);
+        const char** inc_list = (const char**)malloc((n_inc_total > 0 ? n_inc_total : 1) * sizeof(const char*));
+        size_t cur_inc = 0;
+        if (src_dir[0]) inc_list[cur_inc++] = src_dir;
+        for (size_t j = 0; j < cfg.n_include_dirs; j++) inc_list[cur_inc++] = cfg.include_dirs[j];
+
+        char* expanded = resolve_includes(source, len, src_dir, inc_list, cur_inc, 0, rook_path);
         free(source);
         if (!expanded) {
             fprintf(stderr, "warning: include resolution failed for %s\n", rook_path);
@@ -1742,7 +1743,7 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         len = (int)strlen(expanded);
 
         Sema* sema = sema_new();
-        sema_set_include_dirs(sema, inc_list, cfg.n_include_dirs);
+        sema_set_include_dirs(sema, inc_list, cur_inc);
         int ntoks = 0;
         Token* toks = lex_all(expanded, len, &ntoks);
         Program* p = parse_program(expanded, len, toks, ntoks);
@@ -1757,8 +1758,8 @@ static int do_build(const char* proj_path, const char* cli_target, const char* c
         }
         sema_set_source(sema, expanded, len);
         sema_load_commandlist(src_dir, NULL);
-        c_import_scan_and_load(sema, expanded, len, src_dir, inc_list, cfg.n_include_dirs);
-        c_import_program_raw(sema, p, inc_list, cfg.n_include_dirs);
+        c_import_scan_and_load(sema, expanded, len, src_dir, inc_list, cur_inc);
+        c_import_program_raw(sema, p, inc_list, cur_inc);
         sema_collect(sema, p);
         sema_check(sema, p);
         if (sema->err) {

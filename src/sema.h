@@ -92,5 +92,6 @@ int sema_register_cfunc(const char* name, const char* ret, const char* param_typ
 int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nfields);
 int sema_register_ctypedef(Sema* s, const char* name, AstType* type);
 int sema_register_cvar(Sema* s, const char* name, AstType* type);
+int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* val_str);
 
 #endif

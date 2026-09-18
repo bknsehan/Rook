@@ -16,7 +16,7 @@
 #else
 #include <unistd.h>
 #endif
-#include <dirent.h>
+#include "rk_dirent.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 

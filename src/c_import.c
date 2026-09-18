@@ -305,7 +305,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
         CXString ename = clang_getCursorSpelling(cursor);
         const char* name = clang_getCString(ename);
         if (name && name[0]) {
-            sema_register_cvar(ctx->sema, name, sema_mk_type("", "int", 0));
+            long long eval = clang_getEnumConstantDeclValue(cursor);
+            char vbuf[32];
+            snprintf(vbuf, sizeof(vbuf), "%lld", eval);
+            sema_register_cconst(ctx->sema, name, sema_mk_type("", "int", 0), vbuf);
         }
         clang_disposeString(ename);
     } else if (kind == CXCursor_VarDecl) {
@@ -338,7 +341,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                             CXString val_str = clang_getTokenSpelling(tu, tokens[ti]);
                             const char* val = clang_getCString(val_str);
                             if (val && is_c_num_literal(val)) {
-                                sema_register_cvar(ctx->sema, name, sema_mk_type("", "int", 0));
+                                sema_register_cconst(ctx->sema, name, sema_mk_type("", "int", 0), val);
                                 registered = 1;
                             }
                             clang_disposeString(val_str);

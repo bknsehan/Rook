@@ -1,0 +1,13 @@
+struct MyTarget {
+    int id;
+};
+
+// Typo: Mytarget instead of MyTarget
+impl Mytarget {
+    void do_something(self) {
+    }
+}
+
+int main() {
+    return 0;
+}

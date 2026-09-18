@@ -27,6 +27,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 target_compile_definitions(rokade PRIVATE ROKADE_VERSION="${PROJECT_VERSION}")
+if(WIN32)
+  target_compile_definitions(rokade PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+endif()
 
 # ─── Optional LLVM & libclang support ────────────────────────────────
 option(ROKADE_ENABLE_LLVM "Enable native LLVM backend and libclang C-interop" ON)
