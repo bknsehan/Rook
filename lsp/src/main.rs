@@ -122,13 +122,53 @@ fn find_std_dir() -> Option<PathBuf> {
     None
 }
 
-fn uri_to_path(uri_str: &str) -> Option<PathBuf> {
-    if let Some(rest) = uri_str.strip_prefix("file://") {
-        #[cfg(windows)]
-        let rest = rest.trim_start_matches('/');
-        return Some(PathBuf::from(rest));
+fn ascii_hex(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
-    None
+}
+
+pub fn percent_decode(s: &str) -> String {
+    let mut bytes = Vec::with_capacity(s.len());
+    let mut chars = s.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let h1 = chars.next();
+            let h2 = chars.next();
+            if let (Some(h1), Some(h2)) = (h1, h2) {
+                if let (Some(d1), Some(d2)) = (ascii_hex(h1), ascii_hex(h2)) {
+                    bytes.push((d1 << 4) | d2);
+                    continue;
+                }
+                bytes.push(b'%');
+                bytes.push(h1);
+                bytes.push(h2);
+            } else {
+                bytes.push(b'%');
+                if let Some(h1) = h1 { bytes.push(h1); }
+            }
+        } else {
+            bytes.push(b);
+        }
+    }
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+pub fn uri_to_path(uri_str: &str) -> Option<PathBuf> {
+    let raw = if let Some(rest) = uri_str.strip_prefix("file://") {
+        rest
+    } else if uri_str.starts_with('/') {
+        uri_str
+    } else {
+        return None;
+    };
+    #[cfg(windows)]
+    let raw = raw.trim_start_matches('/');
+    let decoded = percent_decode(raw);
+    Some(PathBuf::from(decoded))
 }
 
 // ─── Directives & Scanners ─────────────────────────────────────────────
@@ -1336,6 +1376,28 @@ fn publish_diagnostics<W: Write>(w: &mut W, uri: &str, diags: &[RDiag]) {
     send_notification(w, "textDocument/publishDiagnostics", serde_json::to_value(params).unwrap());
 }
 
+fn utf16_col_to_byte_offset(s: &str, col_utf16: usize) -> usize {
+    let mut utf16_count = 0;
+    for (byte_idx, ch) in s.char_indices() {
+        if utf16_count >= col_utf16 {
+            return byte_idx;
+        }
+        utf16_count += ch.len_utf16();
+    }
+    s.len()
+}
+
+fn byte_offset_to_utf16_col(s: &str, byte_offset: usize) -> u32 {
+    let mut utf16_count = 0;
+    for (b_idx, ch) in s.char_indices() {
+        if b_idx >= byte_offset {
+            break;
+        }
+        utf16_count += ch.len_utf16() as u32;
+    }
+    utf16_count
+}
+
 // ─── Outline Symbols ───────────────────────────────────────────────────
 
 #[allow(deprecated)]
@@ -1358,18 +1420,30 @@ fn rook_symbols(rokade: &str, commandlist_dir: &str, content: &str, doc_uri: &st
     let v: Value = match serde_json::from_str(&s) { Ok(v) => v, Err(_) => return Vec::new() };
     let arr = match v.as_array() { Some(a) => a, None => return Vec::new() };
     let uri: Uri = match doc_uri.parse() { Ok(u) => u, Err(_) => return Vec::new() };
+    let content_lines: Vec<&str> = content.lines().collect();
+
     arr.iter().filter_map(|e| {
         let name = e.get("name").and_then(|x| x.as_str())?;
         let kind = e.get("kind").and_then(|k| k.as_str())?;
+        if kind == "impl" || name == "impl" {
+            return None;
+        }
         let line = e.get("line").and_then(|x| x.as_u64()).unwrap_or(1) as u32;
         let col = e.get("col").and_then(|x| x.as_u64()).unwrap_or(1) as u32;
         let sym_kind = match kind {
             "fn" => lsp_types::SymbolKind::FUNCTION,
             "struct" => lsp_types::SymbolKind::STRUCT,
             "enum" => lsp_types::SymbolKind::ENUM,
-            "impl" => lsp_types::SymbolKind::NAMESPACE,
             _ => return None,
         };
+
+        // Filter out symbols that do not belong to the current file (e.g. from inlined includes)
+        let line_idx = line.saturating_sub(1) as usize;
+        let line_text = content_lines.get(line_idx)?;
+        if !line_text.contains(name) {
+            return None;
+        }
+
         let pos = Position { line: line.saturating_sub(1), character: col.saturating_sub(1) };
         Some(lsp_types::SymbolInformation {
             name: name.to_string(),
@@ -1386,7 +1460,7 @@ fn rook_symbols(rokade: &str, commandlist_dir: &str, content: &str, doc_uri: &st
 
 pub fn get_signature_help(state: &ServerState, content: &str, pos: Position) -> Option<SignatureHelp> {
     let line = content.lines().nth(pos.line as usize)?;
-    let char_idx = (pos.character as usize).min(line.len());
+    let char_idx = utf16_col_to_byte_offset(line, pos.character as usize);
     let prefix = &line[..char_idx];
 
     // Scan backwards for unclosed '('
@@ -1496,7 +1570,7 @@ pub fn get_document_highlights(content: &str, pos: Position) -> Vec<DocumentHigh
         None => return highlights,
     };
 
-    let col = pos.character as usize;
+    let col = utf16_col_to_byte_offset(line, pos.character as usize);
     if col >= line.len() { return highlights; }
 
     let bytes = line.as_bytes();
@@ -1535,10 +1609,12 @@ pub fn get_document_highlights(content: &str, pos: Position) -> Vec<DocumentHigh
                 let is_right_bound = actual_end == cur_bytes.len() || (!cur_bytes[actual_end].is_ascii_alphanumeric() && cur_bytes[actual_end] != b'_');
 
                 if is_left_bound && is_right_bound {
+                    let start_col = byte_offset_to_utf16_col(cur_line, actual_start);
+                    let end_col = byte_offset_to_utf16_col(cur_line, actual_end);
                     highlights.push(DocumentHighlight {
                         range: Range {
-                            start: Position { line: l_idx as u32, character: actual_start as u32 },
-                            end: Position { line: l_idx as u32, character: actual_end as u32 },
+                            start: Position { line: l_idx as u32, character: start_col },
+                            end: Position { line: l_idx as u32, character: end_col },
                         },
                         kind: Some(DocumentHighlightKind::TEXT),
                     });
@@ -1683,8 +1759,12 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                     let v: Value = serde_json::from_str(&s).ok()?;
                     if v.is_null() { return None; }
                     let l: Location = serde_json::from_value(v).ok()?;
-                    let target_uri: Uri = uri.parse().ok()?;
-                    Some(Location { uri: target_uri, range: l.range })
+                    if l.uri.as_str().is_empty() {
+                        let target_uri: Uri = uri.parse().ok()?;
+                        Some(Location { uri: target_uri, range: l.range })
+                    } else {
+                        Some(l)
+                    }
                 });
                 send_response(w, frame.id.clone(), result.map(|l| serde_json::to_value(l).unwrap()).unwrap_or(Value::Null));
             }
@@ -1725,29 +1805,37 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
         Some("textDocument/formatting") => {
             if let Ok(p) = serde_json::from_value::<DocumentFormattingParams>(params) {
                 let uri = p.text_document.uri.to_string();
-                let content = state.docs.get(&uri).map(|(c, _)| c.clone()).unwrap_or_default();
-                let mut tmp = std::env::temp_dir();
-                tmp.push(format!("rook_lsp_fmt_{}.rook", DOC_SEQ.fetch_add(1, Ordering::Relaxed)));
-                if std::fs::write(&tmp, &content).is_ok() {
-                    let status = Command::new(&state.rokade)
+                if let Some((content, _)) = state.docs.get(&uri) {
+                    let mut tmp = std::env::temp_dir();
+                    tmp.push(format!("rook_lsp_fmt_{}.rook", DOC_SEQ.fetch_add(1, Ordering::Relaxed)));
+                    let _ = std::fs::write(&tmp, content);
+                    let out = Command::new(&state.rokade)
                         .arg("fmt")
                         .arg(&tmp)
-                        .status();
-                    let formatted = if status.map(|s| s.success()).unwrap_or(false) {
-                        std::fs::read_to_string(&tmp).ok()
+                        .output();
+                    let formatted = if let Ok(o) = out {
+                        if o.status.success() {
+                            std::fs::read_to_string(&tmp).ok()
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     };
                     let _ = std::fs::remove_file(&tmp);
                     if let Some(new_text) = formatted {
-                        if new_text != content {
+                        if new_text != *content {
                             let lines: Vec<&str> = content.lines().collect();
                             let line_count = lines.len() as u32;
-                            let last_col = lines.last().map(|l| l.len() as u32).unwrap_or(0);
+                            let (end_line, end_col) = if content.ends_with('\n') || content.ends_with("\r\n") {
+                                (line_count, 0)
+                            } else {
+                                (line_count.saturating_sub(1), lines.last().map(|l| l.len() as u32).unwrap_or(0))
+                            };
                             let edit = TextEdit {
                                 range: Range {
                                     start: Position { line: 0, character: 0 },
-                                    end: Position { line: line_count, character: last_col },
+                                    end: Position { line: end_line, character: end_col },
                                 },
                                 new_text,
                             };
@@ -2102,5 +2190,57 @@ mod tests {
         let loc2 = find_definition(&mut state, code, "file:///tmp/main.rook", Position { line: 1, character: 11 });
         assert!(loc2.is_some(), "expected definition for #comprise <std/io>");
         assert!(loc2.unwrap().uri.to_string().contains("std/io.rook"));
+    }
+
+    #[test]
+    fn test_uri_to_path_percent_encoding() {
+        let uri = "file:///home/user/my%20projects/test%20code/main.rook";
+        let path = uri_to_path(uri).expect("path resolved");
+        assert_eq!(path, PathBuf::from("/home/user/my projects/test code/main.rook"));
+
+        let uri_space = "file:///tmp/hello%20world.rook";
+        let path_space = uri_to_path(uri_space).expect("path resolved");
+        assert_eq!(path_space, PathBuf::from("/tmp/hello world.rook"));
+    }
+
+    #[test]
+    fn test_signature_help_non_ascii() {
+        let state = ServerState {
+            docs: HashMap::new(),
+            cfuncs: parse_commandlist(COMMANDLIST_JSON),
+            rokade: "rokade".to_string(),
+            c_header_cache: HashMap::new(),
+            rook_module_cache: HashMap::new(),
+            std_dir: find_std_dir(),
+        };
+
+        // Multibyte emojis and UTF-8 characters on the same line before function call
+        let code = "// Halo dunia! 🚀 🔥\nlet msg = \"halo 👋\"; printf(\"val: %d\", 42);\n";
+        // Cursor right after the comma inside printf("val: %d", |
+        // Line 1: 'let msg = "halo 👋"; printf("val: %d", '
+        let line1 = code.lines().nth(1).unwrap();
+        let comma_idx = line1.find(',').unwrap();
+        let utf16_pos = byte_offset_to_utf16_col(line1, comma_idx + 1);
+
+        let help = get_signature_help(&state, code, Position { line: 1, character: utf16_pos });
+        assert!(help.is_some(), "signature help should succeed without panicking on multibyte line");
+        let sig = help.unwrap();
+        assert_eq!(sig.active_parameter, Some(1));
+    }
+
+    #[test]
+    fn test_rook_symbols_does_not_leak_comprise() {
+        let code = "#comprise <std/io>\n\nstruct LocalPlayer {\n    id: int;\n};\n\nint main() {\n    return 0;\n}\n";
+        let rokade = std::env::var("ROKADE").unwrap_or_else(|_| "../build/rokade".to_string());
+        let cmdir = ensure_commandlist_dir();
+        let syms = rook_symbols(&rokade, &cmdir, code, "file:///tmp/test_main.rook");
+        if !syms.is_empty() {
+            let names: Vec<String> = syms.into_iter().map(|s| s.name).collect();
+            assert!(names.contains(&"LocalPlayer".to_string()));
+            assert!(names.contains(&"main".to_string()));
+            assert!(!names.contains(&"Str".to_string()), "should not leak Str from std");
+            assert!(!names.contains(&"println".to_string()), "should not leak println from std");
+            assert!(!names.contains(&"impl".to_string()), "should not surface impl as symbol");
+        }
     }
 }

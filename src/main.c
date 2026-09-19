@@ -3429,23 +3429,9 @@ static int do_symbols(int argc, char** argv) {
         fprintf(stderr, "rokade: cannot read '%s'\n", path);
         return 1;
     }
-    char basedir[4096];
-    const char* slash = rk_find_last_slash(path);
-    if (slash) {
-        size_t dlen = (size_t)(slash - path);
-        snprintf(basedir, sizeof(basedir), "%.*s", (int)dlen, path);
-    } else {
-        snprintf(basedir, sizeof(basedir), ".");
-    }
-    char* expanded = resolve_includes(src, len, basedir, NULL, 0, 0, path);
-    free(src);
-    if (!expanded) {
-        fprintf(stderr, "rokade: error resolving includes in '%s'\n", path);
-        return 1;
-    }
     int ntoks = 0;
-    Token* toks = lex_all(expanded, (int)strlen(expanded), &ntoks);
-    Program* p = parse_program(expanded, (int)strlen(expanded), toks, ntoks);
+    Token* toks = lex_all(src, len, &ntoks);
+    Program* p = parse_program(src, len, toks, ntoks);
     printf("[");
     if (p) {
         int emitted = 0;
@@ -3469,9 +3455,16 @@ static int do_symbols(int argc, char** argv) {
                 line = it->ed->line; col = it->ed->col;
                 break;
             case TOP_IMPL:
-                name = "impl"; kind = "impl";
-                line = it->im->line; col = it->im->col;
-                break;
+                if (it->im) {
+                    for (int m = 0; m < it->im->nmethods; m++) {
+                        FnDef* fn = it->im->methods[m];
+                        if (!fn) continue;
+                        printf("%s{\"name\":\"%s\",\"kind\":\"fn\",\"line\":%d,\"col\":%d}",
+                               emitted ? "," : "", fn->name, fn->line, fn->col);
+                        emitted++;
+                    }
+                }
+                continue;
             default:
                 continue;
             }
@@ -3484,7 +3477,7 @@ static int do_symbols(int argc, char** argv) {
     }
     printf("]\n");
     program_free(p);
-    free(expanded);
+    free(src);
     free(toks);
     return 0;
 }
