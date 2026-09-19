@@ -5,3 +5,4 @@ array: len=3 items=tcp,tls,quic
 tables: count=2 s0=alpha(10.0.0.1,1) s1=beta(10.0.0.2,0)
 builder: target=native opt=3 debug=0
 advanced_toml: ab=1 sq=100 big=9999999999 isinf=1 dt=1979-05-27T07:32:00Z host=localhost port=8080 types=1,2
+toml_nits: b_len=2 bad_date_rejected=1 pos_ok=1 builder2_ok=1

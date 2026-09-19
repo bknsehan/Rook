@@ -7,3 +7,4 @@ sub_ok=1 sub_has_port=1
 raw_arr_len=3 elem1=200
 builder={"lang":"Rook","ver":7,"flags":["fast","safe",true],"opt":null}
 advanced_json: esk=123 u1=Bob big=9999999999 pi=3.14 emoji=😀 valid=1 invalid_rejected=1
+json_nits: plus_rejected=1 err_pos_ok=1 pretty_ok=1

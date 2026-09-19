@@ -109,6 +109,29 @@ int main() {
     printf("advanced_toml: ab=%d sq=%d big=%lld isinf=%d dt=%s host=%s port=%d types=%d,%d\n",
            val_ab, val_sq, (long long)big_int, (int)isinf(v_inf), dt, in_host, in_port, host_t, port_t);
 
+    // 8. Bracket in strings, datetime range rejection, toml_find_pos, builder literal & array setters
+    const char* bracket_toml = "arr = [ \"]\", \"]\" ]\n[sec]\nport = 9000\n";
+    int b_len = toml_get_array_len(bracket_toml, "", "arr");
+    bool bad_date_rejected = !toml_is_date_time("9999-99-99") && toml_is_date_time("2026-09-19");
+    int sec_l = 0;
+    int sec_c = 0;
+    bool pos_ok = toml_find_pos(bracket_toml, "sec", "port", &sec_l, &sec_c) && sec_l == 3;
+
+    TomlBuilder tb2 = toml_builder_new(128);
+    defer tb2.destroy();
+    tb2.set_literal_string("quote", "it's working");
+    tb2.set_string("ctrl", "\x02");
+    const char* s_items[2];
+    s_items[0] = "x";
+    s_items[1] = "y";
+    tb2.set_array_strings("letters", s_items, 2);
+    char* b2_str = tb2.to_cstr();
+    bool builder2_ok = (strstr(b2_str, "quote = \"it's working\"") != NULL) &&
+                       (strstr(b2_str, "\\u0002") != NULL) &&
+                       (strstr(b2_str, "letters = [\"x\", \"y\"]") != NULL);
+    printf("toml_nits: b_len=%d bad_date_rejected=%d pos_ok=%d builder2_ok=%d\n",
+           b_len, bad_date_rejected, pos_ok, builder2_ok);
+
     return 0;
 }
 

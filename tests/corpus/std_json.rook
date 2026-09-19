@@ -104,6 +104,17 @@ int main() {
     printf("advanced_json: esk=%d u1=%s big=%lld pi=%.2f emoji=%s valid=%d invalid_rejected=%d\n",
            esk, u1_name, (long long)big_v, pi_v, emoji, valid1, invalid_arr);
 
+    // 5. JSON +1 rejection, json_valid_ex line/col, pretty print
+    int plus_val = 0;
+    bool plus_rejected = !json_get_int("{\"a\":+1}", "a", &plus_val) && !json_valid("{\"a\":+1}");
+    int err_l = 0;
+    int err_c = 0;
+    bool err_pos_ok = !json_valid_ex("{\n  \"bad\": [,\n]}", &err_l, &err_c) && err_l == 2;
+    char* pretty = json_format_pretty("{\"k\":1}", 2);
+    bool pretty_ok = (pretty != NULL && strstr(pretty, "\n  \"k\": 1\n") != NULL);
+    if (pretty) free(pretty);
+    printf("json_nits: plus_rejected=%d err_pos_ok=%d pretty_ok=%d\n", plus_rejected, err_pos_ok, pretty_ok);
+
     return 0;
 }
 

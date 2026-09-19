@@ -521,9 +521,34 @@ static AstType* llvm_resolve_expr_type(LLVMGen* g, Expr* e) {
             return llvm_resolve_expr_type(g, e->a);
         }
     } else if (e->kind == E_INDEX) {
+        int is_array = 0;
+        if (e->a && e->a->kind == E_IDENT) {
+            int li = gen_find_local(g, e->a->str);
+            if (li >= 0 && LLVMGetTypeKind(g->local_types[li]) == LLVMArrayTypeKind) {
+                is_array = 1;
+            } else {
+                Sym* sym = sema_lookup(g->sema, e->a->str);
+                if (sym && sym->decl && sym->decl->dim) is_array = 1;
+            }
+        } else if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
+            AstType* parent_at = llvm_resolve_expr_type(g, e->a->a);
+            if (parent_at && parent_at->name) {
+                StructDef* pst = sema_lookup_struct(g->sema, parent_at->name);
+                while (pst) {
+                    for (int i = 0; i < pst->nfields; i++) {
+                        if (strcmp(pst->fields[i].name, e->a->str) == 0) {
+                            if (pst->fields[i].dim) is_array = 1;
+                            break;
+                        }
+                    }
+                    if (is_array) break;
+                    pst = pst->parent ? sema_lookup_struct(g->sema, pst->parent) : NULL;
+                }
+            }
+        }
         AstType* sub = llvm_resolve_expr_type(g, e->a);
         if (sub) {
-            if (sub->ptrs > 0) {
+            if (!is_array && sub->ptrs > 0) {
                 return sema_mk_type(sub->qual ? sub->qual : "", sub->name, sub->ptrs - 1);
             }
             return sub;
@@ -719,13 +744,34 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
 
             AstType* at = NULL;
             int allocated_at = 0;
+            LLVMTypeRef elem_type = NULL;
             if (e->a && e->a->kind == E_IDENT) {
                 int li = gen_find_local(g, e->a->str);
-                if (li >= 0) at = g->local_ast_types[li];
-                else {
-                    Sym* sym = sema_lookup(g->sema, e->a->str);
-                    if (sym && sym->type) at = sym->type;
-                    else if (sym && sym->decl && sym->decl->type) at = sym->decl->type;
+                if (li >= 0) {
+                    if (LLVMGetTypeKind(g->local_types[li]) == LLVMArrayTypeKind) {
+                        elem_type = LLVMGetElementType(g->local_types[li]);
+                    } else {
+                        at = g->local_ast_types[li];
+                    }
+                } else {
+                    LLVMValueRef gv = LLVMGetNamedGlobal(g->module, e->a->str);
+                    if (gv) {
+                        LLVMTypeRef gvt = LLVMGlobalGetValueType(gv);
+                        if (LLVMGetTypeKind(gvt) == LLVMArrayTypeKind) {
+                            elem_type = LLVMGetElementType(gvt);
+                        }
+                    }
+                    if (!elem_type) {
+                        Sym* sym = sema_lookup(g->sema, e->a->str);
+                        if (sym && sym->decl && sym->decl->dim) {
+                            at = sym->decl->type;
+                            if (at) elem_type = gen_llvm_type(g, at);
+                        } else if (sym && sym->type) {
+                            at = sym->type;
+                        } else if (sym && sym->decl && sym->decl->type) {
+                            at = sym->decl->type;
+                        }
+                    }
                 }
             } else if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
                 AstType* parent_at = llvm_resolve_expr_type(g, e->a->a);
@@ -734,34 +780,29 @@ static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                     while (pst) {
                         for (int i = 0; i < pst->nfields; i++) {
                             if (strcmp(pst->fields[i].name, e->a->str) == 0) {
-                                at = pst->fields[i].type;
+                                if (pst->fields[i].dim) {
+                                    elem_type = gen_llvm_type(g, pst->fields[i].type);
+                                } else {
+                                    at = pst->fields[i].type;
+                                }
                                 break;
                             }
                         }
-                        if (at) break;
+                        if (elem_type || at) break;
                         pst = pst->parent ? sema_lookup_struct(g->sema, pst->parent) : NULL;
                     }
                 }
             }
-            if (!at) {
-                at = sema_resolve_type(g->sema, e->a);
-                allocated_at = 1;
-            }
-            AstType elem_at = {0};
-            if (at) {
-                elem_at.name = at->name;
-                elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
-            }
-            LLVMTypeRef elem_type = NULL;
-            if (at) {
-                elem_type = gen_llvm_type(g, &elem_at);
-            } else if (e->a && e->a->kind == E_IDENT) {
-                LLVMValueRef gv = LLVMGetNamedGlobal(g->module, e->a->str);
-                if (gv) {
-                    LLVMTypeRef gvt = LLVMGlobalGetValueType(gv);
-                    if (LLVMGetTypeKind(gvt) == LLVMArrayTypeKind) {
-                        elem_type = LLVMGetElementType(gvt);
-                    }
+            if (!elem_type) {
+                if (!at) {
+                    at = sema_resolve_type(g->sema, e->a);
+                    allocated_at = 1;
+                }
+                AstType elem_at = {0};
+                if (at) {
+                    elem_at.name = at->name;
+                    elem_at.ptrs = at->ptrs > 0 ? at->ptrs - 1 : 0;
+                    elem_type = gen_llvm_type(g, &elem_at);
                 }
             }
             if (!elem_type) elem_type = LLVMInt8TypeInContext(g->ctx);
