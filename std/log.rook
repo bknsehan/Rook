@@ -1,5 +1,9 @@
 // Rook Standard Library - std/log.rook
 // Leveled logging with runtime level filter: debug/info -> stdout, warn/error -> stderr.
+//
+// Design note:
+// Logger routes Debug and Info levels to standard output (stdout), and Warn and Error levels
+// to standard error (stderr). File sinks and custom formatters can be layered on top via std/io.
 
 #comprise <std/io>
 #comprise <std/str>

@@ -2,6 +2,7 @@
 // Minimal test assertions for rokade test suites and corpus tests.
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #comprise <std/io>
@@ -46,6 +47,16 @@ impl TestSuite {
         }
     }
 
+    void assert_eq_i64(TestSuite* self, int64_t expected, int64_t actual, const char* name) {
+        if (expected == actual) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected %lld, got %lld\n", name, (long long)expected, (long long)actual);
+        }
+    }
+
     void assert_eq_float(TestSuite* self, float expected, float actual, float epsilon, const char* name) {
         float diff = expected - actual;
         if (diff < 0.0f) diff = -diff;
@@ -55,6 +66,18 @@ impl TestSuite {
         } else {
             self->fail = self->fail + 1;
             printf("FAIL %s: expected %f, got %f\n", name, (double)expected, (double)actual);
+        }
+    }
+
+    void assert_eq_double(TestSuite* self, double expected, double actual, double epsilon, const char* name) {
+        double diff = expected - actual;
+        if (diff < 0.0) diff = -diff;
+        if (diff <= epsilon) {
+            self->pass = self->pass + 1;
+            printf("PASS %s\n", name);
+        } else {
+            self->fail = self->fail + 1;
+            printf("FAIL %s: expected %g, got %g\n", name, expected, actual);
         }
     }
 

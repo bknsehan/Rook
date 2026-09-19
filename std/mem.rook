@@ -131,6 +131,10 @@ ElementPool pool_new(size_t slot_size, size_t capacity) {
     };
 }
 
+ElementPool element_pool_new(size_t slot_size, size_t capacity) {
+    return pool_new(slot_size, capacity);
+}
+
 impl ElementPool {
     void* alloc(ElementPool* self) {
         if (!self->free_head) return NULL;
@@ -143,6 +147,11 @@ impl ElementPool {
 
     void free(ElementPool* self, void* ptr) {
         if (!ptr || !self->buffer) return;
+        char* p = (char*)ptr;
+        char* start = self->buffer;
+        char* end = start + self->capacity * self->slot_size;
+        if (p < start || p >= end) return;
+        if ((size_t)(p - start) % self->slot_size != 0) return;
         void** next_ptr = (void**)ptr;
         *next_ptr = self->free_head;
         self->free_head = ptr;

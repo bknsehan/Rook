@@ -493,6 +493,9 @@ static AstType* llvm_resolve_expr_type(LLVMGen* g, Expr* e) {
         return llvm_resolve_expr_type(g, e->a);
     }
     if (e->kind == E_IDENT) {
+        if (strcmp(e->str, "errno") == 0 || strcmp(e->str, "ERANGE") == 0) {
+            return sema_mk_type("", "int", 0);
+        }
         int li = gen_find_local(g, e->str);
         if (li >= 0 && g->local_ast_types[li]) return g->local_ast_types[li];
         Sym* s = sema_lookup(g->sema, e->str);
@@ -644,6 +647,21 @@ static int is_expr_unsigned(LLVMGen* g, Expr* e, LLVMTypeRef ll_ty) {
 static LLVMValueRef gen_lvalue(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
     if (!e) return NULL;
     if (e->kind == E_IDENT) {
+        if (strcmp(e->str, "errno") == 0) {
+            const char* fn_name = "__errno_location";
+#if defined(_WIN32)
+            fn_name = "_errno";
+#elif defined(__APPLE__)
+            fn_name = "__error";
+#endif
+            LLVMTypeRef i32_ptr_t = LLVMPointerTypeInContext(g->ctx, 0);
+            LLVMTypeRef fn_t = LLVMFunctionType(i32_ptr_t, NULL, 0, 0);
+            LLVMValueRef fn = LLVMGetNamedFunction(g->module, fn_name);
+            if (!fn) fn = LLVMAddFunction(g->module, fn_name, fn_t);
+            LLVMValueRef loc = LLVMBuildCall2(g->builder, fn_t, fn, NULL, 0, "errno_loc");
+            if (out_type) *out_type = LLVMInt32TypeInContext(g->ctx);
+            return loc;
+        }
         int idx = gen_find_local(g, e->str);
         if (idx >= 0) {
             if (out_type) *out_type = g->local_types[idx];
@@ -908,6 +926,16 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
 
     case E_IDENT: {
         const char* name = e->str;
+        if (strcmp(name, "errno") == 0) {
+            LLVMTypeRef i32_t = LLVMInt32TypeInContext(g->ctx);
+            LLVMValueRef loc = gen_lvalue(g, e, NULL);
+            if (out_type) *out_type = i32_t;
+            return LLVMBuildLoad2(g->builder, i32_t, loc, "errno_val");
+        }
+        if (strcmp(name, "ERANGE") == 0) {
+            if (out_type) *out_type = LLVMInt32TypeInContext(g->ctx);
+            return LLVMConstInt(LLVMInt32TypeInContext(g->ctx), 34, 0);
+        }
         if (strcmp(name, "true") == 0) {
             if (out_type) *out_type = LLVMInt8TypeInContext(g->ctx);
             return LLVMConstInt(LLVMInt8TypeInContext(g->ctx), 1, 0);

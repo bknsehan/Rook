@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 
 struct Str {
     data: const char*;
@@ -126,37 +128,112 @@ impl Str {
         return true;
     }
 
-    int to_int(self) {
-        if (self.len == 0) return 0;
-        int sign = 1;
-        size_t i = 0;
-        if (self.data[0] == '-') {
-            sign = -1;
-            i = 1;
-        } else if (self.data[0] == '+') {
-            i = 1;
-        }
-        int result = 0;
-        while (i < self.len) {
-            char c = self.data[i];
-            if (c < '0' || c > '9') break;
-            int digit = c - '0';
-            if (result > (2147483647 - digit) / 10) {
-                return sign == 1 ? 2147483647 : -2147483647 - 1;
+    bool try_to_int(self, int* out) {
+        if (self.len == 0) return false;
+        char buf[64];
+        if (self.len >= sizeof(buf)) return false;
+        memcpy(buf, self.data, self.len);
+        buf[self.len] = '\0';
+        char* endptr = NULL;
+        errno = 0;
+        long val = strtol(buf, &endptr, 10);
+        if (endptr == buf || endptr != buf + self.len) return false;
+        if (errno == ERANGE || val > 2147483647L || val < -2147483647L - 1L) return false;
+        if (out) *out = (int)val;
+        return true;
+    }
+
+    bool try_to_i64(self, int64_t* out) {
+        if (self.len == 0) return false;
+        char buf[64];
+        if (self.len >= sizeof(buf)) return false;
+        memcpy(buf, self.data, self.len);
+        buf[self.len] = '\0';
+        char* endptr = NULL;
+        errno = 0;
+        long long val = strtoll(buf, &endptr, 10);
+        if (endptr == buf || endptr != buf + self.len) return false;
+        if (errno == ERANGE) return false;
+        if (val == 9223372036854775807LL || val == -9223372036854775807LL - 1LL) {
+            size_t i = 0;
+            if (buf[0] == '+' || buf[0] == '-') i = 1;
+            while (buf[i] == '0' && buf[i + 1] != '\0') i = i + 1;
+            size_t dlen = (size_t)strlen(buf + i);
+            if (dlen > 19) return false;
+            if (dlen == 19) {
+                if (buf[0] == '-') {
+                    if (strcmp(buf + i, "9223372036854775808") > 0) return false;
+                } else {
+                    if (strcmp(buf + i, "9223372036854775807") > 0) return false;
+                }
             }
-            result = result * 10 + digit;
-            i = i + 1;
         }
-        return result * sign;
+        if (out) *out = (int64_t)val;
+        return true;
+    }
+
+    bool try_to_float(self, float* out) {
+        if (self.len == 0) return false;
+        char buf[64];
+        if (self.len >= sizeof(buf)) return false;
+        memcpy(buf, self.data, self.len);
+        buf[self.len] = '\0';
+        char* endptr = NULL;
+        errno = 0;
+        float val = strtof(buf, &endptr);
+        if (endptr == buf || endptr != buf + self.len) return false;
+        if (errno == ERANGE) return false;
+        if (out) *out = val;
+        return true;
+    }
+
+    bool try_to_double(self, double* out) {
+        if (self.len == 0) return false;
+        char buf[64];
+        if (self.len >= sizeof(buf)) return false;
+        memcpy(buf, self.data, self.len);
+        buf[self.len] = '\0';
+        char* endptr = NULL;
+        errno = 0;
+        double val = strtod(buf, &endptr);
+        if (endptr == buf || endptr != buf + self.len) return false;
+        if (errno == ERANGE) return false;
+        if (out) *out = val;
+        return true;
+    }
+
+    int to_int(self) {
+        int val = 0;
+        if (self.try_to_int(&val)) return val;
+        if (self.len > 0) {
+            if (self.data[0] == '-') return -2147483647 - 1;
+            if (self.data[0] >= '0' && self.data[0] <= '9') return 2147483647;
+            if (self.data[0] == '+' && self.len > 1 && self.data[1] >= '0' && self.data[1] <= '9') return 2147483647;
+        }
+        return 0;
+    }
+
+    int64_t to_i64(self) {
+        int64_t val = 0;
+        if (self.try_to_i64(&val)) return val;
+        if (self.len > 0) {
+            if (self.data[0] == '-') return -9223372036854775807LL - 1LL;
+            if (self.data[0] >= '0' && self.data[0] <= '9') return 9223372036854775807LL;
+            if (self.data[0] == '+' && self.len > 1 && self.data[1] >= '0' && self.data[1] <= '9') return 9223372036854775807LL;
+        }
+        return 0;
     }
 
     float to_float(self) {
-        if (self.len == 0) return 0.0f;
-        char buf[64];
-        size_t n = self.len < 63 ? self.len : 63;
-        memcpy(buf, self.data, n);
-        buf[n] = '\0';
-        return (float)atof(buf);
+        float val = 0.0f;
+        self.try_to_float(&val);
+        return val;
+    }
+
+    double to_double(self) {
+        double val = 0.0;
+        self.try_to_double(&val);
+        return val;
     }
 
     bool to_bool(self) {

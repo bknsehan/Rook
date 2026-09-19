@@ -796,8 +796,8 @@ int main() {
 <p>Provides zero-overhead abstractions over host OS threads (POSIX pthreads / Windows Win32 threads):</p>
 <ul>
   <li><strong><code>Thread</code>:</strong> Created with <code>thread_spawn(worker_fn, arg)</code>. Joined via <code>t.join(&ret_val)</code>.</li>
-  <li><strong><code>Mutex</code>:</strong> Native OS mutual exclusion lock (<code>m.init()</code>, <code>m.lock()</code>, <code>m.unlock()</code>, <code>m.try_lock()</code>, <code>m.destroy()</code>).</li>
-  <li><strong><code>CondVar</code>:</strong> Condition variable for thread coordination (<code>cv.init()</code>, <code>cv.wait(&mutex)</code>, <code>cv.signal()</code>, <code>cv.broadcast()</code>).</li>
+  <li><strong><code>Mutex</code>:</strong> Native OS mutual exclusion lock (<code>m.init()</code>, <code>m.lock()</code>, <code>m.unlock()</code>, <code>m.try_lock()</code>, <code>m.destroy()</code>). For shared mutexes across threads, prefer in-place initialization (<code>m.init()</code>) or heap allocation (<code>mutex_alloc()</code>) per POSIX non-copyability semantics.</li>
+  <li><strong><code>CondVar</code>:</strong> Condition variable for thread coordination (<code>cv.init()</code>, <code>cv.wait(&mutex)</code>, <code>cv.signal()</code>, <code>cv.broadcast()</code>). Prefer in-place <code>cv.init()</code> or <code>cond_alloc()</code> for shared synchronization.</li>
 </ul>
 
 <h3>10.6 Concurrency Safety Model &amp; Current Limitations</h3>
@@ -857,8 +857,8 @@ int main() {
 
 <h3>10.7 Null Safety &amp; Explicit Errors: <code>std/option</code> &amp; <code>std/result</code></h3>
 <ul>
-  <li><strong><code>std/option</code>:</strong> Replaces unchecked nullable pointers with <code>Option</code> (<code>option_some(val)</code>, <code>option_none()</code>, <code>Option_unwrap(&opt)</code>, <code>Option_unwrap_or(&opt, default)</code>).</li>
-  <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
+  <li><strong><code>std/option</code>:</strong> Replaces unchecked nullable pointers with <code>Option</code> (<code>option_some(val)</code>, <code>option_none()</code>, <code>Option_unwrap(&opt)</code>, <code>Option_unwrap_or(&opt, default)</code>). Payloads are type-erased <code>void*</code> for zero-overhead C interoperability.</li>
+  <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring. Calling <code>unwrap()</code> on an <code>Err</code> safely yields <code>NULL</code>.</li>
 </ul>
 
 <h3>10.8 Zero-Allocation JSON Parser, Path Navigator &amp; Fluent Builder: <code>std/json</code></h3>

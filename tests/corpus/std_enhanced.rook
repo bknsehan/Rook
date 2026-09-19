@@ -79,5 +79,20 @@ int main() {
     printf("cos=%.1f\n", math_cos(0.0f));
     printf("tan=%.1f\n", math_tan(0.0f));
 
+    // 9. std/str robust parsing & overflow detection
+    Str s_over = str_from_cstr("9999999999");
+    int out_i = 0;
+    bool s_over_i = s_over.try_to_int(&out_i);
+    printf("s_over_i=%d s_over_sat=%d\n", (int)s_over_i, s_over.to_int());
+
+    Str s_i64_over = str_from_cstr("999999999999999999999999999999999999");
+    int64_t out_i64 = 0;
+    bool s_over_i64 = s_i64_over.try_to_i64(&out_i64);
+    printf("s_over_i64=%d\n", (int)s_over_i64);
+
+    Str s_garb = str_from_cstr("abc");
+    bool s_garb_i = s_garb.try_to_int(&out_i);
+    printf("s_garb_i=%d\n", (int)s_garb_i);
+
     return 0;
 }

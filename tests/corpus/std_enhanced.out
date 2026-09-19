@@ -15,3 +15,6 @@ sqrt=4.0
 sin=0.0
 cos=1.0
 tan=0.0
+s_over_i=0 s_over_sat=2147483647
+s_over_i64=0
+s_garb_i=0

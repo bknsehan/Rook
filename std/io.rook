@@ -311,14 +311,12 @@ bool scan_word(char* buf, size_t cap) {
     return true;
 }
 
-// Scan the next integer from stdin without scanf.
+// Scan the next integer from stdin without scanf. Returns false if no integer was scanned.
 bool scan_int(int* out) {
     char word[64];
     if (!scan_word(word, 64)) return false;
     Str s = str_from_cstr(word);
-    int val = s.to_int();
-    if (out != NULL) *out = val;
-    return true;
+    return s.try_to_int(out);
 }
 
 int scan_int_or(int default_val) {
@@ -327,17 +325,32 @@ int scan_int_or(int default_val) {
     return val;
 }
 
-// Scan the next float from stdin without scanf.
+// Scan the next 64-bit integer from stdin. Returns false if invalid.
+bool scan_i64(int64_t* out) {
+    char word[64];
+    if (!scan_word(word, 64)) return false;
+    Str s = str_from_cstr(word);
+    return s.try_to_i64(out);
+}
+
+// Scan the next float from stdin without scanf. Returns false if no float was scanned.
 bool scan_float(float* out) {
     char word[64];
     if (!scan_word(word, 64)) return false;
-    float val = (float)atof(word);
-    if (out != NULL) *out = val;
-    return true;
+    Str s = str_from_cstr(word);
+    return s.try_to_float(out);
 }
 
 float scan_float_or(float default_val) {
     float val = 0.0f;
     if (!scan_float(&val)) return default_val;
     return val;
+}
+
+// Scan the next double from stdin without scanf. Returns false if invalid.
+bool scan_double(double* out) {
+    char word[64];
+    if (!scan_word(word, 64)) return false;
+    Str s = str_from_cstr(word);
+    return s.try_to_double(out);
 }

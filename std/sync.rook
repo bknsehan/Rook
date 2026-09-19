@@ -13,6 +13,10 @@ struct Mutex {
     initialized: bool;
 };
 
+// Create a new Mutex.
+// Note: Per POSIX standard, copying an initialized pthread_mutex_t by value can be
+// undefined behavior on non-glibc platforms. For shared mutexes across threads, prefer
+// in-place initialization via `m.init()` or heap allocation via `mutex_alloc()`.
 Mutex mutex_new() {
     Mutex m;
     pthread_mutex_init(&m.handle, NULL);
@@ -64,6 +68,9 @@ struct CondVar {
     initialized: bool;
 };
 
+// Create a new CondVar.
+// Note: For shared condition variables across threads, prefer in-place initialization
+// via `cv.init()` or heap allocation via `cond_alloc()`.
 CondVar cond_new() {
     CondVar cv;
     pthread_cond_init(&cv.handle, NULL);

@@ -1,5 +1,10 @@
 // Rook Standard Library - std/result.rook
 // Zero-cost canonical error handling and optional values using algebraic sum types.
+//
+// Design note:
+// Result and Option use void* payloads to remain type-erased and compatible across
+// arbitrary C pointers without generic monomorphization overhead.
+// Calling unwrap() on Err or None returns NULL (or a custom fallback via unwrap_or).
 
 #include <stdio.h>
 #include <stdbool.h>

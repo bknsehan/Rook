@@ -9,7 +9,7 @@
 #comprise <std/result>
 #comprise <std/str>
 
-Result fs_read_to_string(const char* path) {
+Result fs_read_to_string_capped(const char* path, size_t max_bytes) {
     FILE* f = fopen(path, "rb");
     if (!f) return result_err("could not open file for reading");
 
@@ -20,6 +20,11 @@ Result fs_read_to_string(const char* path) {
     if (sz < 0) {
         fclose(f);
         return result_err("could not determine file size");
+    }
+
+    if (max_bytes > 0 && (size_t)sz > max_bytes) {
+        fclose(f);
+        return result_err("file size exceeds maximum allowed bytes");
     }
 
     char* buf = malloc((size_t)sz + 1);
@@ -33,6 +38,10 @@ Result fs_read_to_string(const char* path) {
     buf[read_bytes] = '\0';
 
     return result_ok(buf);
+}
+
+Result fs_read_to_string(const char* path) {
+    return fs_read_to_string_capped(path, 64 * 1024 * 1024); // 64 MB default cap
 }
 
 Result fs_write_file(const char* path, const char* content, size_t len) {

@@ -202,13 +202,13 @@ impl StringBuilder {
 
     void append_float(StringBuilder* self, float f) {
         char tmp[32];
-        snprintf(tmp, sizeof(tmp), "%f", (double)f);
+        snprintf(tmp, sizeof(tmp), "%.7g", (double)f);
         self.append_cstr(tmp);
     }
 
     void append_double(StringBuilder* self, double d) {
         char tmp[64];
-        snprintf(tmp, sizeof(tmp), "%g", d);
+        snprintf(tmp, sizeof(tmp), "%.14g", d);
         self.append_cstr(tmp);
     }
 

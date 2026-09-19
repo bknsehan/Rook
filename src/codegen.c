@@ -1448,6 +1448,8 @@ static void cg_program(CG* g, Program* prog) {
     sb_append(&g->sb,
               "#define _DEFAULT_SOURCE\n"
               "#define _POSIX_C_SOURCE 200809L\n"
+              "#include <stdint.h>\n"
+              "#include <errno.h>\n"
               "#ifdef _WIN32\n"
               "#define WIN32_LEAN_AND_MEAN\n"
               "#define NOMINMAX\n"
@@ -1666,6 +1668,8 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
                "#ifndef %s\n#define %s\n\n"
                "#define _DEFAULT_SOURCE\n"
                "#define _POSIX_C_SOURCE 200809L\n"
+               "#include <stdint.h>\n"
+               "#include <errno.h>\n"
                "#ifdef _WIN32\n"
                "#define WIN32_LEAN_AND_MEAN\n"
                "#define NOMINMAX\n"

@@ -847,6 +847,7 @@ static const char* const BUILTIN_NAMES[] = {
     "__ATOMIC_RELEASE", "__ATOMIC_ACQ_REL", "__ATOMIC_SEQ_CST",
     "setenv", "usleep", "getcwd", "getpid", "access", "unlink", "mkdir",
     "clock_gettime", "CLOCK_MONOTONIC",
+    "errno", "ERANGE",
     NULL
 };
 

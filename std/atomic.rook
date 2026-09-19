@@ -1,5 +1,9 @@
 // Rook Standard Library - std/atomic.rook
 // High-performance machine-level atomic types and memory operations.
+//
+// Design note:
+// Operations use GCC/Clang built-in __atomic intrinsics with memory order 5 (__ATOMIC_SEQ_CST)
+// providing sequentially consistent atomic semantics compatible with standard GCC/Clang toolchains.
 
 #include <stdio.h>
 #include <stdbool.h>

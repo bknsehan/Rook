@@ -118,8 +118,27 @@ float absf(float a) {
     return (a < 0.0f) ? -a : a;
 }
 
+double absd(double a) {
+    return (a < 0.0) ? -a : a;
+}
+
 int absi(int a) {
+    if (a == -2147483647 - 1) return 2147483647; // Saturate INT_MIN to avoid signed negation UB
     return (a < 0) ? -a : a;
+}
+
+double min_double(double a, double b) {
+    return (a < b) ? a : b;
+}
+
+double max_double(double a, double b) {
+    return (a > b) ? a : b;
+}
+
+double clamp_double(double val, double min_val, double max_val) {
+    if (val < min_val) return min_val;
+    if (val > max_val) return max_val;
+    return val;
 }
 
 float lerpf(float a, float b, float t) {
@@ -170,6 +189,8 @@ float signf(float x) {
     return 0.0f;
 }
 
+// Compute integer exponentiation base^exp for non-negative exp.
+// On overflow beyond signed 32-bit limits, wraps per standard two's-complement arithmetic.
 int powi(int base, int exp) {
     if (exp < 0) return 0;
     int res = 1;
