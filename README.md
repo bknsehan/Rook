@@ -88,14 +88,14 @@ Source (.rook) ➔ Lexer / Parser (AST) ➔ Sema & Libclang AST Engine
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.1) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.3) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Management** | Manual (`malloc`/`free`), uninitialized stack by default. | Affine type system, compile-time borrow checker, static lifetimes. | Explicit allocators, manual management, no hidden control flow. | Manual explicit allocators, deterministic stack zero-initialization, optional bounds checks (`-b`). |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` declarations and external binding tools (`bindgen`). | Requires `@cImport` translation step. | Direct 1:1 ABI mapping; dynamic in-memory libclang C header parsing without wrappers. |
-| **Object Polymorphism** | Manual `void*` casting or custom function pointer structs. | Traits, dynamic trait objects (vtables), parametric monomorphization. | Compile-time duck typing (`comptime`). | Single inheritance with prefix subtyping (zero-offset casting), static `impl` methods. |
+| **Object Polymorphism** | Manual `void*` casting or custom function pointer structs. | Traits, dynamic trait objects (vtables), parametric monomorphization. | Compile-time duck typing (`comptime`). | Single inheritance with prefix subtyping (zero-offset C struct nesting), static `impl` methods. |
 | **Algebraic Data Types** | Manual tagged unions (`struct` + `enum` + `union`). | First-class `enum` with payload pattern matching. | Tagged `union(enum)` with `switch` statements. | First-class `sum` and `enum` types with compile-time exhaustive `match`. |
 | **Resource Cleanup** | Manual cleanup paths, non-standard cleanup attributes (`__attribute__((cleanup))`). | RAII via destructor execution (`Drop` trait). | Scoped `defer` and `errdefer` expressions. | Scoped `defer` statements lowered to deterministic LIFO scope unwinding. |
-| **Error Handling** | In-band sentinel values (`-1`, `NULL`), global `errno`. | Tagged `Result<T, E>` / `Option<T>` with early-return `?` operator. | Error sets, error unions (`!T`), `try` keyword. | Tagged `Result<T, E>` / `Option<T>` with early-return `?` operator. |
+| **Error Handling** | In-band sentinel values (`-1`, `NULL`), global `errno`. | Tagged `Result<T, E>` / `Option<T>` with early-return `?` operator. | Error sets, error unions (`!T`), `try` keyword. | First-class algebraic sum types (`Result`, `Option`, domain-specific `sum`) with compile-time `match`. |
 | **Compiler Toolchain** | Host compiler (GCC, Clang, MSVC). | `rustc` + LLVM toolchain (~1.5 GB installation). | Self-contained single binary with bundled Clang. | Lightweight C binary (~500 KB) with optional LLVM / libclang linking. |
 
 ---
@@ -231,20 +231,40 @@ int process_dataset(const char* path) {
 }
 ```
 
-### 5.5 Error Propagation (`?` Operator)
+### 5.5 Algebraic Error Handling (`Result` and `Option`)
 
-Rook standard library types `Result<T, E>` and `Option<T>` integrate with the postfix `?` operator to short-circuit function execution on errors:
+Rook deliberately avoids C++ template and Rust generic bloat, prioritizing fast compile times and clean C interop. Error handling is structured around concrete algebraic sum types and canonical type-erased containers (`std/result.rook`):
 
 ```rook
-#comprise std/io
+#include <stdio.h>
+#include <stdint.h>
+#comprise <std/result>
 
-Result<int, IOError> load_configuration() {
-    File file = File::open("config.bin", "rb")?; // Returns IOError immediately if open fails
-    defer file.close();
-
-    int magic = file.read_int()?;                // Returns IOError immediately if read fails
-    return Result::Ok(magic);
+Result parse_positive(int n) {
+    if (n <= 0) {
+        return result_err("number must be positive");
+    }
+    return result_ok((void*)(uintptr_t)n);
 }
+
+int main() {
+    Result res = parse_positive(42);
+    if (res.is_ok()) {
+        printf("Success: %ld\n", (long)(uintptr_t)res.unwrap());
+    } else {
+        printf("Error: %s\n", res.unwrap_err());
+    }
+    return 0;
+}
+```
+
+Developers can also declare strongly-typed, domain-specific sum types with zero overhead:
+```rook
+sum FileStatus {
+    Open { fd: int; };
+    NotFound { path: const char*; };
+    PermissionDenied;
+};
 ```
 
 ---
@@ -350,9 +370,10 @@ rokade build --target=android
 
 ### 8.1 Manifest Schema
 
-Projects are configured using a `rokade.toml` file placed in the project root:
+Projects are configured using a `rokade.toml` file placed in the project root. Rokade supports both a unified single-table `[project]` syntax and a modular `[package]` / `[build]` syntax:
 
 ```toml
+# Unified single-table syntax
 [project]
 name = "engine_demo"
 version = "0.1.0"
@@ -360,6 +381,18 @@ backend = "llvm"                   # "c", "llvm", or "llvm2"
 pkg-config = ["raylib", "sqlite3"]  # Automated pkg-config link flags
 cflags = ["-O3"]
 ldflags = ["-lm"]
+```
+
+Or modular multi-table syntax:
+```toml
+[package]
+name = "engine_demo"
+version = "0.1.0"
+
+[build]
+backend = "llvm"
+pkg-config = ["raylib", "sqlite3"]
+cflags = ["-O3"]
 ```
 
 ### 8.2 CLI Command Reference

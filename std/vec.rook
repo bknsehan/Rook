@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 #comprise <std/str>
 
 struct Vec {
@@ -90,6 +91,26 @@ impl Vec {
         return self->len == 0;
     }
 
+    void* first(Vec* self) {
+        if (self->len == 0) return NULL;
+        return self->items[0];
+    }
+
+    void* last(Vec* self) {
+        if (self->len == 0) return NULL;
+        return self->items[self->len - 1];
+    }
+
+    bool reserve(Vec* self, size_t new_cap) {
+        if (new_cap <= self->cap) return true;
+        if (new_cap > 1073741824) return false;
+        void** new_items = realloc(self->items, new_cap * sizeof(void*));
+        if (!new_items) return false;
+        self->items = new_items;
+        self->cap = new_cap;
+        return true;
+    }
+
     void destroy(Vec* self) {
         if (self->items) {
             free(self->items);
@@ -167,6 +188,12 @@ impl StringBuilder {
         self.append_cstr(tmp);
     }
 
+    void append_i64(StringBuilder* self, int64_t n) {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp), "%lld", (long long)n);
+        self.append_cstr(tmp);
+    }
+
     void append_uint(StringBuilder* self, unsigned int u) {
         char tmp[32];
         snprintf(tmp, sizeof(tmp), "%u", u);
@@ -176,6 +203,12 @@ impl StringBuilder {
     void append_float(StringBuilder* self, float f) {
         char tmp[32];
         snprintf(tmp, sizeof(tmp), "%f", (double)f);
+        self.append_cstr(tmp);
+    }
+
+    void append_double(StringBuilder* self, double d) {
+        char tmp[64];
+        snprintf(tmp, sizeof(tmp), "%g", d);
         self.append_cstr(tmp);
     }
 

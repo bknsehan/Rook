@@ -96,7 +96,7 @@ for src in "$CORPUS"/*.rook; do
         if ! emit "$src" "$WORK/t.c"; then
             PASS=$((PASS+1)); echo "  PASS (rejected) $base"
         else
-            KNOWN=$((KNOWN+1)); known+=("$base"); echo "  KNOWN (expected-reject not wired) $base"
+            FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (expected-reject accepted) $base"
         fi
         continue
     fi

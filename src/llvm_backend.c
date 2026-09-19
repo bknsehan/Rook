@@ -1511,18 +1511,26 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
                 };
                 LLVMTypeRef ret_t = gen_llvm_type(g, &ret_at);
 
-                LLVMTypeRef* param_ts = calloc(np > 0 ? np : 1, sizeof(LLVMTypeRef));
-                for (int i = 0; i < np; i++) {
-                    const char* pt = sema_lookup_cfunc_param(fn_name, i);
-                    int is_ptr = (pt && (strchr(pt, '*') != NULL || strstr(pt, "(*)") != NULL));
-                    AstType p_at = {
-                        .qual = "",
-                        .name = (char*)(pt ? pt : "int"),
-                        .ptrs = is_ptr ? 1 : 0
-                    };
-                    param_ts[i] = gen_llvm_type(g, &p_at);
+                int actual_np = (np >= 0) ? np : e->nitems;
+                LLVMTypeRef* param_ts = calloc(actual_np > 0 ? actual_np : 1, sizeof(LLVMTypeRef));
+                if (np >= 0) {
+                    for (int i = 0; i < np; i++) {
+                        const char* pt = sema_lookup_cfunc_param(fn_name, i);
+                        int is_ptr = (pt && (strchr(pt, '*') != NULL || strstr(pt, "(*)") != NULL));
+                        AstType p_at = {
+                            .qual = "",
+                            .name = (char*)(pt ? pt : "int"),
+                            .ptrs = is_ptr ? 1 : 0
+                        };
+                        param_ts[i] = gen_llvm_type(g, &p_at);
+                    }
+                } else {
+                    for (int i = 0; i < actual_np; i++) {
+                        AstType* at = llvm_resolve_expr_type(g, e->items[i]);
+                        param_ts[i] = at ? gen_llvm_type(g, at) : LLVMInt32TypeInContext(g->ctx);
+                    }
                 }
-                fn_type = LLVMFunctionType(ret_t, param_ts, np >= 0 ? np : 0, is_var);
+                fn_type = LLVMFunctionType(ret_t, param_ts, actual_np, is_var);
                 fn_val = LLVMAddFunction(g->module, fn_name, fn_type);
                 free(param_ts);
             }
@@ -3082,6 +3090,12 @@ Backend* llvm_backend_create(void) {
 
 char* llvm_backend_emit_program_target(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple) {
     (void)sema; (void)prog; (void)out_len; (void)bounds_check; (void)target_triple;
+    fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
+    return NULL;
+}
+
+char* llvm_backend_emit_program_opt(Sema* sema, Program* prog, int* out_len, int bounds_check, const char* target_triple, int opt_level) {
+    (void)sema; (void)prog; (void)out_len; (void)bounds_check; (void)target_triple; (void)opt_level;
     fprintf(stderr, "rokade: LLVM backend is not enabled in this build.\n");
     return NULL;
 }

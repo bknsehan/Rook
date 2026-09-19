@@ -1,0 +1,83 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#comprise <std/std>
+
+void* dummy_detached(void* arg) {
+    (void)arg;
+    return NULL;
+}
+
+int main() {
+    // 1. std/os
+    os_setenv("ROOK_TEST_VAR", "rook_works");
+    const char* val = os_getenv("ROOK_TEST_VAR");
+    printf("os_getenv=%s\n", val ? val : "null");
+    uint64_t t_ms = os_time_ms();
+    printf("os_time_ms_ok=%d\n", t_ms > 0 ? 1 : 0);
+    uint64_t t_sec = os_time_sec();
+    printf("os_time_sec_ok=%d\n", t_sec > 0 ? 1 : 0);
+
+    // 2. std/fs
+    printf("fs_exists_tests=%d\n", fs_exists("tests") ? 1 : 0);
+    printf("fs_is_dir_tests=%d\n", fs_is_dir("tests") ? 1 : 0);
+    char* joined = fs_path_join("foo/bar", "baz.txt");
+    printf("fs_path_join=%s\n", joined ? joined : "null");
+    if (joined) free(joined);
+    char* joined2 = fs_path_join("hello/", "/world");
+    printf("fs_path_join2=%s\n", joined2 ? joined2 : "null");
+    if (joined2) free(joined2);
+
+    // 3. std/atomic
+    AtomicBool ab = atomic_bool_new(true);
+    bool exp_b = true;
+    bool cas_b = ab.compare_exchange(&exp_b, false);
+    printf("atomic_bool_cas=%d val=%d\n", (int)cas_b, (int)ab.load());
+
+    int sample = 99;
+    AtomicPtr ap = atomic_ptr_new((void*)&sample);
+    void* exp_ptr = (void*)&sample;
+    int sample2 = 100;
+    bool cas_ptr = ap.compare_exchange(&exp_ptr, (void*)&sample2);
+    printf("atomic_ptr_cas=%d\n", (int)cas_ptr);
+
+    // 4. std/sync detach
+    Thread dt = thread_spawn(dummy_detached, NULL);
+    int drc = dt.detach();
+    printf("thread_detach_ok=%d\n", drc == 0 ? 1 : 0);
+
+    // 5. std/vec first, last, reserve
+    Vec v = vec_new(2);
+    int a = 10;
+    int b = 20;
+    int c = 30;
+    v.push(&a);
+    v.push(&b);
+    v.push(&c);
+    v.reserve(64);
+    int* fst = (int*)v.first();
+    int* lst = (int*)v.last();
+    printf("vec_first=%d vec_last=%d cap_ok=%d\n", *fst, *lst, v.cap >= 64 ? 1 : 0);
+    v.destroy();
+
+    // 6. StringBuilder append_i64, append_double
+    StringBuilder sb = sb_new(16);
+    sb.append_cstr("num=");
+    sb.append_i64(1234567890123L);
+    sb.append_cstr(", d=");
+    sb.append_double(3.14);
+    printf("sb=%s\n", sb.to_cstr());
+    sb.destroy();
+
+    // 7. std/io 64-bit printing
+    print_i64(9876543210L);
+    print("\n");
+
+    // 8. std/math trigonometry & sqrt
+    printf("sqrt=%.1f\n", math_sqrt(16.0f));
+    printf("sin=%.1f\n", math_sin(0.0f));
+    printf("cos=%.1f\n", math_cos(0.0f));
+    printf("tan=%.1f\n", math_tan(0.0f));
+
+    return 0;
+}

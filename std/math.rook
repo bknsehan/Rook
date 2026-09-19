@@ -182,3 +182,35 @@ int powi(int base, int exp) {
     }
     return res;
 }
+
+float math_sqrt(float x) {
+    return sqrtf(x);
+}
+
+float math_sin(float x) {
+    return sinf(x);
+}
+
+float math_cos(float x) {
+    return cosf(x);
+}
+
+float math_tan(float x) {
+    return tanf(x);
+}
+
+float math_asin(float x) {
+    return asinf(x);
+}
+
+float math_acos(float x) {
+    return acosf(x);
+}
+
+float math_atan(float x) {
+    return atanf(x);
+}
+
+float math_atan2(float y, float x) {
+    return atan2f(y, x);
+}

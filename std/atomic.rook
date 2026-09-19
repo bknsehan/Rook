@@ -58,6 +58,10 @@ impl AtomicBool {
     bool exchange(AtomicBool* self, bool val) {
         return __atomic_exchange_n(&self->value, val, 5);
     }
+
+    bool compare_exchange(AtomicBool* self, bool* expected, bool desired) {
+        return __atomic_compare_exchange_n(&self->value, expected, desired, false, 5, 5);
+    }
 }
 
 struct AtomicPtr {
@@ -79,5 +83,9 @@ impl AtomicPtr {
 
     void* exchange(AtomicPtr* self, void* ptr) {
         return (void*)__atomic_exchange_n(&self->value, ptr, 5);
+    }
+
+    bool compare_exchange(AtomicPtr* self, void** expected, void* desired) {
+        return __atomic_compare_exchange_n(&self->value, expected, desired, false, 5, 5);
     }
 }

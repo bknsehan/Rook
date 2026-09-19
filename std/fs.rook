@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #comprise <std/result>
 #comprise <std/str>
@@ -80,12 +79,12 @@ bool fs_remove_file(const char* path) {
 }
 
 bool fs_is_dir(const char* path) {
-    void* d = opendir(path);
-    if (d != NULL) {
-        closedir(d);
-        return true;
+    if (!path) return false;
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return false;
     }
-    return false;
+    return (st.st_mode & 0x4000) != 0;
 }
 
 bool fs_is_file(const char* path) {
@@ -166,4 +165,50 @@ Str path_extension(const char* path) {
         i = i - 1;
     }
     return Str { data: "", len: 0 };
+}
+
+char* fs_path_join(const char* a, const char* b) {
+    if (!a && !b) return NULL;
+    if (!a || strlen(a) == 0) {
+        if (!b) return NULL;
+        size_t blen = strlen(b);
+        char* res = malloc(blen + 1);
+        if (!res) return NULL;
+        memcpy(res, b, blen + 1);
+        return res;
+    }
+    if (!b || strlen(b) == 0) {
+        size_t alen = strlen(a);
+        char* res = malloc(alen + 1);
+        if (!res) return NULL;
+        memcpy(res, a, alen + 1);
+        return res;
+    }
+
+    size_t alen = strlen(a);
+    size_t blen = strlen(b);
+    bool a_has_sep = a[alen - 1] == '/' || a[alen - 1] == '\\';
+    bool b_has_sep = b[0] == '/' || b[0] == '\\';
+
+    if (a_has_sep && b_has_sep) {
+        char* res = malloc(alen + blen);
+        if (!res) return NULL;
+        memcpy(res, a, alen);
+        memcpy(res + alen, b + 1, blen);
+        return res;
+    }
+    if (a_has_sep || b_has_sep) {
+        char* res = malloc(alen + blen + 1);
+        if (!res) return NULL;
+        memcpy(res, a, alen);
+        memcpy(res + alen, b, blen + 1);
+        return res;
+    }
+
+    char* res = malloc(alen + blen + 2);
+    if (!res) return NULL;
+    memcpy(res, a, alen);
+    res[alen] = '/';
+    memcpy(res + alen + 1, b, blen + 1);
+    return res;
 }

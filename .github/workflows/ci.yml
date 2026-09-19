@@ -54,6 +54,17 @@ jobs:
         run: |
           ROKADE=./build/rokade BACKEND=llvm bash tests/run.sh
 
+      - name: Build & Test with AddressSanitizer (ASan / UBSan)
+        run: |
+          cmake -B build-asan -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DUSE_SANITIZER=ON \
+            -DROKADE_ENABLE_LLVM=ON \
+            -DROOK_BUILD_LSP=OFF
+          cmake --build build-asan
+          ASAN_OPTIONS=detect_leaks=0 ROKADE=./build-asan/rokade bash tests/run.sh
+          rm -rf build-asan
+
       - name: Verify CLI & Scaffolding
         run: |
           ./build/rokade --version

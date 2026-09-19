@@ -36,6 +36,14 @@ void print_int(int n) {
     printf("%d", n);
 }
 
+void println_i64(int64_t n) {
+    printf("%lld\n", (long long)n);
+}
+
+void print_i64(int64_t n) {
+    printf("%lld", (long long)n);
+}
+
 void println_uint(unsigned int u) {
     printf("%u\n", u);
 }
@@ -139,6 +147,14 @@ void eprintln_int(int n) {
 
 void eprint_int(int n) {
     fprintf(stderr, "%d", n);
+}
+
+void eprintln_i64(int64_t n) {
+    fprintf(stderr, "%lld\n", (long long)n);
+}
+
+void eprint_i64(int64_t n) {
+    fprintf(stderr, "%lld", (long long)n);
 }
 
 void eprintln_float(float f) {

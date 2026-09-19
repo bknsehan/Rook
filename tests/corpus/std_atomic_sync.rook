@@ -4,6 +4,7 @@
 
 struct ThreadContext {
     counter: AtomicInt;
+    shared_sum: int;
     lock: Mutex;
     cv: CondVar;
     ready: bool;
@@ -12,8 +13,12 @@ struct ThreadContext {
 void* counter_worker(void* arg) {
     ThreadContext* ctx = (ThreadContext*)arg;
     for (int i = 0; i < 50; i = i + 1) {
-        ctx->lock.lock();
+        // Lock-free atomic increment
         ctx->counter.fetch_add(1);
+
+        // Mutex protects non-atomic shared state
+        ctx->lock.lock();
+        ctx->shared_sum = ctx->shared_sum + 1;
         ctx->lock.unlock();
     }
     return (void*)123L;
@@ -45,6 +50,7 @@ int main() {
     // 2. Multi-threaded Mutex test
     ThreadContext ctx;
     ctx.counter = atomic_int_new(0);
+    ctx.shared_sum = 0;
     ctx.lock.init();
     defer ctx.lock.destroy();
     ctx.cv.init();
@@ -58,7 +64,7 @@ int main() {
     void* r2 = NULL;
     t1.join(&r1);
     t2.join(&r2);
-    printf("threads joined: counter=%d\n", ctx.counter.load());
+    printf("threads joined: counter=%d sum=%d\n", ctx.counter.load(), ctx.shared_sum);
 
     // 3. CondVar wait/signal test
     ctx.lock.lock();

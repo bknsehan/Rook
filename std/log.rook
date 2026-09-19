@@ -9,7 +9,7 @@ enum LogLevel {
     Info,
     Warn,
     Error
-}
+};
 
 int log_level_debug() {
     return 0;

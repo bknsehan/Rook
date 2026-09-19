@@ -7,7 +7,7 @@
 sum Result {
     Ok { val: void*; };
     Err { msg: const char*; };
-}
+};
 
 impl Result {
     bool is_ok(Result* self) {
@@ -57,7 +57,7 @@ Result result_err(const char* msg) {
 sum Option {
     Some { val: void*; };
     None;
-}
+};
 
 impl Option {
     bool is_some(Option* self) {

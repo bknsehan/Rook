@@ -131,4 +131,11 @@ impl Thread {
         self->alive = false;
         return rc;
     }
+
+    int detach(Thread* self) {
+        if (!self->alive) return -1;
+        int rc = pthread_detach(self->handle);
+        self->alive = false;
+        return rc;
+    }
 }

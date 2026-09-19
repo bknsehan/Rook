@@ -817,14 +817,19 @@ int main() {
 
 struct CounterTask {
     counter: AtomicInt;
+    shared_sum: int;
     lock: Mutex;
 };
 
 void* worker(void* arg) {
     CounterTask* task = (CounterTask*)arg;
     for (int i = 0; i < 1000; i = i + 1) {
-        task->lock.lock();
+        // Lock-free atomic increment (no mutex needed)
         task->counter.fetch_add(1);
+
+        // Mutex protects standard non-atomic shared state
+        task->lock.lock();
+        task->shared_sum = task->shared_sum + 1;
         task->lock.unlock();
     }
     return NULL;
@@ -833,6 +838,7 @@ void* worker(void* arg) {
 int main() {
     CounterTask task;
     task.counter = atomic_int_new(0);
+    task.shared_sum = 0;
     task.lock.init();
     defer task.lock.destroy();
 
@@ -844,7 +850,7 @@ int main() {
     t1.join(&r1);
     t2.join(&r2);
 
-    printf("Final counter: %d\\n", task.counter.load());
+    printf("Atomic counter: %d, Mutex sum: %d\\n", task.counter.load(), task.shared_sum);
     return 0;
 }
 """, "Safe Concurrency with Thread, Mutex, and AtomicInt")}

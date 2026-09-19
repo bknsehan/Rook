@@ -1621,8 +1621,8 @@ static AstType* ck_fn_ret_instantiated(Checker* ck, FnDef* f) {
 }
 
 static int ck_is_result_type(AstType* t) {
-    (void)t;
-    return 0;
+    if (!t || !t->name) return 0;
+    return strcmp(t->name, "Result") == 0 || strcmp(t->name, "Option") == 0;
 }
 
 /* ── expression checking ───────────────────────────────────────────── */

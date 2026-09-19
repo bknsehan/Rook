@@ -4,10 +4,11 @@
 #include "ast.h"
 #include "sema.h"
 
-/* A Backend turns a checked Rook program into target code. The C backend is
-   the only implementation today; an LLVM/native backend can be added later by
-   implementing the same interface without touching the parser or semantic
-   analyzer. */
+/* A Backend turns a checked Rook program into target code.
+   Rook provides two production backends: C (default, C23/C11) and LLVM
+   (direct native object emission and in-memory JIT).
+   The backend interface operates on checked ASTs without touching
+   the parser or semantic analyzer. */
 typedef struct Backend {
     const char* name;
     /* Emit target code for `prog` (already semantically checked). Returns a
@@ -21,7 +22,7 @@ typedef struct Backend {
     void (*destroy)(struct Backend* b);
 } Backend;
 
-/* Create a backend by name ("c" today). Returns NULL if unknown. */
+/* Create a backend by name ("c", "llvm", or alias "llvm2"). Returns NULL if unknown. */
 Backend* backend_create(const char* name);
 
 /* Create the C backend directly. */

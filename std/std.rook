@@ -9,3 +9,5 @@
 #comprise <std/test>
 #comprise <std/log>
 #comprise <std/json>
+#comprise <std/atomic>
+#comprise <std/sync>

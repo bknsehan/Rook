@@ -828,6 +828,30 @@
     ]
   },
   {
+    "name": "roundf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "powf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      },
+      {
+        "name": "arg1",
+        "type": "float"
+      }
+    ]
+  },
+  {
     "name": "atan2f",
     "ret": "float",
     "params": [
@@ -837,6 +861,46 @@
       },
       {
         "name": "arg1",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "tanf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "asinf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "acosf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "name": "atanf",
+    "ret": "float",
+    "params": [
+      {
+        "name": "arg0",
         "type": "float"
       }
     ]
@@ -1130,6 +1194,64 @@
       {
         "name": "arg0",
         "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "usleep",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "unsigned int"
+      }
+    ]
+  },
+  {
+    "name": "getcwd",
+    "ret": "char*",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "char*"
+      },
+      {
+        "name": "arg1",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "access",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      },
+      {
+        "name": "arg1",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "unlink",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "pthread_detach",
+    "ret": "int",
+    "params": [
+      {
+        "name": "arg0",
+        "type": "void*"
       }
     ]
   },

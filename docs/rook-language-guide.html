@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Rook Programming Language (v0.6.2)</title>
+<title>The Rook Programming Language (v0.6.3)</title>
 <style>
   /* ─── mdBook Theme Variables ───────────────────────────────────────── */
   :root, html.warm {
@@ -679,7 +679,7 @@
     <div class="sidebar-header">
       <div class="sidebar-title">
         <span>Rook Language</span>
-        <span class="sidebar-version">v0.6.2</span>
+        <span class="sidebar-version">v0.6.3</span>
       </div>
       <div class="sidebar-search-box">
         <input type="text" id="search-input" placeholder="Search chapters..." aria-label="Search chapters" oninput="filterChapters(this.value)">
@@ -735,7 +735,7 @@
     <main class="content-container">
       <div class="book-hero">
         <h1>The Rook Programming Language</h1>
-        <p>Technical Reference &amp; Language Specification Manual (v0.6.2)</p>
+        <p>Technical Reference &amp; Language Specification Manual (v0.6.3)</p>
       </div>
 
       <div class="content" id="book-content">
@@ -1498,14 +1498,19 @@ int main() {
 
 struct CounterTask {
     counter: AtomicInt;
+    shared_sum: int;
     lock: Mutex;
 };
 
 void* worker(void* arg) {
     CounterTask* task = (CounterTask*)arg;
     for (int i = 0; i &lt; 1000; i = i + 1) {
-        task-&gt;lock.lock();
+        // Lock-free atomic increment (no mutex needed)
         task-&gt;counter.fetch_add(1);
+
+        // Mutex protects standard non-atomic shared state
+        task-&gt;lock.lock();
+        task-&gt;shared_sum = task-&gt;shared_sum + 1;
         task-&gt;lock.unlock();
     }
     return NULL;
@@ -1514,6 +1519,7 @@ void* worker(void* arg) {
 int main() {
     CounterTask task;
     task.counter = atomic_int_new(0);
+    task.shared_sum = 0;
     task.lock.init();
     defer task.lock.destroy();
 
@@ -1525,7 +1531,7 @@ int main() {
     t1.join(&amp;r1);
     t2.join(&amp;r2);
 
-    printf("Final counter: %d\n", task.counter.load());
+    printf("Atomic counter: %d, Mutex sum: %d\n", task.counter.load(), task.shared_sum);
     return 0;
 }</code></pre></div>
 

@@ -707,6 +707,7 @@ int toolchain_link_target(const TargetSpec* spec, const Toolchain* tc, const cha
     }
     if (strcmp(tos, "windows") != 0 && (!tc || !tc->cc_vendor || strcmp(tc->cc_vendor, "cl") != 0)) {
         argvec_add(&av, "-lm");
+        argvec_add(&av, "-lpthread");
     }
     for (size_t i = 0; i < n_libs; i++) {
         char lib_buf[512];

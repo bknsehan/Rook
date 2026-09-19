@@ -1,0 +1,17 @@
+os_getenv=rook_works
+os_time_ms_ok=1
+os_time_sec_ok=1
+fs_exists_tests=1
+fs_is_dir_tests=1
+fs_path_join=foo/bar/baz.txt
+fs_path_join2=hello/world
+atomic_bool_cas=1 val=0
+atomic_ptr_cas=1
+thread_detach_ok=1
+vec_first=10 vec_last=30 cap_ok=1
+sb=num=1234567890123, d=3.14
+9876543210
+sqrt=4.0
+sin=0.0
+cos=1.0
+tan=0.0
