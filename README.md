@@ -438,7 +438,8 @@ The Rook standard library is located in `std/` and provides core capabilities:
 | :--- | :--- | :--- |
 | **`std/io`** | `#comprise std/io` | Stream I/O abstractions, file descriptor operations, line-by-line reading, and binary read/write primitives. |
 | **`std/math`** | `#comprise std/math` | Numerical utilities: `min`, `max`, `clamp`, `abs`, integer power, floating-point comparisons, and constants. |
-| **`std/json`** | `#comprise std/json` | Streaming recursive-descent JSON parser and serializer with zero external dependencies. |
+| **`std/json`** | `#comprise std/json` | Zero-allocation JSON parser, dot-path navigation, type inspection, raw array queries, and fluent serializer (`JsonBuilder`). |
+| **`std/toml`** | `#comprise std/toml` | Zero-allocation TOML parser and serializer supporting sections, arrays of tables (`[[table]]`), typed values, and fluent serializer (`TomlBuilder`). |
 | **`std/log`** | `#comprise std/log` | Leveled structured logging (`DEBUG`, `INFO`, `WARN`, `ERROR`) with ISO-8601 timestamps and terminal styling. |
 | **`std/test`** | `#comprise std/test` | Lightweight test runner and assertions (`assert_eq`, `assert_true`, `assert_null`). |
 

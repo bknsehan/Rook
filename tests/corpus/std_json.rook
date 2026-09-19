@@ -42,5 +42,50 @@ int main() {
     json_write_key_float(&sb2, "pi", 3.14f);
     sb2.append_cstr("}");
     printf("%s\n", sb2.to_cstr());
+
+    // 3. New Advanced JSON Features: Types, Dot-paths, Sub-objects, Unicode, JsonBuilder
+    const char* doc3 = "{\"server\": {\"host\": \"127.0.0.1\", \"port\": 8080, \"active\": true, \"extra\": null}, \"msg\": \"Hello \\u0041\\u0042!\"}";
+    char host[32];
+    int port = 0;
+    bool active = false;
+    char msg[32];
+    bool p1 = json_get_path_string(doc3, "server.host", host, 32);
+    bool p2 = json_get_path_int(doc3, "server.port", &port);
+    bool p3 = json_get_path_bool(doc3, "server.active", &active);
+    bool p4 = json_get_string(doc3, "msg", msg, 32);
+    bool is_extra_null = json_is_null(doc3, "server.extra");
+    int host_type = (int)json_get_type(doc3, "server.host");
+    int port_type = (int)json_get_type(doc3, "server.port");
+    int null_type = (int)json_get_type(doc3, "server.extra");
+    printf("path_ok=%d host=%s port=%d active=%d msg=%s null=%d types=%d,%d,%d\n",
+           p1 && p2 && p3 && p4, host, port, active, msg, is_extra_null, host_type, port_type, null_type);
+
+    char sub_obj[128];
+    bool sub_ok = json_get_object(doc3, "server", sub_obj, 128);
+    printf("sub_ok=%d sub_has_port=%d\n", sub_ok, json_has_key(sub_obj, "port"));
+
+    // Raw array inspection
+    const char* raw_arr = "[100, 200, 300]";
+    int rlen = json_array_len(raw_arr);
+    int r1 = 0;
+    json_array_elem_int(raw_arr, 1, &r1);
+    printf("raw_arr_len=%d elem1=%d\n", rlen, r1);
+
+    // Fluent JsonBuilder test
+    JsonBuilder jb = json_builder_new(128);
+    defer jb.destroy();
+    jb.begin_object();
+    jb.key_string("lang", "Rook");
+    jb.key_int("ver", 7);
+    jb.key("flags");
+    jb.begin_array();
+    jb.val_string("fast");
+    jb.val_string("safe");
+    jb.val_bool(true);
+    jb.end_array();
+    jb.key_null("opt");
+    jb.end_object();
+    printf("builder=%s\n", jb.to_cstr());
+
     return 0;
 }

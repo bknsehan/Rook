@@ -1,0 +1,739 @@
+// Rook Standard Library - std/toml.rook
+// High-performance TOML (Tom's Obvious Minimal Language) parser and serializer.
+// Supports sections/tables, nested tables, arrays of tables ([[table]]),
+// typed values (strings, literal strings, ints, floats, bools, arrays),
+// and zero-allocation queries directly over TOML text documents.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdint.h>
+#comprise <std/str>
+#comprise <std/vec>
+
+const char* toml_skip_ws(const char* p) {
+    if (!p) return NULL;
+    while (p[0] == ' ' || p[0] == '\t') {
+        p = p + 1;
+    }
+    return p;
+}
+
+const char* toml_skip_line(const char* p) {
+    if (!p) return NULL;
+    while (p[0] != '\0' && p[0] != '\n') {
+        p = p + 1;
+    }
+    if (p[0] == '\n') {
+        p = p + 1;
+    }
+    return p;
+}
+
+const char* toml_skip_ws_and_newlines(const char* p) {
+    if (!p) return NULL;
+    while (p[0] == ' ' || p[0] == '\t' || p[0] == '\r' || p[0] == '\n') {
+        p = p + 1;
+    }
+    return p;
+}
+
+// Check if a line is a section header: [section]
+// Returns 1 if matching standard section [name], 2 if array-of-tables [[name]], 0 otherwise.
+int toml_match_section_header(const char* line, const char* target_sec, bool* is_array_table) {
+    const char* p = toml_skip_ws(line);
+    if (!p || p[0] != '[') return 0;
+
+    bool arr = false;
+    if (p[1] == '[') {
+        arr = true;
+        p = p + 2;
+    } else {
+        p = p + 1;
+    }
+    p = toml_skip_ws(p);
+
+    size_t tlen = target_sec ? (size_t)strlen(target_sec) : 0;
+    if (strncmp(p, target_sec, tlen) != 0) return 0;
+    p = p + tlen;
+    p = toml_skip_ws(p);
+
+    if (arr) {
+        if (p[0] == ']' && p[1] == ']') {
+            if (is_array_table) *is_array_table = true;
+            return 2;
+        }
+    } else {
+        if (p[0] == ']' && p[1] != ']') {
+            if (is_array_table) *is_array_table = false;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Find start of section in toml. If section is NULL or "", returns start of document.
+const char* toml_find_section(const char* toml, const char* section) {
+    if (!toml) return NULL;
+    if (!section || section[0] == '\0') {
+        return toml;
+    }
+    const char* p = toml;
+    while (p[0] != '\0') {
+        const char* next_line = toml_skip_line(p);
+        bool is_arr = false;
+        if (toml_match_section_header(p, section, &is_arr) == 1) {
+            return next_line;
+        }
+        p = next_line;
+    }
+    return NULL;
+}
+
+bool toml_has_section(const char* toml, const char* section) {
+    return toml_find_section(toml, section) != NULL;
+}
+
+// Count occurrences of [[table_name]] in document
+int toml_table_count(const char* toml, const char* table_name) {
+    if (!toml || !table_name) return 0;
+    const char* p = toml;
+    int count = 0;
+    while (p[0] != '\0') {
+        const char* next_line = toml_skip_line(p);
+        bool is_arr = false;
+        if (toml_match_section_header(p, table_name, &is_arr) == 2) {
+            count = count + 1;
+        }
+        p = next_line;
+    }
+    return count;
+}
+
+// Locate the index-th occurrence of [[table_name]]
+const char* toml_table_at(const char* toml, const char* table_name, int index) {
+    if (!toml || !table_name || index < 0) return NULL;
+    const char* p = toml;
+    int curr = 0;
+    while (p[0] != '\0') {
+        const char* next_line = toml_skip_line(p);
+        bool is_arr = false;
+        if (toml_match_section_header(p, table_name, &is_arr) == 2) {
+            if (curr == index) {
+                return next_line;
+            }
+            curr = curr + 1;
+        }
+        p = next_line;
+    }
+    return NULL;
+}
+
+// Find a key = value within a section or root
+const char* toml_find_in_scope(const char* start_ptr, const char* key, bool stop_at_next_section) {
+    if (!start_ptr || !key) return NULL;
+    const char* p = start_ptr;
+    size_t klen = (size_t)strlen(key);
+
+    while (p[0] != '\0') {
+        const char* next_line = toml_skip_line(p);
+        const char* line = toml_skip_ws(p);
+
+        // Empty line or comment
+        if (line[0] == '\0' || line[0] == '\r' || line[0] == '\n' || line[0] == '#') {
+            p = next_line;
+            continue;
+        }
+
+        // Reached next section header
+        if (line[0] == '[') {
+            if (stop_at_next_section) {
+                return NULL;
+            }
+        }
+
+        // Match key
+        bool is_match = false;
+        const char* after_key = NULL;
+        if (line[0] == '"') {
+            // Quoted key: "my.key" = ...
+            if (strncmp(line + 1, key, klen) == 0 && line[1 + klen] == '"') {
+                is_match = true;
+                after_key = line + 1 + klen + 1;
+            }
+        } else {
+            // Bare key: my_key = ...
+            if (strncmp(line, key, klen) == 0) {
+                char next_c = line[klen];
+                if (next_c == ' ' || next_c == '\t' || next_c == '=') {
+                    is_match = true;
+                    after_key = line + klen;
+                }
+            }
+        }
+
+        if (is_match && after_key) {
+            after_key = toml_skip_ws(after_key);
+            if (after_key[0] == '=') {
+                const char* val_start = toml_skip_ws(after_key + 1);
+                return val_start;
+            }
+        }
+
+        p = next_line;
+    }
+    return NULL;
+}
+
+const char* toml_find(const char* toml, const char* section, const char* key) {
+    if (!toml || !key) return NULL;
+    bool is_root = (!section || section[0] == '\0');
+    const char* sec_start = toml_find_section(toml, section);
+    if (!sec_start) return NULL;
+    return toml_find_in_scope(sec_start, key, true);
+}
+
+bool toml_has_key(const char* toml, const char* section, const char* key) {
+    return toml_find(toml, section, key) != NULL;
+}
+
+// Table array lookup
+const char* toml_table_find(const char* toml, const char* table_name, int index, const char* key) {
+    const char* sec_start = toml_table_at(toml, table_name, index);
+    if (!sec_start) return NULL;
+    return toml_find_in_scope(sec_start, key, true);
+}
+
+// ─── Value Parsers ──────────────────────────────────────────────────────────
+
+bool toml_parse_string(const char* p, char* out, size_t cap) {
+    if (!p || cap == 0) return false;
+    p = toml_skip_ws(p);
+
+    // 1. Multiline basic string: """..."""
+    if (p[0] == '"' && p[1] == '"' && p[2] == '"') {
+        p = p + 3;
+        // Trim immediate newline after opening """
+        if (p[0] == '\r' && p[1] == '\n') p = p + 2;
+        else if (p[0] == '\n') p = p + 1;
+
+        size_t n = 0;
+        while (p[0] != '\0') {
+            if (p[0] == '"' && p[1] == '"' && p[2] == '"') {
+                out[n] = '\0';
+                return true;
+            }
+            char c = p[0];
+            if (c == '\\') {
+                p = p + 1;
+                char e = p[0];
+                if (e == 'n') c = '\n';
+                else if (e == 'r') c = '\r';
+                else if (e == 't') c = '\t';
+                else if (e == '"') c = '"';
+                else if (e == '\\') c = '\\';
+                else c = e;
+            }
+            if (n + 1 >= cap) return false;
+            out[n] = c;
+            n = n + 1;
+            p = p + 1;
+        }
+        return false;
+    }
+
+    // 2. Multiline literal string: '''...'''
+    if (p[0] == '\'' && p[1] == '\'' && p[2] == '\'') {
+        p = p + 3;
+        if (p[0] == '\r' && p[1] == '\n') p = p + 2;
+        else if (p[0] == '\n') p = p + 1;
+
+        size_t n = 0;
+        while (p[0] != '\0') {
+            if (p[0] == '\'' && p[1] == '\'' && p[2] == '\'') {
+                out[n] = '\0';
+                return true;
+            }
+            if (n + 1 >= cap) return false;
+            out[n] = p[0];
+            n = n + 1;
+            p = p + 1;
+        }
+        return false;
+    }
+
+    // 3. Literal single-line string: '...' (no escape parsing)
+    if (p[0] == '\'') {
+        p = p + 1;
+        size_t n = 0;
+        while (p[0] != '\0' && p[0] != '\'') {
+            if (n + 1 >= cap) return false;
+            out[n] = p[0];
+            n = n + 1;
+            p = p + 1;
+        }
+        if (p[0] != '\'') return false;
+        out[n] = '\0';
+        return true;
+    }
+
+    // 4. Basic single-line string: "..." (with escape parsing)
+    if (p[0] == '"') {
+        p = p + 1;
+        size_t n = 0;
+        while (p[0] != '\0' && p[0] != '"') {
+            char c = p[0];
+            if (c == '\\') {
+                p = p + 1;
+                char e = p[0];
+                if (e == '\0') break;
+                if (e == 'n') c = '\n';
+                else if (e == 'r') c = '\r';
+                else if (e == 't') c = '\t';
+                else if (e == 'b') c = '\b';
+                else if (e == 'f') c = '\f';
+                else if (e == '"') c = '"';
+                else if (e == '\\') c = '\\';
+                else c = e;
+            }
+            if (n + 1 >= cap) return false;
+            out[n] = c;
+            n = n + 1;
+            p = p + 1;
+        }
+        if (p[0] != '"') return false;
+        out[n] = '\0';
+        return true;
+    }
+
+    return false;
+}
+
+bool toml_parse_int(const char* p, int* out) {
+    if (!p) return false;
+    p = toml_skip_ws(p);
+
+    int sign = 1;
+    if (p[0] == '-') {
+        sign = -1;
+        p = p + 1;
+    } else if (p[0] == '+') {
+        p = p + 1;
+    }
+
+    // Hex: 0x...
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+        p = p + 2;
+        int val = 0;
+        bool any = false;
+        while (true) {
+            if (p[0] == '_') { p = p + 1; continue; }
+            int d = -1;
+            if (p[0] >= '0' && p[0] <= '9') d = p[0] - '0';
+            else if (p[0] >= 'a' && p[0] <= 'f') d = p[0] - 'a' + 10;
+            else if (p[0] >= 'A' && p[0] <= 'F') d = p[0] - 'A' + 10;
+            if (d < 0) break;
+            any = true;
+            val = val * 16 + d;
+            p = p + 1;
+        }
+        if (!any) return false;
+        if (out) *out = val * sign;
+        return true;
+    }
+
+    // Binary: 0b...
+    if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
+        p = p + 2;
+        int val = 0;
+        bool any = false;
+        while (true) {
+            if (p[0] == '_') { p = p + 1; continue; }
+            if (p[0] != '0' && p[0] != '1') break;
+            any = true;
+            val = val * 2 + (p[0] - '0');
+            p = p + 1;
+        }
+        if (!any) return false;
+        if (out) *out = val * sign;
+        return true;
+    }
+
+    // Octal: 0o...
+    if (p[0] == '0' && (p[1] == 'o' || p[1] == 'O')) {
+        p = p + 2;
+        int val = 0;
+        bool any = false;
+        while (true) {
+            if (p[0] == '_') { p = p + 1; continue; }
+            if (p[0] < '0' || p[0] > '7') break;
+            any = true;
+            val = val * 8 + (p[0] - '0');
+            p = p + 1;
+        }
+        if (!any) return false;
+        if (out) *out = val * sign;
+        return true;
+    }
+
+    // Decimal
+    int val = 0;
+    bool any = false;
+    while (true) {
+        if (p[0] == '_') { p = p + 1; continue; }
+        if (p[0] < '0' || p[0] > '9') break;
+        any = true;
+        int d = p[0] - '0';
+        if (val > (2147483647 - d) / 10) {
+            if (out) *out = (sign == 1) ? 2147483647 : -2147483647 - 1;
+            return true;
+        }
+        val = val * 10 + d;
+        p = p + 1;
+    }
+    if (!any) return false;
+    if (out) *out = val * sign;
+    return true;
+}
+
+bool toml_parse_float(const char* p, float* out) {
+    if (!p) return false;
+    p = toml_skip_ws(p);
+
+    float sign = 1.0f;
+    if (p[0] == '-') {
+        sign = -1.0f;
+        p = p + 1;
+    } else if (p[0] == '+') {
+        p = p + 1;
+    }
+
+    float int_part = 0.0f;
+    bool any = false;
+    while (true) {
+        if (p[0] == '_') { p = p + 1; continue; }
+        if (p[0] < '0' || p[0] > '9') break;
+        any = true;
+        int_part = int_part * 10.0f + (float)(p[0] - '0');
+        p = p + 1;
+    }
+
+    float frac_part = 0.0f;
+    float div = 1.0f;
+    if (p[0] == '.') {
+        p = p + 1;
+        while (true) {
+            if (p[0] == '_') { p = p + 1; continue; }
+            if (p[0] < '0' || p[0] > '9') break;
+            any = true;
+            frac_part = frac_part * 10.0f + (float)(p[0] - '0');
+            div = div * 10.0f;
+            p = p + 1;
+        }
+    }
+    if (!any) return false;
+
+    float val = (int_part + (frac_part / div)) * sign;
+    if (p[0] == 'e' || p[0] == 'E') {
+        p = p + 1;
+        int exp_sign = 1;
+        if (p[0] == '-') { exp_sign = -1; p = p + 1; }
+        else if (p[0] == '+') { p = p + 1; }
+        int exp_val = 0;
+        while (p[0] >= '0' && p[0] <= '9') {
+            exp_val = exp_val * 10 + (p[0] - '0');
+            p = p + 1;
+        }
+        float factor = 1.0f;
+        for (int i = 0; i < exp_val; i = i + 1) factor = factor * 10.0f;
+        if (exp_sign < 0) val = val / factor;
+        else val = val * factor;
+    }
+
+    if (out) *out = val;
+    return true;
+}
+
+bool toml_parse_bool(const char* p, bool* out) {
+    if (!p) return false;
+    p = toml_skip_ws(p);
+    if (strncmp(p, "true", 4) == 0) {
+        char next = p[4];
+        if (next == ' ' || next == '\t' || next == '\r' || next == '\n' || next == '#' || next == ',' || next == ']' || next == '\0') {
+            if (out) *out = true;
+            return true;
+        }
+    }
+    if (strncmp(p, "false", 5) == 0) {
+        char next = p[5];
+        if (next == ' ' || next == '\t' || next == '\r' || next == '\n' || next == '#' || next == ',' || next == ']' || next == '\0') {
+            if (out) *out = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+// ─── High-Level Query Getters ───────────────────────────────────────────────
+
+bool toml_get_string(const char* toml, const char* section, const char* key, char* out, size_t cap) {
+    const char* p = toml_find(toml, section, key);
+    if (!p) return false;
+    return toml_parse_string(p, out, cap);
+}
+
+bool toml_get_int(const char* toml, const char* section, const char* key, int* out) {
+    const char* p = toml_find(toml, section, key);
+    if (!p) return false;
+    return toml_parse_int(p, out);
+}
+
+bool toml_get_float(const char* toml, const char* section, const char* key, float* out) {
+    const char* p = toml_find(toml, section, key);
+    if (!p) return false;
+    return toml_parse_float(p, out);
+}
+
+bool toml_get_bool(const char* toml, const char* section, const char* key, bool* out) {
+    const char* p = toml_find(toml, section, key);
+    if (!p) return false;
+    return toml_parse_bool(p, out);
+}
+
+// ─── Array Parsing ──────────────────────────────────────────────────────────
+
+const char* toml_skip_array_value(const char* p) {
+    p = toml_skip_ws_and_newlines(p);
+    if (!p || p[0] == '\0') return p;
+    char c = p[0];
+    if (c == '"') {
+        p = p + 1;
+        while (p[0] != '\0' && p[0] != '"') {
+            if (p[0] == '\\' && p[1] != '\0') p = p + 2;
+            else p = p + 1;
+        }
+        if (p[0] == '"') p = p + 1;
+        return p;
+    }
+    if (c == '\'') {
+        p = p + 1;
+        while (p[0] != '\0' && p[0] != '\'') p = p + 1;
+        if (p[0] == '\'') p = p + 1;
+        return p;
+    }
+    if (c == '[') {
+        int depth = 1;
+        p = p + 1;
+        while (p[0] != '\0' && depth > 0) {
+            if (p[0] == '[') depth = depth + 1;
+            else if (p[0] == ']') depth = depth - 1;
+            p = p + 1;
+        }
+        return p;
+    }
+    while (p[0] != '\0' && p[0] != ',' && p[0] != ']' && p[0] != '\r' && p[0] != '\n' && p[0] != '#') {
+        p = p + 1;
+    }
+    return p;
+}
+
+int toml_get_array_len(const char* toml, const char* section, const char* key) {
+    const char* p = toml_find(toml, section, key);
+    if (!p) return -1;
+    p = toml_skip_ws_and_newlines(p);
+    if (p[0] != '[') return -1;
+    p = toml_skip_ws_and_newlines(p + 1);
+    if (p[0] == ']') return 0;
+
+    int count = 0;
+    while (p[0] != '\0' && p[0] != ']') {
+        p = toml_skip_ws_and_newlines(p);
+        if (p[0] == '#') { p = toml_skip_line(p); continue; }
+        if (p[0] == ']') break;
+        p = toml_skip_array_value(p);
+        count = count + 1;
+        p = toml_skip_ws_and_newlines(p);
+        if (p[0] == ',') {
+            p = p + 1;
+        } else if (p[0] == ']') {
+            break;
+        } else if (p[0] == '#') {
+            p = toml_skip_line(p);
+        }
+    }
+    return count;
+}
+
+const char* toml_array_get_elem(const char* toml, const char* section, const char* key, int index) {
+    if (index < 0) return NULL;
+    const char* p = toml_find(toml, section, key);
+    if (!p) return NULL;
+    p = toml_skip_ws_and_newlines(p);
+    if (p[0] != '[') return NULL;
+    p = toml_skip_ws_and_newlines(p + 1);
+
+    int curr = 0;
+    while (p[0] != '\0' && p[0] != ']') {
+        p = toml_skip_ws_and_newlines(p);
+        if (p[0] == '#') { p = toml_skip_line(p); continue; }
+        if (p[0] == ']') break;
+        if (curr == index) {
+            return p;
+        }
+        p = toml_skip_array_value(p);
+        curr = curr + 1;
+        p = toml_skip_ws_and_newlines(p);
+        if (p[0] == ',') {
+            p = p + 1;
+        } else if (p[0] == ']') {
+            break;
+        }
+    }
+    return NULL;
+}
+
+bool toml_array_get_string(const char* toml, const char* section, const char* key, int index, char* out, size_t cap) {
+    const char* p = toml_array_get_elem(toml, section, key, index);
+    if (!p) return false;
+    return toml_parse_string(p, out, cap);
+}
+
+bool toml_array_get_int(const char* toml, const char* section, const char* key, int index, int* out) {
+    const char* p = toml_array_get_elem(toml, section, key, index);
+    if (!p) return false;
+    return toml_parse_int(p, out);
+}
+
+bool toml_array_get_float(const char* toml, const char* section, const char* key, int index, float* out) {
+    const char* p = toml_array_get_elem(toml, section, key, index);
+    if (!p) return false;
+    return toml_parse_float(p, out);
+}
+
+bool toml_array_get_bool(const char* toml, const char* section, const char* key, int index, bool* out) {
+    const char* p = toml_array_get_elem(toml, section, key, index);
+    if (!p) return false;
+    return toml_parse_bool(p, out);
+}
+
+// ─── Table Array Query Helpers ──────────────────────────────────────────────
+
+bool toml_table_get_string(const char* toml, const char* table_name, int index, const char* key, char* out, size_t cap) {
+    const char* p = toml_table_find(toml, table_name, index, key);
+    if (!p) return false;
+    return toml_parse_string(p, out, cap);
+}
+
+bool toml_table_get_int(const char* toml, const char* table_name, int index, const char* key, int* out) {
+    const char* p = toml_table_find(toml, table_name, index, key);
+    if (!p) return false;
+    return toml_parse_int(p, out);
+}
+
+bool toml_table_get_float(const char* toml, const char* table_name, int index, const char* key, float* out) {
+    const char* p = toml_table_find(toml, table_name, index, key);
+    if (!p) return false;
+    return toml_parse_float(p, out);
+}
+
+bool toml_table_get_bool(const char* toml, const char* table_name, int index, const char* key, bool* out) {
+    const char* p = toml_table_find(toml, table_name, index, key);
+    if (!p) return false;
+    return toml_parse_bool(p, out);
+}
+
+// ─── TomlBuilder (Fluent TOML Serializer) ───────────────────────────────────
+
+struct TomlBuilder {
+    sb: StringBuilder;
+};
+
+TomlBuilder toml_builder_new(size_t cap) {
+    return TomlBuilder {
+        sb: sb_new(cap > 0 ? cap : 256)
+    };
+}
+
+impl TomlBuilder {
+    void comment(TomlBuilder* self, const char* text) {
+        self->sb.append_cstr("# ");
+        if (text) self->sb.append_cstr(text);
+        self->sb.append_char('\n');
+    }
+
+    void section(TomlBuilder* self, const char* name) {
+        self->sb.append_cstr("\n[");
+        if (name) self->sb.append_cstr(name);
+        self->sb.append_cstr("]\n");
+    }
+
+    void table_array(TomlBuilder* self, const char* name) {
+        self->sb.append_cstr("\n[[");
+        if (name) self->sb.append_cstr(name);
+        self->sb.append_cstr("]]\n");
+    }
+
+    void set_string(TomlBuilder* self, const char* key, const char* val) {
+        if (!key) return;
+        self->sb.append_cstr(key);
+        self->sb.append_cstr(" = \"");
+        if (val) {
+            size_t n = (size_t)strlen(val);
+            for (size_t i = 0; i < n; i = i + 1) {
+                char c = val[i];
+                if (c == '"') self->sb.append_cstr("\\\"");
+                else if (c == '\\') self->sb.append_cstr("\\\\");
+                else if (c == '\n') self->sb.append_cstr("\\n");
+                else if (c == '\t') self->sb.append_cstr("\\t");
+                else if (c == '\r') self->sb.append_cstr("\\r");
+                else self->sb.append_char(c);
+            }
+        }
+        self->sb.append_cstr("\"\n");
+    }
+
+    void set_literal_string(TomlBuilder* self, const char* key, const char* val) {
+        if (!key) return;
+        self->sb.append_cstr(key);
+        self->sb.append_cstr(" = '");
+        if (val) self->sb.append_cstr(val);
+        self->sb.append_cstr("'\n");
+    }
+
+    void set_int(TomlBuilder* self, const char* key, int val) {
+        if (!key) return;
+        self->sb.append_cstr(key);
+        self->sb.append_cstr(" = ");
+        self->sb.append_int(val);
+        self->sb.append_char('\n');
+    }
+
+    void set_float(TomlBuilder* self, const char* key, float val) {
+        if (!key) return;
+        self->sb.append_cstr(key);
+        self->sb.append_cstr(" = ");
+        self->sb.append_float(val);
+        self->sb.append_char('\n');
+    }
+
+    void set_bool(TomlBuilder* self, const char* key, bool val) {
+        if (!key) return;
+        self->sb.append_cstr(key);
+        self->sb.append_cstr(" = ");
+        self->sb.append_cstr(val ? "true" : "false");
+        self->sb.append_char('\n');
+    }
+
+    char* to_cstr(TomlBuilder* self) {
+        return self->sb.to_cstr();
+    }
+
+    Str as_str(TomlBuilder* self) {
+        return self->sb.as_str();
+    }
+
+    void destroy(TomlBuilder* self) {
+        self->sb.destroy();
+    }
+};

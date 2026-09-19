@@ -860,6 +860,49 @@ int main() {
   <li><strong><code>std/option</code>:</strong> Replaces unchecked nullable pointers with <code>Option</code> (<code>option_some(val)</code>, <code>option_none()</code>, <code>Option_unwrap(&opt)</code>, <code>Option_unwrap_or(&opt, default)</code>).</li>
   <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
 </ul>
+
+<h3>10.8 Zero-Allocation JSON Parser &amp; Fluent Builder: <code>std/json</code></h3>
+<p><code>std/json</code> provides high-performance JSON parsing, dot-path navigation (<code>"server.port"</code>), type inspection, raw array traversal, and a comma-safe fluent <code>JsonBuilder</code>:</p>
+{make_code_box("rook", """
+#comprise <std/json>
+
+int main() {
+    const char* doc = "{\\"server\\": {\\"host\\": \\"127.0.0.1\\", \\"port\\": 8080}}";
+    char host[32];
+    int port = 0;
+    json_get_path_string(doc, "server.host", host, sizeof(host));
+    json_get_path_int(doc, "server.port", &port);
+
+    JsonBuilder jb = json_builder_new(128);
+    defer jb.destroy();
+    jb.begin_object();
+    jb.key_string("status", "ok");
+    jb.key_int("code", 200);
+    jb.end_object();
+    return 0;
+}
+""", "Working with std/json")}
+
+<h3>10.9 Fast Configuration &amp; Structured Data: <code>std/toml</code></h3>
+<p><code>std/toml</code> provides a zero-allocation TOML parser and serializer supporting sections, nested tables, arrays of tables (<code>[[table]]</code>), typed values (strings, ints with underscores and hex, floats, bools), and a fluent <code>TomlBuilder</code>:</p>
+{make_code_box("rook", """
+#comprise <std/toml>
+
+int main() {
+    const char* cfg = "[database]\\nhost = \\"localhost\\"\\nport = 5432\\n";
+    char host[32];
+    int port = 0;
+    toml_get_string(cfg, "database", "host", host, sizeof(host));
+    toml_get_int(cfg, "database", "port", &port);
+
+    TomlBuilder tb = toml_builder_new(128);
+    defer tb.destroy();
+    tb.section("server");
+    tb.set_string("bind", "0.0.0.0");
+    tb.set_int("port", 8080);
+    return 0;
+}
+""", "Working with std/toml")}
 """
     add_ch("stdlib", "10. The Rook Standard Library (std/) Deep Dive", ch10)
 

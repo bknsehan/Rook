@@ -625,6 +625,51 @@ int main() {
 - **`std/option`:** Replaces unchecked nullable pointers with `Option` (`option_some(val)`, `option_none()`, `Option_unwrap(&opt)`, `Option_unwrap_or(&opt, default)`).
 - **`std/result`:** Explicit error propagation (`result_ok(val)`, `result_err(code)`, `Result_is_ok(&res)`, `Result_unwrap(&res)`) eliminating silent error code ignoring.
 
+### 10.8 Zero-Allocation JSON Parser & Fluent Builder: `std/json`
+`std/json` provides high-performance JSON parsing, dot-path navigation (`"server.port"`), type queries, raw array traversal, and a comma-safe fluent `JsonBuilder`:
+
+```rook
+#comprise <std/json>
+
+int main() {
+    const char* doc = "{\"server\": {\"host\": \"127.0.0.1\", \"port\": 8080}}";
+    char host[32];
+    int port = 0;
+    json_get_path_string(doc, "server.host", host, sizeof(host));
+    json_get_path_int(doc, "server.port", &port);
+
+    JsonBuilder jb = json_builder_new(128);
+    defer jb.destroy();
+    jb.begin_object();
+    jb.key_string("status", "ok");
+    jb.key_int("code", 200);
+    jb.end_object();
+    return 0;
+}
+```
+
+### 10.9 Fast Configuration & Structured Data: `std/toml`
+`std/toml` provides a zero-allocation TOML parser and serializer supporting sections, nested tables, arrays of tables (`[[table]]`), typed values (strings, ints with underscores and hex, floats, bools), and a fluent `TomlBuilder`:
+
+```rook
+#comprise <std/toml>
+
+int main() {
+    const char* cfg = "[database]\nhost = \"localhost\"\nport = 5432\n";
+    char host[32];
+    int port = 0;
+    toml_get_string(cfg, "database", "host", host, sizeof(host));
+    toml_get_int(cfg, "database", "port", &port);
+
+    TomlBuilder tb = toml_builder_new(128);
+    defer tb.destroy();
+    tb.section("server");
+    tb.set_string("bind", "0.0.0.0");
+    tb.set_int("port", 8080);
+    return 0;
+}
+```
+
 ---
 
 ## 11. Idiomatic Data Structure Implementation in Rook

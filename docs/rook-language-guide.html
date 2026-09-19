@@ -1541,6 +1541,45 @@ int main() {
   <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
 </ul>
 
+<h3>10.8 Zero-Allocation JSON Parser &amp; Fluent Builder: <code>std/json</code></h3>
+<p><code>std/json</code> provides high-performance JSON parsing, dot-path navigation (<code>"server.port"</code>), type inspection, raw array traversal, and a comma-safe fluent <code>JsonBuilder</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Working with std/json</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#comprise &lt;std/json&gt;
+
+int main() {
+    const char* doc = "{\"server\": {\"host\": \"127.0.0.1\", \"port\": 8080}}";
+    char host[32];
+    int port = 0;
+    json_get_path_string(doc, "server.host", host, sizeof(host));
+    json_get_path_int(doc, "server.port", &amp;port);
+
+    JsonBuilder jb = json_builder_new(128);
+    defer jb.destroy();
+    jb.begin_object();
+    jb.key_string("status", "ok");
+    jb.key_int("code", 200);
+    jb.end_object();
+    return 0;
+}</code></pre></div>
+
+<h3>10.9 Fast Configuration &amp; Structured Data: <code>std/toml</code></h3>
+<p><code>std/toml</code> provides a zero-allocation TOML parser and serializer supporting sections, nested tables, arrays of tables (<code>[[table]]</code>), typed values (strings, ints with underscores and hex, floats, bools), and a fluent <code>TomlBuilder</code>:</p>
+<div class="code-block"><div class="code-header"><span class="code-lang">Working with std/toml</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">#comprise &lt;std/toml&gt;
+
+int main() {
+    const char* cfg = "[database]\nhost = \"localhost\"\nport = 5432\n";
+    char host[32];
+    int port = 0;
+    toml_get_string(cfg, "database", "host", host, sizeof(host));
+    toml_get_int(cfg, "database", "port", &amp;port);
+
+    TomlBuilder tb = toml_builder_new(128);
+    defer tb.destroy();
+    tb.section("server");
+    tb.set_string("bind", "0.0.0.0");
+    tb.set_int("port", 8080);
+    return 0;
+}</code></pre></div>
+
 </section>
 
 

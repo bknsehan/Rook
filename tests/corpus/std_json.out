@@ -2,3 +2,7 @@ found=1 name=Ada "the" Great n=-42 ok=1 sub=1 missing=1
 {"a\"b":-7,true,null}
 float_ok=1 sc=3.14 tag_len=2 tag0=first c1=20
 {"key":"val","pi":3.140000}
+path_ok=1 host=127.0.0.1 port=8080 active=1 msg=Hello AB! null=1 types=3,2,0
+sub_ok=1 sub_has_port=1
+raw_arr_len=3 elem1=200
+builder={"lang":"Rook","ver":7,"flags":["fast","safe",true],"opt":null}

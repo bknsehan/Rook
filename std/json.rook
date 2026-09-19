@@ -1,13 +1,27 @@
 // Rook Standard Library - std/json.rook
-// Flat-object & array JSON parser: field/element getters (string/int/float/bool/has) and writers.
-// Safe pointer scanning, zero memory allocation on reads.
+// High-performance JSON parser, validator, path-navigator, and fluent serializer.
+// Zero memory allocation on scans and reads.
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
 #comprise <std/vec>
+#comprise <std/str>
+
+enum JsonType {
+    JsonNull,
+    JsonBool,
+    JsonNumber,
+    JsonString,
+    JsonArray,
+    JsonObject,
+    JsonInvalid
+};
 
 const char* json_skip_ws(const char* p) {
+    if (!p) return NULL;
     while (true) {
         char c = p[0];
         if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
@@ -19,6 +33,7 @@ const char* json_skip_ws(const char* p) {
 }
 
 const char* json_skip_string(const char* p) {
+    if (!p || p[0] != '"') return p;
     p = p + 1;
     while (p[0] != '\0') {
         if (p[0] == '\\') {
@@ -38,6 +53,7 @@ const char* json_skip_string(const char* p) {
 
 const char* json_skip_value(const char* p) {
     p = json_skip_ws(p);
+    if (!p || p[0] == '\0') return p;
     char c = p[0];
     if (c == '"') {
         return json_skip_string(p);
@@ -70,16 +86,30 @@ const char* json_skip_value(const char* p) {
     return p;
 }
 
+JsonType json_type_of(const char* p) {
+    if (!p) return JsonInvalid;
+    p = json_skip_ws(p);
+    char c = p[0];
+    if (c == 'n') return JsonNull;
+    if (c == 't' || c == 'f') return JsonBool;
+    if (c == '"') return JsonString;
+    if (c == '[') return JsonArray;
+    if (c == '{') return JsonObject;
+    if ((c >= '0' && c <= '9') || c == '-') return JsonNumber;
+    return JsonInvalid;
+}
+
 const char* json_find(const char* json, const char* key) {
+    if (!json || !key) return NULL;
     const char* p = json_skip_ws(json);
-    if (p[0] != '{') {
+    if (!p || p[0] != '{') {
         return NULL;
     }
     p = p + 1;
     size_t klen = (size_t)strlen(key);
     while (true) {
         p = json_skip_ws(p);
-        if (p[0] == '}') {
+        if (p[0] == '}' || p[0] == '\0') {
             return NULL;
         }
         if (p[0] != '"') {
@@ -114,17 +144,32 @@ bool json_has_key(const char* json, const char* key) {
     return json_find(json, key) != NULL;
 }
 
-bool json_get_string(const char* json, const char* key, char* out, size_t cap) {
-    const char* p = json_find(json, key);
-    if (p == NULL) {
-        return false;
-    }
-    if (p[0] != '"') {
-        return false;
-    }
-    if (cap == 0) {
-        return false;
-    }
+JsonType json_get_type(const char* json, const char* key) {
+    if (!json || !key) return JsonInvalid;
+    const char* p = strchr(key, '.') ? json_find_path(json, key) : json_find(json, key);
+    if (!p) return JsonInvalid;
+    return json_type_of(p);
+}
+
+bool json_is_null(const char* json, const char* key) {
+    if (!json || !key) return false;
+    const char* p = strchr(key, '.') ? json_find_path(json, key) : json_find(json, key);
+    if (!p) return false;
+    p = json_skip_ws(p);
+    return strncmp(p, "null", 4) == 0;
+}
+
+int json_hex_digit(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+bool json_parse_string(const char* p, char* out, size_t cap) {
+    if (!p || cap == 0) return false;
+    p = json_skip_ws(p);
+    if (p[0] != '"') return false;
     p = p + 1;
     size_t n = 0;
     while (p[0] != '\0' && p[0] != '"') {
@@ -132,9 +177,7 @@ bool json_get_string(const char* json, const char* key, char* out, size_t cap) {
         if (c == '\\') {
             p = p + 1;
             char e = p[0];
-            if (e == '\0') {
-                break;
-            }
+            if (e == '\0') break;
             if (e == 'n') {
                 c = '\n';
             } else if (e == 'r') {
@@ -145,223 +188,44 @@ bool json_get_string(const char* json, const char* key, char* out, size_t cap) {
                 c = '\b';
             } else if (e == 'f') {
                 c = '\f';
+            } else if (e == '"') {
+                c = '"';
+            } else if (e == '\\') {
+                c = '\\';
+            } else if (e == '/') {
+                c = '/';
+            } else if (e == 'u') {
+                int h0 = json_hex_digit(p[1]);
+                int h1 = json_hex_digit(p[2]);
+                int h2 = json_hex_digit(p[3]);
+                int h3 = json_hex_digit(p[4]);
+                if (h0 >= 0 && h1 >= 0 && h2 >= 0 && h3 >= 0) {
+                    int cp = (h0 << 12) | (h1 << 8) | (h2 << 4) | h3;
+                    p = p + 5;
+                    if (cp <= 0x7F) {
+                        if (n + 1 >= cap) return false;
+                        out[n] = (char)cp;
+                        n = n + 1;
+                        continue;
+                    } else if (cp <= 0x7FF) {
+                        if (n + 2 >= cap) return false;
+                        out[n] = (char)(0xC0 | (cp >> 6));
+                        out[n + 1] = (char)(0x80 | (cp & 0x3F));
+                        n = n + 2;
+                        continue;
+                    } else {
+                        if (n + 3 >= cap) return false;
+                        out[n] = (char)(0xE0 | (cp >> 12));
+                        out[n + 1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+                        out[n + 2] = (char)(0x80 | (cp & 0x3F));
+                        n = n + 3;
+                        continue;
+                    }
+                }
+                c = e;
             } else {
                 c = e;
             }
-            p = p + 1;
-        } else {
-            p = p + 1;
-        }
-        if (n + 1 >= cap) {
-            return false;
-        }
-        out[n] = c;
-        n = n + 1;
-    }
-    if (p[0] != '"') {
-        return false;
-    }
-    out[n] = '\0';
-    return true;
-}
-
-bool json_get_int(const char* json, const char* key, int* out) {
-    const char* p = json_find(json, key);
-    if (p == NULL) {
-        return false;
-    }
-    int sign = 1;
-    if (p[0] == '-') {
-        sign = -1;
-        p = p + 1;
-    }
-    int val = 0;
-    bool any = false;
-    while (p[0] >= '0' && p[0] <= '9') {
-        any = true;
-        int digit = p[0] - '0';
-        if (val > (2147483647 - digit) / 10) {
-            if (out) {
-                if (sign == 1) {
-                    *out = 2147483647;
-                } else {
-                    *out = -2147483647 - 1;
-                }
-            }
-            return true;
-        }
-        val = val * 10 + digit;
-        p = p + 1;
-    }
-    if (!any) {
-        return false;
-    }
-    if (out) {
-        *out = val * sign;
-    }
-    return true;
-}
-
-bool json_get_float(const char* json, const char* key, float* out) {
-    const char* p = json_find(json, key);
-    if (p == NULL) {
-        return false;
-    }
-    float sign = 1.0f;
-    if (p[0] == '-') {
-        sign = -1.0f;
-        p = p + 1;
-    } else if (p[0] == '+') {
-        p = p + 1;
-    }
-    float int_part = 0.0f;
-    bool any = false;
-    while (p[0] >= '0' && p[0] <= '9') {
-        any = true;
-        int_part = int_part * 10.0f + (float)(p[0] - '0');
-        p = p + 1;
-    }
-    float frac_part = 0.0f;
-    float div = 1.0f;
-    if (p[0] == '.') {
-        p = p + 1;
-        while (p[0] >= '0' && p[0] <= '9') {
-            any = true;
-            frac_part = frac_part * 10.0f + (float)(p[0] - '0');
-            div = div * 10.0f;
-            p = p + 1;
-        }
-    }
-    if (!any) {
-        return false;
-    }
-    float val = (int_part + (frac_part / div)) * sign;
-    if (p[0] == 'e' || p[0] == 'E') {
-        p = p + 1;
-        int exp_sign = 1;
-        if (p[0] == '-') {
-            exp_sign = -1;
-            p = p + 1;
-        } else if (p[0] == '+') {
-            p = p + 1;
-        }
-        int exp_val = 0;
-        while (p[0] >= '0' && p[0] <= '9') {
-            exp_val = exp_val * 10 + (p[0] - '0');
-            p = p + 1;
-        }
-        float factor = 1.0f;
-        for (int i = 0; i < exp_val; i = i + 1) {
-            factor = factor * 10.0f;
-        }
-        if (exp_sign < 0) {
-            val = val / factor;
-        } else {
-            val = val * factor;
-        }
-    }
-    if (out) {
-        *out = val;
-    }
-    return true;
-}
-
-bool json_get_bool(const char* json, const char* key, bool* out) {
-    const char* p = json_find(json, key);
-    if (p == NULL) {
-        return false;
-    }
-    if (strncmp(p, "true", 4) == 0) {
-        char t = p[4];
-        if (t == ' ' || t == '\t' || t == '\n' || t == '\r' || t == ',' || t == '}' || t == ']' || t == '\0') {
-            if (out) {
-                *out = true;
-            }
-            return true;
-        }
-        return false;
-    }
-    if (strncmp(p, "false", 5) == 0) {
-        char f = p[5];
-        if (f == ' ' || f == '\t' || f == '\n' || f == '\r' || f == ',' || f == '}' || f == ']' || f == '\0') {
-            if (out) {
-                *out = false;
-            }
-            return true;
-        }
-        return false;
-    }
-    return false;
-}
-
-int json_get_array_len(const char* json, const char* key) {
-    const char* p = json_find(json, key);
-    if (p == NULL || p[0] != '[') {
-        return -1;
-    }
-    p = json_skip_ws(p + 1);
-    if (p[0] == ']') {
-        return 0;
-    }
-    int count = 0;
-    while (p[0] != '\0' && p[0] != ']') {
-        p = json_skip_value(p);
-        count = count + 1;
-        p = json_skip_ws(p);
-        if (p[0] == ',') {
-            p = json_skip_ws(p + 1);
-        } else if (p[0] == ']') {
-            break;
-        } else {
-            break;
-        }
-    }
-    return count;
-}
-
-const char* json_array_get_elem(const char* json, const char* key, int index) {
-    if (index < 0) return NULL;
-    const char* p = json_find(json, key);
-    if (p == NULL || p[0] != '[') {
-        return NULL;
-    }
-    p = json_skip_ws(p + 1);
-    int curr = 0;
-    while (p[0] != '\0' && p[0] != ']') {
-        if (curr == index) {
-            return p;
-        }
-        p = json_skip_value(p);
-        curr = curr + 1;
-        p = json_skip_ws(p);
-        if (p[0] == ',') {
-            p = json_skip_ws(p + 1);
-        } else if (p[0] == ']') {
-            break;
-        } else {
-            break;
-        }
-    }
-    return NULL;
-}
-
-bool json_array_get_string(const char* json, const char* key, int index, char* out, size_t cap) {
-    const char* p = json_array_get_elem(json, key, index);
-    if (p == NULL || p[0] != '"' || cap == 0) return false;
-    p = p + 1;
-    size_t n = 0;
-    while (p[0] != '\0' && p[0] != '"') {
-        char c = p[0];
-        if (c == '\\') {
-            p = p + 1;
-            char e = p[0];
-            if (e == '\0') break;
-            if (e == 'n') c = '\n';
-            else if (e == 'r') c = '\r';
-            else if (e == 't') c = '\t';
-            else if (e == 'b') c = '\b';
-            else if (e == 'f') c = '\f';
-            else c = e;
             p = p + 1;
         } else {
             p = p + 1;
@@ -375,12 +239,20 @@ bool json_array_get_string(const char* json, const char* key, int index, char* o
     return true;
 }
 
-bool json_array_get_int(const char* json, const char* key, int index, int* out) {
-    const char* p = json_array_get_elem(json, key, index);
-    if (p == NULL) return false;
+bool json_get_string(const char* json, const char* key, char* out, size_t cap) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    return json_parse_string(p, out, cap);
+}
+
+bool json_parse_int(const char* p, int* out) {
+    if (!p) return false;
+    p = json_skip_ws(p);
     int sign = 1;
     if (p[0] == '-') {
         sign = -1;
+        p = p + 1;
+    } else if (p[0] == '+') {
         p = p + 1;
     }
     int val = 0;
@@ -403,31 +275,15 @@ bool json_array_get_int(const char* json, const char* key, int index, int* out) 
     return true;
 }
 
-bool json_array_get_bool(const char* json, const char* key, int index, bool* out) {
-    const char* p = json_array_get_elem(json, key, index);
-    if (p == NULL) return false;
-    if (strncmp(p, "true", 4) == 0) {
-        char t = p[4];
-        if (t == ' ' || t == '\t' || t == '\n' || t == '\r' || t == ',' || t == '}' || t == ']' || t == '\0') {
-            if (out) *out = true;
-            return true;
-        }
-        return false;
-    }
-    if (strncmp(p, "false", 5) == 0) {
-        char f = p[5];
-        if (f == ' ' || f == '\t' || f == '\n' || f == '\r' || f == ',' || f == '}' || f == ']' || f == '\0') {
-            if (out) *out = false;
-            return true;
-        }
-        return false;
-    }
-    return false;
+bool json_get_int(const char* json, const char* key, int* out) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    return json_parse_int(p, out);
 }
 
-bool json_array_get_float(const char* json, const char* key, int index, float* out) {
-    const char* p = json_array_get_elem(json, key, index);
-    if (p == NULL) return false;
+bool json_parse_float(const char* p, float* out) {
+    if (!p) return false;
+    p = json_skip_ws(p);
     float sign = 1.0f;
     if (p[0] == '-') {
         sign = -1.0f;
@@ -478,6 +334,213 @@ bool json_array_get_float(const char* json, const char* key, int index, float* o
     }
     if (out) *out = val;
     return true;
+}
+
+bool json_get_float(const char* json, const char* key, float* out) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    return json_parse_float(p, out);
+}
+
+bool json_parse_bool(const char* p, bool* out) {
+    if (!p) return false;
+    p = json_skip_ws(p);
+    if (strncmp(p, "true", 4) == 0) {
+        char t = p[4];
+        if (t == ' ' || t == '\t' || t == '\n' || t == '\r' || t == ',' || t == '}' || t == ']' || t == '\0') {
+            if (out) *out = true;
+            return true;
+        }
+        return false;
+    }
+    if (strncmp(p, "false", 5) == 0) {
+        char f = p[5];
+        if (f == ' ' || f == '\t' || f == '\n' || f == '\r' || f == ',' || f == '}' || f == ']' || f == '\0') {
+            if (out) *out = false;
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
+
+bool json_get_bool(const char* json, const char* key, bool* out) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    return json_parse_bool(p, out);
+}
+
+int json_array_len(const char* arr) {
+    if (!arr) return -1;
+    const char* p = json_skip_ws(arr);
+    if (p[0] != '[') return -1;
+    p = json_skip_ws(p + 1);
+    if (p[0] == ']') return 0;
+    int count = 0;
+    while (p[0] != '\0' && p[0] != ']') {
+        p = json_skip_value(p);
+        count = count + 1;
+        p = json_skip_ws(p);
+        if (p[0] == ',') {
+            p = json_skip_ws(p + 1);
+        } else if (p[0] == ']') {
+            break;
+        } else {
+            break;
+        }
+    }
+    return count;
+}
+
+const char* json_array_elem(const char* arr, int index) {
+    if (!arr || index < 0) return NULL;
+    const char* p = json_skip_ws(arr);
+    if (p[0] != '[') return NULL;
+    p = json_skip_ws(p + 1);
+    int curr = 0;
+    while (p[0] != '\0' && p[0] != ']') {
+        if (curr == index) return p;
+        p = json_skip_value(p);
+        curr = curr + 1;
+        p = json_skip_ws(p);
+        if (p[0] == ',') {
+            p = json_skip_ws(p + 1);
+        } else if (p[0] == ']') {
+            break;
+        } else {
+            break;
+        }
+    }
+    return NULL;
+}
+
+bool json_array_elem_string(const char* arr, int index, char* out, size_t cap) {
+    const char* p = json_array_elem(arr, index);
+    if (!p) return false;
+    return json_parse_string(p, out, cap);
+}
+
+bool json_array_elem_int(const char* arr, int index, int* out) {
+    const char* p = json_array_elem(arr, index);
+    if (!p) return false;
+    return json_parse_int(p, out);
+}
+
+bool json_array_elem_float(const char* arr, int index, float* out) {
+    const char* p = json_array_elem(arr, index);
+    if (!p) return false;
+    return json_parse_float(p, out);
+}
+
+bool json_array_elem_bool(const char* arr, int index, bool* out) {
+    const char* p = json_array_elem(arr, index);
+    if (!p) return false;
+    return json_parse_bool(p, out);
+}
+
+int json_get_array_len(const char* json, const char* key) {
+    const char* p = json_find(json, key);
+    if (!p) return -1;
+    return json_array_len(p);
+}
+
+const char* json_array_get_elem(const char* json, const char* key, int index) {
+    const char* p = json_find(json, key);
+    if (!p) return NULL;
+    return json_array_elem(p, index);
+}
+
+bool json_array_get_string(const char* json, const char* key, int index, char* out, size_t cap) {
+    return json_array_elem_string(json_find(json, key), index, out, cap);
+}
+
+bool json_array_get_int(const char* json, const char* key, int index, int* out) {
+    return json_array_elem_int(json_find(json, key), index, out);
+}
+
+bool json_array_get_bool(const char* json, const char* key, int index, bool* out) {
+    return json_array_elem_bool(json_find(json, key), index, out);
+}
+
+bool json_array_get_float(const char* json, const char* key, int index, float* out) {
+    return json_array_elem_float(json_find(json, key), index, out);
+}
+
+bool json_get_raw(const char* json, const char* key, char* out, size_t cap) {
+    if (cap == 0) return false;
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    const char* end = json_skip_value(p);
+    size_t len = (size_t)(end - p);
+    if (len + 1 > cap) return false;
+    memcpy(out, p, len);
+    out[len] = '\0';
+    return true;
+}
+
+bool json_get_object(const char* json, const char* key, char* out, size_t cap) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    p = json_skip_ws(p);
+    if (p[0] != '{') return false;
+    return json_get_raw(json, key, out, cap);
+}
+
+bool json_get_array(const char* json, const char* key, char* out, size_t cap) {
+    const char* p = json_find(json, key);
+    if (!p) return false;
+    p = json_skip_ws(p);
+    if (p[0] != '[') return false;
+    return json_get_raw(json, key, out, cap);
+}
+
+const char* json_find_path(const char* json, const char* path) {
+    if (!json || !path) return NULL;
+    const char* curr = json;
+    const char* seg = path;
+    while (seg[0] != '\0') {
+        const char* dot = strchr(seg, '.');
+        char buf[128];
+        size_t slen = dot ? (size_t)(dot - seg) : strlen(seg);
+        if (slen == 0 || slen >= sizeof(buf)) return NULL;
+        memcpy(buf, seg, slen);
+        buf[slen] = '\0';
+
+        const char* p = json_find(curr, buf);
+        if (!p) return NULL;
+        if (!dot) return p;
+        curr = p;
+        seg = dot + 1;
+    }
+    return NULL;
+}
+
+bool json_has_path(const char* json, const char* path) {
+    return json_find_path(json, path) != NULL;
+}
+
+bool json_get_path_string(const char* json, const char* path, char* out, size_t cap) {
+    const char* p = json_find_path(json, path);
+    if (!p) return false;
+    return json_parse_string(p, out, cap);
+}
+
+bool json_get_path_int(const char* json, const char* path, int* out) {
+    const char* p = json_find_path(json, path);
+    if (!p) return false;
+    return json_parse_int(p, out);
+}
+
+bool json_get_path_float(const char* json, const char* path, float* out) {
+    const char* p = json_find_path(json, path);
+    if (!p) return false;
+    return json_parse_float(p, out);
+}
+
+bool json_get_path_bool(const char* json, const char* path, bool* out) {
+    const char* p = json_find_path(json, path);
+    if (!p) return false;
+    return json_parse_bool(p, out);
 }
 
 void json_write_string(StringBuilder* sb, const char* s) {
@@ -559,3 +622,122 @@ void json_write_key_null(StringBuilder* sb, const char* key) {
     json_write_key(sb, key);
     json_write_null(sb);
 }
+
+struct JsonBuilder {
+    sb: StringBuilder;
+    need_comma: bool;
+};
+
+JsonBuilder json_builder_new(size_t cap) {
+    return JsonBuilder {
+        sb: sb_new(cap > 0 ? cap : 128),
+        need_comma: false
+    };
+}
+
+impl JsonBuilder {
+    void prepare_val(JsonBuilder* self) {
+        if (self->need_comma) {
+            self->sb.append_char(',');
+        }
+        self->need_comma = true;
+    }
+
+    void begin_object(JsonBuilder* self) {
+        self->prepare_val();
+        self->sb.append_char('{');
+        self->need_comma = false;
+    }
+
+    void end_object(JsonBuilder* self) {
+        self->sb.append_char('}');
+        self->need_comma = true;
+    }
+
+    void begin_array(JsonBuilder* self) {
+        self->prepare_val();
+        self->sb.append_char('[');
+        self->need_comma = false;
+    }
+
+    void end_array(JsonBuilder* self) {
+        self->sb.append_char(']');
+        self->need_comma = true;
+    }
+
+    void key(JsonBuilder* self, const char* k) {
+        if (self->need_comma) {
+            self->sb.append_char(',');
+        }
+        json_write_string(&self->sb, k);
+        self->sb.append_char(':');
+        self->need_comma = false;
+    }
+
+    void val_string(JsonBuilder* self, const char* val) {
+        self->prepare_val();
+        json_write_string(&self->sb, val);
+    }
+
+    void val_int(JsonBuilder* self, int val) {
+        self->prepare_val();
+        json_write_int(&self->sb, val);
+    }
+
+    void val_float(JsonBuilder* self, float val) {
+        self->prepare_val();
+        json_write_float(&self->sb, val);
+    }
+
+    void val_bool(JsonBuilder* self, bool val) {
+        self->prepare_val();
+        json_write_bool(&self->sb, val);
+    }
+
+    void val_null(JsonBuilder* self) {
+        self->prepare_val();
+        json_write_null(&self->sb);
+    }
+
+    void key_string(JsonBuilder* self, const char* k, const char* val) {
+        self->key(k);
+        json_write_string(&self->sb, val);
+        self->need_comma = true;
+    }
+
+    void key_int(JsonBuilder* self, const char* k, int val) {
+        self->key(k);
+        json_write_int(&self->sb, val);
+        self->need_comma = true;
+    }
+
+    void key_float(JsonBuilder* self, const char* k, float val) {
+        self->key(k);
+        json_write_float(&self->sb, val);
+        self->need_comma = true;
+    }
+
+    void key_bool(JsonBuilder* self, const char* k, bool val) {
+        self->key(k);
+        json_write_bool(&self->sb, val);
+        self->need_comma = true;
+    }
+
+    void key_null(JsonBuilder* self, const char* k) {
+        self->key(k);
+        json_write_null(&self->sb);
+        self->need_comma = true;
+    }
+
+    char* to_cstr(JsonBuilder* self) {
+        return self->sb.to_cstr();
+    }
+
+    Str as_str(JsonBuilder* self) {
+        return self->sb.as_str();
+    }
+
+    void destroy(JsonBuilder* self) {
+        self->sb.destroy();
+    }
+};
