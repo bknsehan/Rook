@@ -181,17 +181,18 @@ Sum types represent tagged unions where variants may hold distinct payload field
 
 ```rook
 sum Shape {
-    Circle { radius: float },
-    Rectangle { width: float, height: float },
-    Point
+    Circle { radius: float; };
+    Rectangle { width: float; height: float; };
+    Point;
 }
 
 float compute_area(Shape s) {
-    match (s) {
-        Circle(c) => return 3.14159 * c.radius * c.radius;
-        Rectangle(r) => return r.width * r.height;
-        Point => return 0.0;
-    }
+    return match (s) {
+        Circle { radius }           => 3.14159 * radius * radius,
+        Rectangle { width, height } => width * height,
+        Point                       => 0.0,
+        _                           => 0.0,
+    };
 }
 ```
 

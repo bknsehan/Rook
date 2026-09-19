@@ -119,12 +119,13 @@ for src in "$CORPUS"/*.rook; do
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
                 continue
             fi
-            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$BIN" "$WORK/t.c" -lm -lpthread >/dev/null 2>&1; then
+            if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$BIN" "$WORK/t.c" -lm -lpthread >"$WORK/cc.err" 2>&1; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (gcc) $base"
+                head -n 5 "$WORK/cc.err" || true
                 continue
             fi
         fi
-        [ -f "$BIN.exe" ] && BIN="$BIN.exe"
+        [ ! -f "$BIN" ] && [ -f "$BIN.exe" ] && BIN="$BIN.exe"
         # optional stdin from a sibling <base>.in
         if [ -f "$CORPUS/$base.in" ]; then
             "$BIN" <"$CORPUS/$base.in" >"$WORK/got" 2>"$WORK/err"
