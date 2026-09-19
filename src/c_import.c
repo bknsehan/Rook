@@ -355,6 +355,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                             const char* val = clang_getCString(val_str);
                             if (val && sema_is_cfunc(val)) {
                                 const char* ret = sema_cfunc_ret(val);
+                                char safe_c_ret[128] = "void";
+                                if (ret && ret[0]) {
+                                    snprintf(safe_c_ret, sizeof(safe_c_ret), "%s", ret);
+                                }
                                 int np = sema_cfunc_nparams(val);
                                 int var = sema_cfunc_is_variadic(val);
                                 char ptypes[256] = "";
@@ -365,7 +369,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                                         strncat(ptypes, pt, sizeof(ptypes) - strlen(ptypes) - 1);
                                     }
                                 }
-                                sema_register_cfunc(name, ret ? ret : "void", ptypes, np, var);
+                                sema_register_cfunc(name, safe_c_ret, ptypes, np, var);
                             }
                             clang_disposeString(val_str);
                         }
@@ -574,8 +578,9 @@ int c_import_scan_and_load(Sema* sema, const char* src, int len, const char* bas
             memcpy(line, p, copy_len);
             line[copy_len] = '\0';
 
-            /* Check for include or comprise */
-            if (strstr(line, "include") || strstr(line, "comprise")) {
+            /* Check for include */
+            const char* inc_ptr = strstr(line, "include");
+            if (inc_ptr && (inc_ptr == line + 1 || *(inc_ptr - 1) == ' ' || *(inc_ptr - 1) == '\t')) {
                 const char* c1 = strchr(line, '<');
                 int is_sys = 1;
                 if (!c1) {
@@ -590,8 +595,9 @@ int c_import_scan_and_load(Sema* sema, const char* src, int len, const char* bas
                         if (hlen < sizeof(hname)) {
                             memcpy(hname, c1 + 1, hlen);
                             hname[hlen] = '\0';
-                            /* Only import C headers (not .rook files) */
-                            if (hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) {
+                            /* Only import C headers (not .rook files, and not std/... Rook modules) */
+                            if ((hlen < 5 || strcmp(hname + hlen - 5, ".rook") != 0) &&
+                                strncmp(hname, "std/", 4) != 0) {
                                 size_t total_cap = n_inc + 4;
                                 const char** all_inc = (const char**)malloc(total_cap * sizeof(const char*));
                                 size_t total_inc = 0;

@@ -108,6 +108,7 @@ for src in "$CORPUS"/*.rook; do
         if [ "$BACKEND" = "llvm" ] || [ "$BACKEND" = "llvm2" ]; then
             if ! emit "$src" "$WORK/t.ll"; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit-$BACKEND) $base"
+                [ -f "$WORK/emit.log" ] && head -n 30 "$WORK/emit.log" || true
                 continue
             fi
             if ! clang -Wno-override-module -o "$BIN" "$WORK/t.ll" -lm -lpthread >/dev/null 2>&1; then
@@ -117,6 +118,7 @@ for src in "$CORPUS"/*.rook; do
         else
             if ! emit "$src" "$WORK/t.c"; then
                 FAIL=$((FAIL+1)); failures+=("$base"); echo "  FAIL (emit) $base"
+                [ -f "$WORK/emit.log" ] && head -n 30 "$WORK/emit.log" || true
                 continue
             fi
             if ! "$ROKADE_CC" ${CSTD:+-std="$CSTD"} -o "$BIN" "$WORK/t.c" -lm -lpthread >"$WORK/cc.err" 2>&1; then

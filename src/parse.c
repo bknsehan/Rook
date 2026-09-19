@@ -1215,6 +1215,7 @@ static EnumDef* parse_sum_def(Parser* p, int is_c_enum) {
         break;
     }
     if (!expect_punct(p, "}")) return NULL;
+    if (tok_is(cur(p), ";")) adv(p);
     return ed;
 }
 
@@ -1346,7 +1347,8 @@ static Item* parse_top(Parser* p) {
             im->methods[im->nmethods++] = m;
         }
         if (!expect_punct(p, "}")) return NULL;
-         Item* it = ast_item_new(TOP_IMPL);
+        if (tok_is(cur(p), ";")) adv(p);
+        Item* it = ast_item_new(TOP_IMPL);
          it->im = im;
          return it;
      }

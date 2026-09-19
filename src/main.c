@@ -3500,6 +3500,7 @@ int main(int argc, char** argv) {
         diag_init(m);
         config_free(&cfg);
     }
+    c_import_init();
 
     if (argc < 2) {
         usage();

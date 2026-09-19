@@ -276,10 +276,27 @@ void sema_load_commandlist(const char* basedir, const char* override) {
 
 int sema_register_cfunc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic) {
     if (!name || !name[0]) return 0;
+
+    char safe_name[128];
+    char safe_ret[128];
+    char safe_params[256];
+
+    strncpy(safe_name, name, sizeof(safe_name) - 1);
+    safe_name[sizeof(safe_name) - 1] = '\0';
+
+    snprintf(safe_ret, sizeof(safe_ret), "%s", ret ? ret : "void");
+
+    if (param_types) {
+        strncpy(safe_params, param_types, sizeof(safe_params) - 1);
+        safe_params[sizeof(safe_params) - 1] = '\0';
+    } else {
+        safe_params[0] = '\0';
+    }
+
     for (size_t i = 0; i < cl_count; i++) {
-        if (strcmp(cl_funcs[i].name, name) == 0) {
-            if (ret && ret[0]) snprintf(cl_funcs[i].ret, sizeof(cl_funcs[i].ret), "%s", ret);
-            if (param_types) snprintf(cl_funcs[i].param_types, sizeof(cl_funcs[i].param_types), "%s", param_types);
+        if (strcmp(cl_funcs[i].name, safe_name) == 0) {
+            snprintf(cl_funcs[i].ret, sizeof(cl_funcs[i].ret), "%s", safe_ret);
+            snprintf(cl_funcs[i].param_types, sizeof(cl_funcs[i].param_types), "%s", safe_params);
             cl_funcs[i].nparams = nparams;
             cl_funcs[i].is_variadic = is_variadic;
             return 1;
@@ -292,15 +309,11 @@ int sema_register_cfunc(const char* name, const char* ret, const char* param_typ
         cl_funcs = nf;
         cl_cap = new_cap;
     }
-    strncpy(cl_funcs[cl_count].name, name, 127);
+    strncpy(cl_funcs[cl_count].name, safe_name, 127);
     cl_funcs[cl_count].name[127] = '\0';
-    snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret), "%s", ret ? ret : "void");
-    if (param_types) {
-        strncpy(cl_funcs[cl_count].param_types, param_types, sizeof(cl_funcs[cl_count].param_types) - 1);
-        cl_funcs[cl_count].param_types[sizeof(cl_funcs[cl_count].param_types) - 1] = '\0';
-    } else {
-        cl_funcs[cl_count].param_types[0] = '\0';
-    }
+    snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret), "%s", safe_ret);
+    strncpy(cl_funcs[cl_count].param_types, safe_params, sizeof(cl_funcs[cl_count].param_types) - 1);
+    cl_funcs[cl_count].param_types[sizeof(cl_funcs[cl_count].param_types) - 1] = '\0';
     cl_funcs[cl_count].nparams = nparams;
     cl_funcs[cl_count].is_variadic = is_variadic;
     cl_count++;
