@@ -88,7 +88,7 @@ Source (.rook) ➔ Lexer / Parser (AST) ➔ Sema & Libclang AST Engine
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.6.3) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.7.0) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Management** | Manual (`malloc`/`free`), uninitialized stack by default. | Affine type system, compile-time borrow checker, static lifetimes. | Explicit allocators, manual management, no hidden control flow. | Manual explicit allocators, deterministic stack zero-initialization, optional bounds checks (`-b`). |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` declarations and external binding tools (`bindgen`). | Requires `@cImport` translation step. | Direct 1:1 ABI mapping; dynamic in-memory libclang C header parsing without wrappers. |

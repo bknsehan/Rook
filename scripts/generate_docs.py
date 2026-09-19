@@ -2,7 +2,7 @@
 """
 generate_docs.py
 Generates the official, distraction-free Rook Documentation (The Rook Book)
-in mdBook / Rust Book style for Rook & Rokade v0.6.3.
+in mdBook / Rust Book style for Rook & Rokade v0.7.0.
 """
 
 import os
@@ -47,7 +47,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Rook Programming Language (v0.6.3)</title>
+<title>The Rook Programming Language (v0.7.0)</title>
 <style>
   /* ─── mdBook Theme Variables ───────────────────────────────────────── */
   :root, html.warm {
@@ -723,7 +723,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="sidebar-header">
       <div class="sidebar-title">
         <span>Rook Language</span>
-        <span class="sidebar-version">v0.6.3</span>
+        <span class="sidebar-version">v0.7.0</span>
       </div>
       <div class="sidebar-search-box">
         <input type="text" id="search-input" placeholder="Search chapters..." aria-label="Search chapters" oninput="filterChapters(this.value)">
@@ -768,7 +768,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <main class="content-container">
       <div class="book-hero">
         <h1>The Rook Programming Language</h1>
-        <p>Technical Reference &amp; Language Specification Manual (v0.6.3)</p>
+        <p>Technical Reference &amp; Language Specification Manual (v0.7.0)</p>
       </div>
 
       <div class="content" id="book-content">
@@ -1072,7 +1072,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 def main():
-    print(f"Generating mdBook-styled documentation for Rook (v0.6.3)...")
+    print(f"Generating mdBook-styled documentation for Rook (v0.7.0)...")
     chapters = get_guide_chapters(make_code_box, make_callout)
 
     chapter_links = []
