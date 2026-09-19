@@ -21,17 +21,24 @@ use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionList, CompletionOptions,
     CompletionParams, DeclarationCapability, DidChangeTextDocumentParams,
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, Diagnostic,
-    DiagnosticSeverity, DocumentLink, DocumentLinkOptions, DocumentLinkParams,
-    Hover, HoverParams, HoverProviderCapability,
-    InsertTextFormat, Location, MarkupContent, MarkupKind, OneOf, Position,
-    PublishDiagnosticsParams, Range, SaveOptions, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
-    InitializeResult, ServerCapabilities, Uri,
+    DiagnosticSeverity, DocumentFormattingParams, DocumentHighlight,
+    DocumentHighlightKind, DocumentHighlightParams, DocumentLink,
+    DocumentLinkOptions, DocumentLinkParams, Hover, HoverParams,
+    HoverProviderCapability, InsertTextFormat, Location, MarkupContent,
+    MarkupKind, OneOf, ParameterInformation, ParameterLabel, Position,
+    PublishDiagnosticsParams, Range, SaveOptions,
+    SignatureHelp, SignatureHelpOptions,
+    SignatureHelpParams, SignatureInformation,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TextDocumentSyncSaveOptions, TextEdit, InitializeResult,
+    ServerCapabilities, Uri,
 };
 use serde_json::Value;
 
 const COMMANDLIST_JSON: &str = include_str!("../../src/libc/commandlist.json");
 static DOC_SEQ: AtomicU64 = AtomicU64::new(0);
+
+mod semantic_tokens;
 
 // ─── Symbol Models ─────────────────────────────────────────────────────
 
@@ -623,12 +630,170 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
     ]
 }
 
-pub fn get_completions(state: &mut ServerState, uri: &str, content: &str) -> Vec<CompletionItem> {
-    let mut items = get_keyword_and_snippet_completions();
-    let mut seen: std::collections::HashSet<String> = items.iter().map(|i| i.label.clone()).collect();
-
+pub fn get_completions(state: &mut ServerState, uri: &str, content: &str, pos: Option<Position>) -> Vec<CompletionItem> {
     let doc_path = uri_to_path(uri);
     let doc_dir = doc_path.as_ref().and_then(|p| p.parent());
+
+    // 0. Contextual completions based on cursor line prefix
+    if let Some(position) = pos {
+        if let Some(line) = content.lines().nth(position.line as usize) {
+            let char_idx = (position.character as usize).min(line.len());
+            let line_prefix = &line[..char_idx];
+            let trimmed = line_prefix.trim_end();
+
+            // Directives: #comprise <... or comprise <...
+            if trimmed.contains("#comprise") || trimmed.contains("comprise") {
+                if let Some(idx) = trimmed.rfind(['<', '"']) {
+                    let prefix = &trimmed[idx + 1..];
+                    let std_modules = &[
+                        ("std/io", "Input/Output, terminal formatting, scan/print helpers"),
+                        ("std/str", "Safe non-owning Str string slices, parsing, searching"),
+                        ("std/vec", "Dynamic generic Vec and fast StringBuilder"),
+                        ("std/fs", "Filesystem helpers, read_to_string_capped, file I/O"),
+                        ("std/math", "Mathematical functions, clamp, min/max, abs, trigonometry"),
+                        ("std/mem", "Memory arenas, ElementPool, custom pool allocators"),
+                        ("std/result", "Canonical algebraic Result and Option types"),
+                        ("std/test", "TestSuite runner, assert_eq_i64, assert_eq_double"),
+                        ("std/json", "Zero-allocation JSON parser, dot-paths, JsonBuilder"),
+                        ("std/toml", "Zero-allocation TOML parser, tables, TomlBuilder"),
+                        ("std/atomic", "Sequentially consistent atomic memory operations"),
+                        ("std/sync", "Native OS Mutex, CondVar, Thread abstractions"),
+                        ("std/log", "Leveled structured logging with ISO-8601 timestamps"),
+                        ("std/os", "Environment variables, system timestamps, cwd helpers"),
+                        ("std/std", "Umbrella module comprising all standard modules"),
+                    ];
+                    let mut comp_items = Vec::new();
+                    for (mod_name, desc) in std_modules {
+                        if mod_name.starts_with(prefix) {
+                            comp_items.push(CompletionItem {
+                                label: mod_name.to_string(),
+                                kind: Some(CompletionItemKind::MODULE),
+                                detail: Some(desc.to_string()),
+                                insert_text: Some(mod_name.to_string()),
+                                ..Default::default()
+                            });
+                        }
+                    }
+                    if !comp_items.is_empty() {
+                        return comp_items;
+                    }
+                }
+            }
+
+            // Directives: #include <...
+            if trimmed.contains("#include") {
+                if let Some(idx) = trimmed.rfind('<') {
+                    let prefix = &trimmed[idx + 1..];
+                    let c_headers = &[
+                        ("stdio.h", "Standard input/output library"),
+                        ("stdlib.h", "Standard general utilities library (malloc, free, etc.)"),
+                        ("string.h", "String manipulation functions (memcpy, strlen, etc.)"),
+                        ("stdbool.h", "Boolean type and values"),
+                        ("stdint.h", "Exact-width integer types"),
+                        ("math.h", "Mathematical functions"),
+                        ("time.h", "Time manipulation library"),
+                        ("errno.h", "System error numbers"),
+                        ("assert.h", "Diagnostics and assertions"),
+                        ("unistd.h", "Standard symbolic constants and types (POSIX)"),
+                    ];
+                    let mut comp_items = Vec::new();
+                    for (header, desc) in c_headers {
+                        if header.starts_with(prefix) {
+                            comp_items.push(CompletionItem {
+                                label: header.to_string(),
+                                kind: Some(CompletionItemKind::MODULE),
+                                detail: Some(desc.to_string()),
+                                insert_text: Some(header.to_string()),
+                                ..Default::default()
+                            });
+                        }
+                    }
+                    if !comp_items.is_empty() {
+                        return comp_items;
+                    }
+                }
+            }
+
+            // Member completion on `.` or `->`
+            if trimmed.ends_with('.') || trimmed.ends_with("->") {
+                let op_len = if trimmed.ends_with("->") { 2 } else { 1 };
+                let before_op = &trimmed[..trimmed.len() - op_len].trim_end();
+                let mut start = before_op.len();
+                let b_bytes = before_op.as_bytes();
+                while start > 0 && (b_bytes[start - 1].is_ascii_alphanumeric() || b_bytes[start - 1] == b'_') {
+                    start -= 1;
+                }
+                let receiver = &before_op[start..];
+                if !receiver.is_empty() {
+                    let mut struct_type: Option<String> = None;
+                    if receiver == "self" {
+                        for l in content.lines().take(position.line as usize) {
+                            if let Some(rest) = l.trim().strip_prefix("impl ") {
+                                let st = rest.split(['{', ' ']).next().unwrap_or("").trim();
+                                if !st.is_empty() { struct_type = Some(st.to_string()); }
+                            }
+                        }
+                    } else {
+                        let doc_symbols = scan_rook_symbols(content, Path::new(""));
+                        for sym in &doc_symbols {
+                            if sym.name == receiver {
+                                if let RookSymbolKind::Variable { ref type_name } = sym.kind {
+                                    struct_type = type_name.clone();
+                                    break;
+                                }
+                            }
+                        }
+                        if struct_type.is_none() {
+                            if receiver.starts_with("sb") { struct_type = Some("StringBuilder".to_string()); }
+                            else if receiver.starts_with("pool") { struct_type = Some("ElementPool".to_string()); }
+                            else if receiver.starts_with("doc") { struct_type = Some("JsonDoc".to_string()); }
+                            else if receiver.starts_with("ts") { struct_type = Some("TestSuite".to_string()); }
+                            else if receiver.starts_with('s') && !receiver.starts_with("sum") { struct_type = Some("Str".to_string()); }
+                            else if receiver.starts_with('v') { struct_type = Some("Vec".to_string()); }
+                        }
+                    }
+
+                    if let Some(ref st_name) = struct_type {
+                        let mut member_items = Vec::new();
+                        let (_, rook_modules) = extract_directives(content);
+                        let mut all_syms = scan_rook_symbols(content, Path::new(""));
+                        for m in rook_modules {
+                            all_syms.extend(state.get_rook_module_symbols(&m, doc_dir));
+                        }
+                        for sym in all_syms {
+                            match sym.kind {
+                                RookSymbolKind::Method { ref obj, ref sig } if obj == st_name => {
+                                    member_items.push(CompletionItem {
+                                        label: sym.name.clone(),
+                                        kind: Some(CompletionItemKind::METHOD),
+                                        detail: Some(sig.clone()),
+                                        ..Default::default()
+                                    });
+                                }
+                                RookSymbolKind::Struct { ref fields } if sym.name == *st_name => {
+                                    for (fname, ftype) in fields {
+                                        member_items.push(CompletionItem {
+                                            label: fname.clone(),
+                                            kind: Some(CompletionItemKind::FIELD),
+                                            detail: Some(ftype.clone()),
+                                            ..Default::default()
+                                        });
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        if !member_items.is_empty() {
+                            return member_items;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut items = get_keyword_and_snippet_completions();
+    let mut seen: std::collections::HashSet<String> = items.iter().map(|i| i.label.clone()).collect();
 
     // 1. Current buffer symbols
     let current_doc_path = doc_path.clone().unwrap_or_else(|| PathBuf::from("current.rook"));
@@ -1217,6 +1382,177 @@ fn rook_symbols(rokade: &str, commandlist_dir: &str, content: &str, doc_uri: &st
     }).collect()
 }
 
+// ─── Signature Help & Document Highlights ──────────────────────────────
+
+pub fn get_signature_help(state: &ServerState, content: &str, pos: Position) -> Option<SignatureHelp> {
+    let line = content.lines().nth(pos.line as usize)?;
+    let char_idx = (pos.character as usize).min(line.len());
+    let prefix = &line[..char_idx];
+
+    // Scan backwards for unclosed '('
+    let mut depth = 0;
+    let mut open_paren_idx = None;
+    let mut comma_count = 0;
+
+    let bytes = prefix.as_bytes();
+    let mut idx = bytes.len();
+    while idx > 0 {
+        idx -= 1;
+        let b = bytes[idx];
+        if b == b')' {
+            depth += 1;
+        } else if b == b'(' {
+            if depth == 0 {
+                open_paren_idx = Some(idx);
+                break;
+            } else {
+                depth -= 1;
+            }
+        } else if b == b',' && depth == 0 {
+            comma_count += 1;
+        }
+    }
+
+    let paren_pos = open_paren_idx?;
+    let before_paren = prefix[..paren_pos].trim_end();
+    let mut name_start = before_paren.len();
+    let bp_bytes = before_paren.as_bytes();
+    while name_start > 0 && (bp_bytes[name_start - 1].is_ascii_alphanumeric() || bp_bytes[name_start - 1] == b'_') {
+        name_start -= 1;
+    }
+    let fn_name = &before_paren[name_start..];
+    if fn_name.is_empty() { return None; }
+
+    // Search in libc functions
+    if let Some(cf) = state.cfuncs.iter().find(|c| c.name == fn_name) {
+        let params: Vec<ParameterInformation> = cf.params.iter().map(|p| {
+            ParameterInformation {
+                label: ParameterLabel::Simple(p.clone()),
+                documentation: None,
+            }
+        }).collect();
+        let full_sig = format!("{}({}) -> {}", cf.name, cf.params.join(", "), cf.ret);
+        return Some(SignatureHelp {
+            signatures: vec![SignatureInformation {
+                label: full_sig,
+                documentation: None,
+                parameters: Some(params),
+                active_parameter: Some(comma_count),
+            }],
+            active_signature: Some(0),
+            active_parameter: Some(comma_count),
+        });
+    }
+
+    // Search in Rook symbols
+    let doc_symbols = scan_rook_symbols(content, Path::new(""));
+    if let Some(sym) = doc_symbols.iter().find(|s| s.name == fn_name) {
+        let (sig_label, params) = match &sym.kind {
+            RookSymbolKind::Function { sig } => {
+                let p_str = sig.split('(').nth(1).and_then(|s| s.split(')').next()).unwrap_or("");
+                let p_list: Vec<ParameterInformation> = p_str.split(',')
+                    .map(|p| p.trim())
+                    .filter(|p| !p.is_empty())
+                    .map(|p| ParameterInformation {
+                        label: ParameterLabel::Simple(p.to_string()),
+                        documentation: None,
+                    }).collect();
+                (sig.clone(), p_list)
+            }
+            RookSymbolKind::Method { sig, .. } => {
+                let p_str = sig.split('(').nth(1).and_then(|s| s.split(')').next()).unwrap_or("");
+                let p_list: Vec<ParameterInformation> = p_str.split(',')
+                    .map(|p| p.trim())
+                    .filter(|p| !p.is_empty())
+                    .map(|p| ParameterInformation {
+                        label: ParameterLabel::Simple(p.to_string()),
+                        documentation: None,
+                    }).collect();
+                (sig.clone(), p_list)
+            }
+            _ => return None,
+        };
+
+        return Some(SignatureHelp {
+            signatures: vec![SignatureInformation {
+                label: sig_label,
+                documentation: None,
+                parameters: Some(params),
+                active_parameter: Some(comma_count),
+            }],
+            active_signature: Some(0),
+            active_parameter: Some(comma_count),
+        });
+    }
+
+    None
+}
+
+pub fn get_document_highlights(content: &str, pos: Position) -> Vec<DocumentHighlight> {
+    let mut highlights = Vec::new();
+    let lines: Vec<&str> = content.lines().collect();
+    let line = match lines.get(pos.line as usize) {
+        Some(l) => *l,
+        None => return highlights,
+    };
+
+    let col = pos.character as usize;
+    if col >= line.len() { return highlights; }
+
+    let bytes = line.as_bytes();
+    if !bytes[col].is_ascii_alphanumeric() && bytes[col] != b'_' {
+        return highlights;
+    }
+
+    let mut start = col;
+    while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+        start -= 1;
+    }
+    let mut end = col;
+    while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+        end += 1;
+    }
+
+    let word = &line[start..end];
+    if word.is_empty() { return highlights; }
+
+    match word {
+        "if" | "else" | "while" | "for" | "return" | "struct" | "impl" | "sum"
+        | "enum" | "defer" | "let" | "int" | "float" | "double" | "char"
+        | "void" | "bool" | "true" | "false" | "null" | "NULL" => return highlights,
+        _ => {}
+    }
+
+    for (l_idx, cur_line) in lines.iter().enumerate() {
+        let cur_bytes = cur_line.as_bytes();
+        let mut idx = 0;
+        while idx < cur_bytes.len() {
+            if let Some(pos_in_line) = cur_line[idx..].find(word) {
+                let actual_start = idx + pos_in_line;
+                let actual_end = actual_start + word.len();
+
+                let is_left_bound = actual_start == 0 || (!cur_bytes[actual_start - 1].is_ascii_alphanumeric() && cur_bytes[actual_start - 1] != b'_');
+                let is_right_bound = actual_end == cur_bytes.len() || (!cur_bytes[actual_end].is_ascii_alphanumeric() && cur_bytes[actual_end] != b'_');
+
+                if is_left_bound && is_right_bound {
+                    highlights.push(DocumentHighlight {
+                        range: Range {
+                            start: Position { line: l_idx as u32, character: actual_start as u32 },
+                            end: Position { line: l_idx as u32, character: actual_end as u32 },
+                        },
+                        kind: Some(DocumentHighlightKind::TEXT),
+                    });
+                }
+                idx = actual_end;
+            } else {
+                break;
+            }
+        }
+    }
+
+    highlights
+}
+
 // ─── Request Dispatch ──────────────────────────────────────────────────
 
 fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, frame: &Frame) {
@@ -1241,6 +1577,14 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                         resolve_provider: Some(false),
                         work_done_progress_options: Default::default(),
                     }),
+                    semantic_tokens_provider: Some(semantic_tokens::semantic_tokens_capabilities()),
+                    document_formatting_provider: Some(OneOf::Left(true)),
+                    signature_help_provider: Some(SignatureHelpOptions {
+                        trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
+                        retrigger_characters: Some(vec![",".to_string()]),
+                        work_done_progress_options: Default::default(),
+                    }),
+                    document_highlight_provider: Some(OneOf::Left(true)),
                     completion_provider: Some(CompletionOptions {
                         trigger_characters: Some(vec![
                             ".".to_string(),
@@ -1293,8 +1637,9 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
         Some("textDocument/completion") => {
             if let Ok(p) = serde_json::from_value::<CompletionParams>(params) {
                 let uri = p.text_document_position.text_document.uri.to_string();
+                let pos = p.text_document_position.position;
                 let content = state.docs.get(&uri).map(|(c, _)| c.clone()).unwrap_or_default();
-                let items = get_completions(state, &uri, &content);
+                let items = get_completions(state, &uri, &content, Some(pos));
                 let list = CompletionList { is_incomplete: false, items };
                 send_response(w, frame.id.clone(), serde_json::to_value(list).unwrap());
             }
@@ -1357,6 +1702,74 @@ fn handle_request<W: Write>(w: &mut W, state: &mut ServerState, cmdir: &str, fra
                 let content = state.docs.get(&uri).map(|(c, _)| c.clone()).unwrap_or_default();
                 let links = get_document_links(state, &uri, &content);
                 send_response(w, frame.id.clone(), serde_json::to_value(links).unwrap());
+            }
+        }
+        Some("textDocument/semanticTokens/full") => {
+            let uri = params.get("textDocument").and_then(|t| t.get("uri"))
+                .and_then(|u| u.as_str()).unwrap_or("").to_string();
+            let content = state.docs.get(&uri).map(|(c, _)| c.as_str()).unwrap_or("");
+            let tokens = semantic_tokens::compute_semantic_tokens(content);
+            send_response(w, frame.id.clone(), serde_json::to_value(tokens).unwrap());
+        }
+        Some("textDocument/signatureHelp") => {
+            if let Ok(p) = serde_json::from_value::<SignatureHelpParams>(params) {
+                let uri = p.text_document_position_params.text_document.uri.to_string();
+                let pos = p.text_document_position_params.position;
+                let content = state.docs.get(&uri).map(|(c, _)| c.as_str()).unwrap_or("");
+                let help = get_signature_help(state, content, pos);
+                send_response(w, frame.id.clone(), serde_json::to_value(help).unwrap_or(Value::Null));
+            } else {
+                send_response(w, frame.id.clone(), Value::Null);
+            }
+        }
+        Some("textDocument/formatting") => {
+            if let Ok(p) = serde_json::from_value::<DocumentFormattingParams>(params) {
+                let uri = p.text_document.uri.to_string();
+                let content = state.docs.get(&uri).map(|(c, _)| c.clone()).unwrap_or_default();
+                let mut tmp = std::env::temp_dir();
+                tmp.push(format!("rook_lsp_fmt_{}.rook", DOC_SEQ.fetch_add(1, Ordering::Relaxed)));
+                if std::fs::write(&tmp, &content).is_ok() {
+                    let status = Command::new(&state.rokade)
+                        .arg("fmt")
+                        .arg(&tmp)
+                        .status();
+                    let formatted = if status.map(|s| s.success()).unwrap_or(false) {
+                        std::fs::read_to_string(&tmp).ok()
+                    } else {
+                        None
+                    };
+                    let _ = std::fs::remove_file(&tmp);
+                    if let Some(new_text) = formatted {
+                        if new_text != content {
+                            let lines: Vec<&str> = content.lines().collect();
+                            let line_count = lines.len() as u32;
+                            let last_col = lines.last().map(|l| l.len() as u32).unwrap_or(0);
+                            let edit = TextEdit {
+                                range: Range {
+                                    start: Position { line: 0, character: 0 },
+                                    end: Position { line: line_count, character: last_col },
+                                },
+                                new_text,
+                            };
+                            send_response(w, frame.id.clone(), serde_json::to_value(vec![edit]).unwrap());
+                            return;
+                        }
+                    }
+                }
+                send_response(w, frame.id.clone(), serde_json::to_value(Vec::<TextEdit>::new()).unwrap());
+            } else {
+                send_response(w, frame.id.clone(), serde_json::to_value(Vec::<TextEdit>::new()).unwrap());
+            }
+        }
+        Some("textDocument/documentHighlight") => {
+            if let Ok(p) = serde_json::from_value::<DocumentHighlightParams>(params) {
+                let uri = p.text_document_position_params.text_document.uri.to_string();
+                let pos = p.text_document_position_params.position;
+                let content = state.docs.get(&uri).map(|(c, _)| c.as_str()).unwrap_or("");
+                let highlights = get_document_highlights(content, pos);
+                send_response(w, frame.id.clone(), serde_json::to_value(highlights).unwrap());
+            } else {
+                send_response(w, frame.id.clone(), serde_json::to_value(Vec::<DocumentHighlight>::new()).unwrap());
             }
         }
         Some("shutdown") => send_response(w, frame.id.clone(), Value::Null),
@@ -1503,7 +1916,7 @@ mod tests {
         }
         "#;
 
-        let items = get_completions(&mut state, "file:///tmp/main.rook", code);
+        let items = get_completions(&mut state, "file:///tmp/main.rook", code, None);
         let labels: Vec<String> = items.into_iter().map(|i| i.label).collect();
 
         // 1. Keywords & snippets
@@ -1523,6 +1936,95 @@ mod tests {
 
         // 4. C Libc symbols
         assert!(labels.contains(&"printf".to_string()));
+    }
+
+    #[test]
+    fn test_semantic_tokens() {
+        let code = r#"
+        #include <stdio.h>
+        #comprise <std/io>
+
+        struct Person {
+            name: Str;
+            age: int;
+        };
+
+        impl Person {
+            void greet(self) {
+                printf("Hi %.*s\n", (int)self.name.len, self.name.data);
+            }
+        }
+        "#;
+        let tokens = semantic_tokens::compute_semantic_tokens(code);
+        assert!(!tokens.data.is_empty(), "Semantic tokens should be generated");
+        // Verify multiple tokens exist
+        assert!(tokens.data.len() > 10);
+    }
+
+    #[test]
+    fn test_signature_help() {
+        let state = ServerState {
+            docs: HashMap::new(),
+            cfuncs: parse_commandlist(COMMANDLIST_JSON),
+            rokade: "rokade".to_string(),
+            c_header_cache: HashMap::new(),
+            rook_module_cache: HashMap::new(),
+            std_dir: find_std_dir(),
+        };
+        let code = "int main() { printf(\"hello %d\", 42); }";
+        let help = get_signature_help(&state, code, Position { line: 0, character: 32 });
+        assert!(help.is_some(), "Signature help for printf should be found");
+        let h = help.unwrap();
+        assert_eq!(h.active_parameter, Some(1));
+    }
+
+    #[test]
+    fn test_document_highlights() {
+        let code = r#"
+        int main() {
+            let count = 10;
+            count = count + 1;
+            return count;
+        }
+        "#;
+        let highlights = get_document_highlights(code, Position { line: 2, character: 18 });
+        assert_eq!(highlights.len(), 4, "Should highlight all 4 occurrences of 'count'");
+    }
+
+    #[test]
+    fn test_contextual_completions() {
+        let mut state = ServerState {
+            docs: HashMap::new(),
+            cfuncs: parse_commandlist(COMMANDLIST_JSON),
+            rokade: "rokade".to_string(),
+            c_header_cache: HashMap::new(),
+            rook_module_cache: HashMap::new(),
+            std_dir: find_std_dir(),
+        };
+
+        // 1. #comprise < completion
+        let code_comp = "#comprise <std/";
+        let items_comp = get_completions(&mut state, "file:///tmp/test.rook", code_comp, Some(Position { line: 0, character: 15 }));
+        assert!(items_comp.iter().any(|i| i.label == "std/io"));
+        assert!(items_comp.iter().any(|i| i.label == "std/json"));
+
+        // 2. Member completion on receiver `b.`
+        let code_mem = r#"
+        struct Box {
+            val: int;
+        };
+        impl Box {
+            void set_val(self, int v) {
+                self.val = v;
+            }
+        }
+        int main() {
+            let b: Box = Box { val: 10 };
+            b.
+        }
+        "#;
+        let items_mem = get_completions(&mut state, "file:///tmp/test.rook", code_mem, Some(Position { line: 11, character: 14 }));
+        assert!(items_mem.iter().any(|i| i.label == "set_val" || i.label == "val"));
     }
 
     #[test]

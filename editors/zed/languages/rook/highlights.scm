@@ -19,7 +19,7 @@
 
 ; Boolean & Null constants
 ((identifier) @constant
- (#match? @constant "^(true|false|null|NULL|nullptr)$"))
+ (#match? @constant "^(true|false|null|NULL|nullptr|nil)$"))
 
 ; ALL-CAPS constants
 ((identifier) @constant
@@ -67,20 +67,34 @@
 "=" @operator
 "!=" @operator
 "*" @operator
+"*=" @operator
 "&" @operator
+"&=" @operator
 "&&" @operator
 "+" @operator
 "++" @operator
 "+=" @operator
 "<" @operator
 "<=" @operator
+"<<" @operator
+"<<=" @operator
 "==" @operator
 ">" @operator
 ">=" @operator
+">>" @operator
+">>=" @operator
 "||" @operator
 "!" @operator
 "%" @operator
+"%=" @operator
 "/" @operator
+"/=" @operator
+"|" @operator
+"|=" @operator
+"^" @operator
+"^=" @operator
+"~" @operator
+"?" @operator
 
 ; Delimiters
 "." @delimiter
@@ -97,7 +111,7 @@
 
 ; Fields & Declarations
 (field_identifier) @property
-(statement_identifier) @label
+(statement_identifier) @property
 (type_identifier) @type
 (primitive_type) @type
 (sized_type_specifier) @type
