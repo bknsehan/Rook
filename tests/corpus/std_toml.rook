@@ -88,5 +88,27 @@ int main() {
     toml_get_bool(serialized, "rokade", "debug", &t_debug);
     printf("builder: target=%s opt=%d debug=%d\n", t_target, t_opt, (int)t_debug);
 
+    // 7. Advanced TOML: inf, nan, datetime, dotted keys, inline tables, single-quoted keys, 64-bit int
+    const char* adv_toml = "a.b = 1\n'my key' = 100\n\"quoted.key\" = 200\nbig = 9999999999\nval_inf = inf\nval_nan = nan\ncreated = 1979-05-27T07:32:00Z\nserver = { host = \"localhost\", port = 8080 }\n";
+    int val_ab = 0;
+    toml_get_int(adv_toml, "a", "b", &val_ab);
+    int val_sq = 0;
+    toml_get_int(adv_toml, "", "my key", &val_sq);
+    int64_t big_int = 0;
+    toml_get_i64(adv_toml, "", "big", &big_int);
+    double v_inf = 0.0;
+    toml_get_double(adv_toml, "", "val_inf", &v_inf);
+    char dt[32];
+    toml_get_string(adv_toml, "", "created", dt, 32);
+    char in_host[32];
+    toml_get_string(adv_toml, "server", "host", in_host, 32);
+    int in_port = 0;
+    toml_get_int(adv_toml, "", "server.port", &in_port);
+    int host_t = (int)toml_get_type(adv_toml, "server", "host");
+    int port_t = (int)toml_get_type(adv_toml, "server", "port");
+    printf("advanced_toml: ab=%d sq=%d big=%lld isinf=%d dt=%s host=%s port=%d types=%d,%d\n",
+           val_ab, val_sq, (long long)big_int, (int)isinf(v_inf), dt, in_host, in_port, host_t, port_t);
+
     return 0;
 }
+

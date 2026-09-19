@@ -4,3 +4,4 @@ db: server=192.168.1.100 port=5432 conns=5000 timeout=12.5 ssl=0 hex=42
 array: len=3 items=tcp,tls,quic
 tables: count=2 s0=alpha(10.0.0.1,1) s1=beta(10.0.0.2,0)
 builder: target=native opt=3 debug=0
+advanced_toml: ab=1 sq=100 big=9999999999 isinf=1 dt=1979-05-27T07:32:00Z host=localhost port=8080 types=1,2

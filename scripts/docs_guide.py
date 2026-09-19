@@ -861,45 +861,66 @@ int main() {
   <li><strong><code>std/result</code>:</strong> Explicit error propagation (<code>result_ok(val)</code>, <code>result_err(code)</code>, <code>Result_is_ok(&res)</code>, <code>Result_unwrap(&res)</code>) eliminating silent error code ignoring.</li>
 </ul>
 
-<h3>10.8 Zero-Allocation JSON Parser &amp; Fluent Builder: <code>std/json</code></h3>
-<p><code>std/json</code> provides high-performance JSON parsing, dot-path navigation (<code>"server.port"</code>), type inspection, raw array traversal, and a comma-safe fluent <code>JsonBuilder</code>:</p>
+<h3>10.8 Zero-Allocation JSON Parser, Path Navigator &amp; Fluent Builder: <code>std/json</code></h3>
+<p><code>std/json</code> provides high-performance JSON parsing, unified dot/index-path navigation (<code>"users[1].name"</code>, <code>"server.port"</code>), 64-bit integer (<code>int64_t</code>) and <code>double</code> precision numeric getters, surrogate pair UTF-16 decoding (<code>\\uD83D\\uDE00</code>), complete RFC 8259 compliance, full structural validation (<code>json_valid()</code>), safe file loading (<code>json_load_file()</code>), and a container-enforced fluent <code>JsonBuilder</code>:</p>
 {make_code_box("rook", """
 #comprise <std/json>
 
 int main() {
-    const char* doc = "{\\"server\\": {\\"host\\": \\"127.0.0.1\\", \\"port\\": 8080}}";
+    const char* doc = "{\\"server\\": {\\"host\\": \\"127.0.0.1\\", \\"port\\": 8080}, \\"big\\": 9999999999, \\"users\\": [{\\"name\\": \\"Alice\\"}, {\\"name\\": \\"Bob\\"}]}";
     char host[32];
     int port = 0;
-    json_get_path_string(doc, "server.host", host, sizeof(host));
-    json_get_path_int(doc, "server.port", &port);
+    int64_t big = 0;
+    char u1[32];
+
+    json_get_string(doc, "server.host", host, sizeof(host));
+    json_get_int(doc, "server.port", &port);
+    json_get_i64(doc, "big", &big);
+    json_get_string(doc, "users[1].name", u1, sizeof(u1));
+
+    bool is_valid = json_valid(doc);
 
     JsonBuilder jb = json_builder_new(128);
     defer jb.destroy();
     jb.begin_object();
     jb.key_string("status", "ok");
-    jb.key_int("code", 200);
+    jb.key_i64("timestamp_ns", 1700000000000LL);
+    jb.key("data");
+    jb.begin_array();
+    jb.val_int(10);
+    jb.val_int(20);
+    jb.end_array();
     jb.end_object();
     return 0;
 }
 """, "Working with std/json")}
 
 <h3>10.9 Fast Configuration &amp; Structured Data: <code>std/toml</code></h3>
-<p><code>std/toml</code> provides a zero-allocation TOML parser and serializer supporting sections, nested tables, arrays of tables (<code>[[table]]</code>), typed values (strings, ints with underscores and hex, floats, bools), and a fluent <code>TomlBuilder</code>:</p>
+<p><code>std/toml</code> provides a zero-allocation TOML v1.0 parser and serializer supporting sections, nested tables (<code>[a.b]</code>), array of tables (<code>[[table]]</code>), dotted keys (<code>a.b = 1</code>), single/double-quoted keys (<code>'my key' = 1</code>), inline tables (<code>{{ x = 1 }}</code>), 64-bit integers (<code>toml_get_i64</code>), IEEE 754 floats with special values (<code>inf</code>, <code>-inf</code>, <code>nan</code>), datetime parsing (<code>toml_get_date_time</code>), string escapes, type introspection (<code>TomlType</code>), raw token extraction (<code>toml_get_raw</code>), safe file loading (<code>toml_load_file</code>), and a fluent <code>TomlBuilder</code>:</p>
 {make_code_box("rook", """
 #comprise <std/toml>
 
 int main() {
-    const char* cfg = "[database]\\nhost = \\"localhost\\"\\nport = 5432\\n";
+    const char* cfg = "[database]\\nhost = \\"localhost\\"\\nport = 5432\\nbig = 9999999999\\nval = inf\\nserver = { pool = 10 }\\n";
     char host[32];
     int port = 0;
+    int64_t big = 0;
+    double val = 0.0;
+    int pool = 0;
+
     toml_get_string(cfg, "database", "host", host, sizeof(host));
     toml_get_int(cfg, "database", "port", &port);
+    toml_get_i64(cfg, "database", "big", &big);
+    toml_get_double(cfg, "database", "val", &val);
+    toml_get_int(cfg, "database", "server.pool", &pool);
+
+    TomlType t = toml_get_type(cfg, "database", "host");
 
     TomlBuilder tb = toml_builder_new(128);
     defer tb.destroy();
     tb.section("server");
     tb.set_string("bind", "0.0.0.0");
-    tb.set_int("port", 8080);
+    tb.set_i64("big_id", 9999999999LL);
     return 0;
 }
 """, "Working with std/toml")}

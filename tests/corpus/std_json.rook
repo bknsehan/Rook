@@ -87,5 +87,23 @@ int main() {
     jb.end_object();
     printf("builder=%s\n", jb.to_cstr());
 
+    // 4. Escaped keys, index paths, surrogate pairs, 64-bit/double, validation
+    const char* doc4 = "{\"a\\\"b\": 123, \"users\": [{\"name\": \"Alice\"}, {\"name\": \"Bob\"}], \"big\": 9999999999, \"pi\": 3.141592653589793, \"emoji\": \"\\uD83D\\uDE00\"}";
+    int esk = 0;
+    bool has_esk = json_get_int(doc4, "a\"b", &esk);
+    char u1_name[32];
+    bool has_u1 = json_get_string(doc4, "users[1].name", u1_name, 32);
+    int64_t big_v = 0;
+    bool has_big = json_get_i64(doc4, "big", &big_v);
+    double pi_v = 0.0;
+    bool has_pi = json_get_double(doc4, "pi", &pi_v);
+    char emoji[16];
+    bool has_emoji = json_get_string(doc4, "emoji", emoji, 16);
+    bool valid1 = json_valid(doc4);
+    bool invalid_arr = (json_array_len("[1,,2]") == -1) && !json_valid("[1,2,]");
+    printf("advanced_json: esk=%d u1=%s big=%lld pi=%.2f emoji=%s valid=%d invalid_rejected=%d\n",
+           esk, u1_name, (long long)big_v, pi_v, emoji, valid1, invalid_arr);
+
     return 0;
 }
+

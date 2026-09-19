@@ -625,47 +625,68 @@ int main() {
 - **`std/option`:** Replaces unchecked nullable pointers with `Option` (`option_some(val)`, `option_none()`, `Option_unwrap(&opt)`, `Option_unwrap_or(&opt, default)`).
 - **`std/result`:** Explicit error propagation (`result_ok(val)`, `result_err(code)`, `Result_is_ok(&res)`, `Result_unwrap(&res)`) eliminating silent error code ignoring.
 
-### 10.8 Zero-Allocation JSON Parser & Fluent Builder: `std/json`
-`std/json` provides high-performance JSON parsing, dot-path navigation (`"server.port"`), type queries, raw array traversal, and a comma-safe fluent `JsonBuilder`:
+### 10.8 Zero-Allocation JSON Parser, Path Navigator & Fluent Builder: `std/json`
+`std/json` provides high-performance JSON parsing, unified dot/index-path navigation (`"users[1].name"`, `"server.port"`), 64-bit integer (`int64_t`) and `double` precision numeric getters, surrogate pair UTF-16 decoding (`\uD83D\uDE00`), complete RFC 8259 compliance (control char escaping `\u00XX`, clean float formatting), full structural validation (`json_valid()`), safe file loading (`json_load_file()`), and a container-enforced fluent `JsonBuilder`:
 
 ```rook
 #comprise <std/json>
 
 int main() {
-    const char* doc = "{\"server\": {\"host\": \"127.0.0.1\", \"port\": 8080}}";
+    const char* doc = "{\"server\": {\"host\": \"127.0.0.1\", \"port\": 8080}, \"big\": 9999999999, \"users\": [{\"name\": \"Alice\"}, {\"name\": \"Bob\"}]}";
     char host[32];
     int port = 0;
-    json_get_path_string(doc, "server.host", host, sizeof(host));
-    json_get_path_int(doc, "server.port", &port);
+    int64_t big = 0;
+    char u1[32];
+
+    json_get_string(doc, "server.host", host, sizeof(host));
+    json_get_int(doc, "server.port", &port);
+    json_get_i64(doc, "big", &big);
+    json_get_string(doc, "users[1].name", u1, sizeof(u1));
+
+    bool is_valid = json_valid(doc);
 
     JsonBuilder jb = json_builder_new(128);
     defer jb.destroy();
     jb.begin_object();
     jb.key_string("status", "ok");
-    jb.key_int("code", 200);
+    jb.key_i64("timestamp_ns", 1700000000000LL);
+    jb.key("data");
+    jb.begin_array();
+    jb.val_int(10);
+    jb.val_int(20);
+    jb.end_array();
     jb.end_object();
     return 0;
 }
 ```
 
 ### 10.9 Fast Configuration & Structured Data: `std/toml`
-`std/toml` provides a zero-allocation TOML parser and serializer supporting sections, nested tables, arrays of tables (`[[table]]`), typed values (strings, ints with underscores and hex, floats, bools), and a fluent `TomlBuilder`:
+`std/toml` provides a zero-allocation TOML v1.0 parser and serializer supporting sections, nested tables (`[a.b]`), array of tables (`[[table]]`), dotted keys (`a.b = 1`), single/double-quoted keys (`'my key' = 1`), inline tables (`{ x = 1 }`), 64-bit integers (`toml_get_i64`), IEEE 754 floats with special values (`inf`, `-inf`, `nan`), datetime parsing (`toml_get_date_time`), string escapes (`\e`, `\uXXXX`, `\UXXXXXXXX`, multiline basic line continuation `\`), type introspection (`TomlType`), raw token extraction (`toml_get_raw`), safe file loading (`toml_load_file`), and a fluent `TomlBuilder`:
 
 ```rook
 #comprise <std/toml>
 
 int main() {
-    const char* cfg = "[database]\nhost = \"localhost\"\nport = 5432\n";
+    const char* cfg = "[database]\nhost = \"localhost\"\nport = 5432\nbig = 9999999999\nval = inf\nserver = { pool = 10 }\n";
     char host[32];
     int port = 0;
+    int64_t big = 0;
+    double val = 0.0;
+    int pool = 0;
+
     toml_get_string(cfg, "database", "host", host, sizeof(host));
     toml_get_int(cfg, "database", "port", &port);
+    toml_get_i64(cfg, "database", "big", &big);
+    toml_get_double(cfg, "database", "val", &val);
+    toml_get_int(cfg, "database", "server.pool", &pool);
+
+    TomlType t = toml_get_type(cfg, "database", "host"); // TomlString
 
     TomlBuilder tb = toml_builder_new(128);
     defer tb.destroy();
     tb.section("server");
     tb.set_string("bind", "0.0.0.0");
-    tb.set_int("port", 8080);
+    tb.set_i64("big_id", 9999999999LL);
     return 0;
 }
 ```
