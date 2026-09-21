@@ -351,6 +351,8 @@ static void dump_decl(Decl* d) {
     if (d->style == DECL_LET) {
         printf("let %s", d->name);
         if (d->type) { printf(": "); dump_type(d->type); }
+    } else if (d->style == DECL_AUTO) {
+        printf("auto %s", d->name);
     } else if (d->style == DECL_TYPED) {
         printf("%s: ", d->name);
         dump_type(d->type);
@@ -625,6 +627,7 @@ static void fndef_free(FnDef* f) {
     for (int i = 0; i < f->nparams; i++) param_free(&f->params[i]);
     free(f->params);              /* array of Param structs (name is borrowed) */
     ast_type_free(f->ret);
+    if (f->inferred_ret) ast_type_free(f->inferred_ret);
     stmt_free(f->body);
     free(f);
 }

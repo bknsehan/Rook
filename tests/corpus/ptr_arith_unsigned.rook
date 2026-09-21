@@ -9,7 +9,7 @@ int main() {
     printf("%d %d\n", *(p + 1), *p);
     p++;
     printf("%d\n", *p);
-    let diff = &arr[4] - &arr[0];
+    auto diff = &arr[4] - &arr[0];
     printf("%d\n", (int)diff);
     return 0;
 }

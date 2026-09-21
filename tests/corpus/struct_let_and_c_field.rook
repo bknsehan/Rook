@@ -6,8 +6,8 @@ struct PointC {
 };
 
 struct PointLet {
-    let x: int;
-    let y: int;
+    x: int;
+    y: int;
 };
 
 struct AnimalC {
@@ -16,13 +16,13 @@ struct AnimalC {
 };
 
 struct AnimalLet {
-    let name: const char*;
-    let legs: int;
+    name: const char*;
+    legs: int;
 };
 
 sum Shape {
     CircleC { float r; };
-    CircleLet { let r: float; };
+    CircleLet { r: float; };
     Point;
 }
 

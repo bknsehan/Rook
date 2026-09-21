@@ -165,12 +165,16 @@ static void e_expr(Emit* e, Expr* x) {
 static void e_decl(Emit* e, Decl* d) {
     if (!d) return;
     if (d->style == DECL_LET) {
-        sb_append(&e->sb, "let ");
+        sb_append(&e->sb, "auto ");
         sb_append(&e->sb, d->name);
+    } else if (d->style == DECL_AUTO) {
         if (d->type) {
-            sb_append(&e->sb, ": ");
             e_type(e, d->type);
+            sb_append(&e->sb, " ");
+        } else {
+            sb_append(&e->sb, "auto ");
         }
+        sb_append(&e->sb, d->name);
     } else if (d->style == DECL_TYPED) {
         sb_append(&e->sb, d->name);
         sb_append(&e->sb, ": ");

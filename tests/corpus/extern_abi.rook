@@ -21,9 +21,9 @@ int check_vec2_abi(Vec2 v) {
 }
 
 int main() {
-    let s = "hello";
-    let v = Vec2{ x: 1.0, y: 2.0 };
-    let ok = 1;
+    auto s = "hello";
+    auto v = Vec2{ x: 1.0, y: 2.0 };
+    auto ok = 1;
     if (check_string_abi(s) != 1) { ok = 0; }
     if (check_vec2_abi(v) != 1) { ok = 0; }
     if (ok == 1) {

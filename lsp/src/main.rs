@@ -568,10 +568,10 @@ fn get_keyword_and_snippet_completions() -> Vec<CompletionItem> {
             ..Default::default()
         },
         CompletionItem {
-            label: "let".to_string(),
+            label: "auto".to_string(),
             kind: Some(CompletionItemKind::KEYWORD),
-            detail: Some("Declare a variable".to_string()),
-            insert_text: Some("let ${1:var} = ${0};".to_string()),
+            detail: Some("Declare a variable or function with inferred type".to_string()),
+            insert_text: Some("auto ${1:var} = ${0};".to_string()),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             ..Default::default()
         },
@@ -847,7 +847,7 @@ pub fn get_completions(state: &mut ServerState, uri: &str, content: &str, pos: O
                 RookSymbolKind::Enum { .. } => (CompletionItemKind::ENUM, format!("enum {}", sym.name)),
                 RookSymbolKind::Variable { type_name } => (
                     CompletionItemKind::VARIABLE,
-                    type_name.unwrap_or_else(|| "let".to_string()),
+                    type_name.unwrap_or_else(|| "auto".to_string()),
                 ),
             };
             items.push(CompletionItem {
@@ -1006,7 +1006,8 @@ pub fn do_hover(state: &mut ServerState, params: &HoverParams, content: Option<&
         "impl" => Some("`impl <Name> { <methods> }`\n\nImplements compile-time methods for a Rook struct."),
         "sum" => Some("`sum <Name> { <variants> }`\n\nDeclares an algebraic sum type (tagged union)."),
         "match" => Some("`match <expr> { <pattern> => <stmt> }`\n\nPattern matches on a value or sum type."),
-        "let" => Some("`let <name> [: <type>] = <expr>;`\n\nDeclares a local variable with optional type inference."),
+        "let" => Some("⚠️ **Removed in Rook v0.7.1**\n\n`let` has been removed. Use `auto <name> = <expr>;` or standard C type declarations (`int <name> = <expr>;`)."),
+        "auto" => Some("`auto <name> = <expr>;`\n`auto fn(...) { ... }`\n\nDeclares a local variable or function with compile-time inferred type."),
         "comprise" | "#comprise" => Some("`#comprise <module>`\n\nImports a Rook module. Searches standard library `<std/...>` or relative directory."),
         "fn" | "def" | "func" => Some("⚠️ **Not supported in Rook**\n\nRook uses standard C function declaration syntax:\n```c\nvoid name(params) {\n    ...\n}\n\nint add(int a, int b) {\n    return a + b;\n}\n```"),
         _ => None,
@@ -1592,7 +1593,7 @@ pub fn get_document_highlights(content: &str, pos: Position) -> Vec<DocumentHigh
 
     match word {
         "if" | "else" | "while" | "for" | "return" | "struct" | "impl" | "sum"
-        | "enum" | "defer" | "let" | "int" | "float" | "double" | "char"
+        | "enum" | "defer" | "auto" | "let" | "int" | "float" | "double" | "char"
         | "void" | "bool" | "true" | "false" | "null" | "NULL" => return highlights,
         _ => {}
     }
@@ -2012,7 +2013,7 @@ mod tests {
         assert!(labels.contains(&"impl".to_string()));
         assert!(labels.contains(&"defer".to_string()));
         assert!(labels.contains(&"match".to_string()));
-        assert!(labels.contains(&"let".to_string()));
+        assert!(labels.contains(&"auto".to_string()));
 
         // 2. Buffer symbols
         assert!(labels.contains(&"Enemy".to_string()));
@@ -2214,10 +2215,7 @@ mod tests {
             std_dir: find_std_dir(),
         };
 
-        // Multibyte emojis and UTF-8 characters on the same line before function call
-        let code = "// Halo dunia! 🚀 🔥\nlet msg = \"halo 👋\"; printf(\"val: %d\", 42);\n";
-        // Cursor right after the comma inside printf("val: %d", |
-        // Line 1: 'let msg = "halo 👋"; printf("val: %d", '
+        let code = "// Hello world! 🚀 🔥\nauto msg = \"hello 👋\"; printf(\"val: %d\", 42);\n";
         let line1 = code.lines().nth(1).unwrap();
         let comma_idx = line1.find(',').unwrap();
         let utf16_pos = byte_offset_to_utf16_col(line1, comma_idx + 1);

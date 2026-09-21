@@ -20,7 +20,7 @@ int double_it(int n) {
 
 int main() {
     CPoint p = {3, 4};
-    let a = square(p.x);
+    auto a = square(p.x);
     int b = double_it(a);
     YPoint q;
     q.a = 10;

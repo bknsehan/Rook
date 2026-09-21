@@ -310,6 +310,11 @@ static AstType* infer_let_type(CG* g, Expr* init) {
             t->name = strdup("char");
             return t;
         }
+        if (strchr(init->str, 'f') != NULL || strchr(init->str, 'F') != NULL) {
+            AstType* t = ast_type_new();
+            t->name = strdup("float");
+            return t;
+        }
         if (strchr(init->str, '.') != NULL) {
             AstType* t = ast_type_new();
             t->name = strdup("double");
@@ -805,8 +810,8 @@ static void cg_call(CG* g, Expr* callee, Expr** args, int nargs) {
 
 static void cg_decl(CG* g, Decl* d) {
     if (!d) return;
-    if (d->style == DECL_LET) {
-        if (d->type) {
+    if (d->style == DECL_LET || d->style == DECL_AUTO) {
+        if (d->type && strcmp(d->type->name, "auto") != 0) {
             cg_type(g, d->type);
             sb_append(&g->sb, " ");
         } else {

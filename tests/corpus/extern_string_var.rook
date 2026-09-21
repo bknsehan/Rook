@@ -3,9 +3,9 @@
 extern int puts(const char* s);
 
 int main() {
-    let s: const char* = "hello";
+    const char* s = "hello";
     puts(s);
-    let name = "world";
+    auto name = "world";
     puts(name);
     return 0;
 }

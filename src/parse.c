@@ -154,7 +154,7 @@ static int is_type_word(Token* t) {
            is_kw(t, "uint8_t") || is_kw(t, "uint16_t") || is_kw(t, "uint32_t") ||
            is_kw(t, "uint64_t") || is_kw(t, "int8_t") || is_kw(t, "int16_t") ||
            is_kw(t, "int32_t") || is_kw(t, "int64_t") || is_kw(t, "uintptr_t") ||
-           is_kw(t, "intptr_t") || is_kw(t, "bool");
+           is_kw(t, "intptr_t") || is_kw(t, "bool") || is_kw(t, "auto");
 }
 
 static AstType* parse_type(Parser* p) {
@@ -649,6 +649,9 @@ static Decl* parse_c_decl(Parser* p, int expect_semi) {
     }
     if (expect_semi && !expect_punct(p, ";")) return NULL;
     Decl* d = ast_decl_new(DECL_C, name, ty, init);
+    if (ty && ty->name && strcmp(ty->name, "auto") == 0) {
+        d->style = DECL_AUTO;
+    }
     d->dim = dim;
     if (t0) { d->start = t0->start; d->len = t0->len; d->line = t0->line; d->col = t0->col; }
     return d;
@@ -705,27 +708,14 @@ static Stmt* parse_stmt(Parser* p) {
         error_at(p, t, "'goto' is not supported in Rook");
         return NULL;
     }
-    /* `let name = expr;` desugars to typed-decl with auto-inferred type */
+    /* `let` has been removed in v0.7.1 in favor of `auto` and C-style declarations */
     if (is_kw(t, "let")) {
-        adv(p);
-        char* name = ident(p);
-        if (!name) return NULL;
-        AstType* ty = NULL;
-        Expr* init = NULL;
-        if (tok_is(cur(p), ":")) {
-            adv(p);
-            ty = parse_type(p);
-            if (!ty) return NULL;
-        }
-        if (tok_is(cur(p), "=")) {
-            adv(p);
-            init = parse_init(p);
-            if (!init) return NULL;
-        }
-        if (!expect_punct(p, ";")) return NULL;
-        Decl* d = ast_decl_new(DECL_LET, name, ty, init);
-        d->start = t->start; d->len = t->len; d->line = t->line; d->col = t->col;
-        return stmt_decl(d);
+        Token* next = peek(p, 1);
+        const char* var_name = (next && next->kind == TK_IDENT) ? next->text : "x";
+        int var_len = (next && next->kind == TK_IDENT) ? (int)next->len : 1;
+        error_at(p, t, "'let' has been removed in Rook v0.7.1; use 'auto %.*s = ...' or C syntax 'type %.*s = ...'",
+                 var_len, var_name, var_len, var_name);
+        return NULL;
     }
     if (is_kw(t, "if")) return parse_if(p);
     if (is_kw(t, "while")) {
@@ -1081,6 +1071,10 @@ static FnDef* parse_fn_def(Parser* p) {
     if (tok_is(cur(p), ";")) {
         adv(p);
         f->is_extern = 1;
+        if (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0) {
+            error_at(p, name_tok ? name_tok : cur(p), "function declaration without body cannot have 'auto' return type");
+            return NULL;
+        }
     } else if (tok_is(cur(p), "{")) {
         f->body = parse_block(p);
         if (!f->body) return NULL;
@@ -1114,24 +1108,15 @@ static int parse_struct_field(Parser* p, StructField* f) {
     memset(f, 0, sizeof *f);
     Token* t = cur(p);
 
-    /* 1. 'let name: Type;' style */
+    /* 1. 'let' in struct fields has been removed in v0.7.1 */
     if (is_kw(t, "let")) {
-        adv(p);
-        f->style = FIELD_COLON;
-        f->name = ident(p);
-        if (!f->name) return 0;
-        if (!expect_punct(p, ":")) return 0;
-        f->type = parse_type(p);
-        if (!f->type) return 0;
-        if (tok_is(cur(p), "[")) {
-            adv(p);
-            f->dim = parse_expr(p);
-            if (!f->dim) return 0;
-            if (!expect_punct(p, "]")) return 0;
-        }
-        if (!expect_punct(p, ";")) return 0;
-        while (tok_is(cur(p), ";")) adv(p);
-        return 1;
+        error_at(p, t, "'let' in struct fields has been removed in Rook v0.7.1; use 'type name;' or 'name: type;'");
+        return 0;
+    }
+
+    if (is_kw(t, "auto")) {
+        error_at(p, t, "struct field cannot have 'auto' type; specify an explicit type");
+        return 0;
     }
 
     /* 2. Colon style: 'name: Type;' (permissive compatibility) */
@@ -1231,6 +1216,10 @@ static FnDef* parse_extern_fn(Parser* p) {
     Token* name_tok = cur(p);
     f->name = ident(p);
     if (!f->name) return NULL;
+    if (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0) {
+        error_at(p, name_tok ? name_tok : cur(p), "extern function '%s' cannot have 'auto' return type", f->name ? f->name : "");
+        return NULL;
+    }
     if (name_tok) { f->line = name_tok->line; f->col = name_tok->col; }
     if (!expect_punct(p, "(")) return NULL;
     while (!tok_is(cur(p), ")")) {

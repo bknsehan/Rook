@@ -33,9 +33,9 @@ int main() {
     short sx = 20;
     unsigned ux = 50;
     signed int si = -5;
-    let ly: long = 2000;
-    let sy: short = 30;
-    let uy: unsigned = 75;
+    long ly = 2000;
+    short sy = 30;
+    unsigned uy = 75;
     printf("types: %ld %d %u %d %ld %d %u\n", lx, (int)sx, ux, si, ly, (int)sy, uy);
 
     // 5. Nested switch with continue

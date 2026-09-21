@@ -92,7 +92,7 @@ typedef enum {
     S_DEFER,
 } StmtKind;
 
-typedef enum { DECL_LET, DECL_TYPED, DECL_C } DeclStyle;
+typedef enum { DECL_LET, DECL_TYPED, DECL_C, DECL_AUTO } DeclStyle;
 
 typedef struct Decl {
     DeclStyle style;
@@ -162,6 +162,9 @@ typedef struct FnDef {
     int len;
     int line;
     int col;
+    int inferring_ret;      /* 1 while inferring auto return type (cycle detection) */
+    int checked;            /* 1 once type-checked */
+    AstType* inferred_ret;  /* candidate return type during inference */
 } FnDef;
 
 typedef enum { FIELD_COLON, FIELD_C } FieldStyle;

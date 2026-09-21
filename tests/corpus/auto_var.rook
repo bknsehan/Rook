@@ -1,0 +1,34 @@
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+};
+
+int main() {
+    // 1. Primitives
+    auto a = 10;
+    auto b = 20;
+    auto sum = a + b;
+    auto pi = 3.14f;
+    auto greeting = "hello auto";
+    auto flag = 1;
+
+    printf("sum=%d pi=%.2f str=%s flag=%d\n", sum, pi, greeting, flag);
+
+    // 2. Struct and pointers
+    Point pt = Point{ x: 40, y: 50 };
+    auto p = pt;
+    auto ref = &p;
+    auto* ptr = &p.x;
+    printf("p=(%d,%d) ref=(%d,%d) ptr=%d\n", p.x, p.y, ref->x, ref->y, *ptr);
+
+    // 3. For loop with auto
+    int total = 0;
+    for (auto i = 1; i <= 5; i++) {
+        total += i;
+    }
+    printf("total=%d\n", total);
+
+    return 0;
+}

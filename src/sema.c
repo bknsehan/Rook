@@ -719,6 +719,8 @@ static AstType* ck_clone_type(AstType* src);
 static void ck_expr(Checker* ck, Expr* x);
 static void ck_stmt(Checker* ck, Stmt* s);
 static void ck_decl(Checker* ck, Decl* d);
+static void ck_check_fn(Checker* ck, FnDef* f);
+static void ck_check_method(Checker* ck, const char* recv_name, FnDef* m);
 
 static void ck_err_at(Checker* ck, int offset, int width, const char* msg) {
     if (ck->is_err) return;
@@ -1460,10 +1462,19 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         }
         return NULL;
     }
-    case E_LITERAL:
+    case E_LITERAL: {
+        if (!e->str) return NULL;
         if (e->str[0] == '"') return ck_mk_type("char", 1);
         if (e->str[0] == '\'') return ck_mk_type("char", 0);
+        size_t slen = strlen(e->str);
+        if (strchr(e->str, 'f') || strchr(e->str, 'F')) return ck_mk_type("float", 0);
+        if (strchr(e->str, '.') || strchr(e->str, 'e') || strchr(e->str, 'E')) return ck_mk_type("double", 0);
+        if (slen > 2 && (e->str[slen - 2] == 'l' || e->str[slen - 2] == 'L') && (e->str[slen - 1] == 'l' || e->str[slen - 1] == 'L'))
+            return ck_mk_type("long long", 0);
+        if (slen > 0 && (e->str[slen - 1] == 'l' || e->str[slen - 1] == 'L')) return ck_mk_type("long", 0);
+        if (slen > 0 && (e->str[slen - 1] == 'u' || e->str[slen - 1] == 'U')) return ck_mk_type("unsigned", 0);
         return ck_mk_type("int", 0);   /* numeric literal defaults to int */
+    }
     case E_CALL: {
         if (e->a && e->a->kind == E_IDENT) {
             const char* fn = e->a->str;
@@ -1476,6 +1487,19 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             }
             Sym* sym = sema_lookup(ck->s, fn);
             if (sym && sym->kind == SYM_FN && sym->fn && sym->fn->ret) {
+                if (sym->fn->ret->name && strcmp(sym->fn->ret->name, "auto") == 0) {
+                    if (sym->fn->inferring_ret) {
+                        if (sym->fn->inferred_ret) {
+                            return ck_clone_type(sym->fn->inferred_ret);
+                        } else {
+                            char msg[256];
+                            snprintf(msg, sizeof msg, "cannot deduce return type for function '%s' before base case is established", fn);
+                            ck_err_expr(ck, e, msg);
+                            return ck_mk_type("int", 0);
+                        }
+                    }
+                    ck_check_fn(ck, sym->fn);
+                }
                 return ck_clone_type(sym->fn->ret);
             }
             if (fn && strncmp(fn, "__atomic_", 9) == 0) {
@@ -1502,7 +1526,27 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             if (base && base->name) {
                 Sym* msym = sema_lookup_method(ck->s, base->name, m->str);
                 if (msym) {
-                    AstType* r = msym->ret_type ? ck_clone_type(msym->ret_type) : NULL;
+                    if (msym->fn && msym->fn->ret && msym->fn->ret->name && strcmp(msym->fn->ret->name, "auto") == 0) {
+                        if (msym->fn->inferring_ret) {
+                            if (msym->fn->inferred_ret) {
+                                AstType* r = ck_clone_type(msym->fn->inferred_ret);
+                                free(msym->name);
+                                free(msym);
+                                free(base);
+                                return r;
+                            } else {
+                                char msg[256];
+                                snprintf(msg, sizeof msg, "cannot deduce return type for method '%s' before base case is established", m->str);
+                                ck_err_expr(ck, e, msg);
+                                free(msym->name);
+                                free(msym);
+                                free(base);
+                                return ck_mk_type("int", 0);
+                            }
+                        }
+                        ck_check_method(ck, base->name, msym->fn);
+                    }
+                    AstType* r = msym->fn->ret ? ck_clone_type(msym->fn->ret) : (msym->ret_type ? ck_clone_type(msym->ret_type) : NULL);
                     free(msym->name);
                     free(msym);
                     free(base);
@@ -1630,7 +1674,9 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
 
 static AstType* ck_fn_ret_instantiated(Checker* ck, FnDef* f) {
     (void)ck;
-    if (!f || !f->ret) return NULL;
+    if (!f) return NULL;
+    if (f->inferred_ret) return ck_clone_type(f->inferred_ret);
+    if (!f->ret) return NULL;
     return ck_clone_type(f->ret);
 }
 
@@ -2165,6 +2211,7 @@ static int is_enum_type(Sema* s, const char* name) {
 
 static int ck_decl_type_valid(Checker* ck, AstType* t) {
     if (!t) return 1;
+    if (t->name && strcmp(t->name, "auto") == 0) return 1;
     if (is_c_type_word(t->name)) return 1;
     if (raw_has(t->name)) return 1;
     Sym* sym = sema_lookup(ck->s, t->name);
@@ -2191,6 +2238,38 @@ static int ck_decl_type_valid(Checker* ck, AstType* t) {
 static void ck_decl(Checker* ck, Decl* d) {
     if (!d || !d->name) return;
     if (d->init) ck_expr(ck, d->init);
+
+    if (d->type && d->type->name && strcmp(d->type->name, "auto") == 0) {
+        if (d->dim) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "array '%s' cannot have 'auto' type; specify an explicit element type", d->name);
+            ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
+            return;
+        }
+        if (!d->init) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "cannot infer type for variable '%s' without initializer", d->name);
+            ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
+            return;
+        }
+        AstType* inf = ck_resolve_type(ck, d->init);
+        if (!inf || (inf->name && strcmp(inf->name, "void") == 0 && inf->ptrs == 0)) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "cannot infer type for variable '%s' from void expression", d->name);
+            ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
+            if (inf) ast_type_free(inf);
+            return;
+        }
+        if (d->type->ptrs > 0 && inf->ptrs < d->type->ptrs) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "cannot deduce pointer type from non-pointer expression for '%s'", d->name);
+            ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
+            ast_type_free(inf);
+            return;
+        }
+        ast_type_free(d->type);
+        d->type = inf;
+    }
 
     /* validate declared type */
     if (d->type && d->type->name && strcmp(d->type->name, "void") == 0 && d->type->ptrs == 0) {
@@ -2411,6 +2490,35 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         }
         if (s->e) ck_expr(ck, s->e);
         if (ck->cur_fn) {
+            if (ck->cur_fn->inferring_ret) {
+                AstType* ret_t = NULL;
+                if (s->e) {
+                    ret_t = ck_resolve_type(ck, s->e);
+                    if (!ret_t) {
+                        ck_err_expr(ck, s->e, "cannot deduce return type from expression");
+                    }
+                } else {
+                    ret_t = ck_mk_type("void", 0);
+                }
+                if (ret_t) {
+                    if (!ck->cur_fn->inferred_ret) {
+                        ck->cur_fn->inferred_ret = ret_t;
+                    } else {
+                        int ok = ck_types_compatible(ck, ck->cur_fn->inferred_ret, ret_t);
+                        if (!ok) {
+                            char* ws = ck_type_str(ck->cur_fn->inferred_ret);
+                            char* gs = ck_type_str(ret_t);
+                            char msg[256];
+                            snprintf(msg, sizeof msg, "inconsistent return types in function '%s': '%s' versus '%s'",
+                                     ck->cur_fn->name ? ck->cur_fn->name : "<fn>", ws ? ws : "?", gs ? gs : "?");
+                            ck_err_at(ck, s->start, s->len >= 1 ? s->len : 1, msg);
+                            free(ws); free(gs);
+                        }
+                        free(ret_t);
+                    }
+                }
+                break;
+            }
             AstType* want = ck_fn_ret_instantiated(ck, ck->cur_fn);
             int is_void = want && want->ptrs == 0 && strcmp(want->name, "void") == 0;
             if (want && !is_void) {
@@ -2481,6 +2589,73 @@ static void ck_stmt(Checker* ck, Stmt* s) {
 
 /* ── top-level checking ────────────────────────────────────────────── */
 
+static void ck_check_method(Checker* ck, const char* recv_name, FnDef* m) {
+    if (!m || m->checked) return;
+
+    int is_auto_ret = (m->ret && m->ret->name && strcmp(m->ret->name, "auto") == 0);
+    if (is_auto_ret) {
+        if (m->inferring_ret) return;
+        m->inferring_ret = 1;
+        m->inferred_ret = NULL;
+    }
+
+    FnDef* save_fn = ck->cur_fn;
+    Scope* save_locals = ck->locals;
+    const char* save_self_type = ck->self_type;
+    AstType* save_self_t = ck->self_t;
+    int save_loop = ck->loop_depth;
+    int save_switch = ck->switch_depth;
+    int save_defer = ck->defer_depth;
+
+    int has_self = m->nparams > 0 && strcmp(m->params[0].name, "self") == 0;
+    AstType* self_t = NULL;
+    if (has_self && recv_name) {
+        self_t = ck_mk_type(recv_name, 1);
+    }
+
+    ck->self_type = recv_name;
+    ck->self_t = self_t;
+    ck->cur_fn = m;
+    ck->loop_depth = 0;
+    ck->switch_depth = 0;
+    ck->defer_depth = 0;
+    ck->locals = NULL;
+
+    for (int j = has_self ? 1 : 0; j < m->nparams; j++)
+        ck_add_local(ck, m->params[j].name, ck_clone_type(m->params[j].type), NULL);
+
+    if (m->body) {
+        ck_stmt(ck, m->body);
+    }
+
+    if (is_auto_ret) {
+        if (!m->inferred_ret) {
+            m->inferred_ret = ck_mk_type("void", 0);
+        }
+        ast_type_free(m->ret);
+        m->ret = m->inferred_ret;
+        m->inferred_ret = NULL;
+        m->inferring_ret = 0;
+    }
+
+    if (m->body) {
+        ck_check_returns(ck, m);
+    }
+
+    while (ck->locals) ck_pop_scope(ck);
+    if (self_t) free(self_t);
+
+    ck->cur_fn = save_fn;
+    ck->locals = save_locals;
+    ck->self_type = save_self_type;
+    ck->self_t = save_self_t;
+    ck->loop_depth = save_loop;
+    ck->switch_depth = save_switch;
+    ck->defer_depth = save_defer;
+
+    m->checked = 1;
+}
+
 static void ck_check_impl(Checker* ck, ImplDef* im) {
     /* receiver type: target name */
     AstType* recv = im->target;
@@ -2506,58 +2681,73 @@ static void ck_check_impl(Checker* ck, ImplDef* im) {
     }
 
     for (int i = 0; i < im->nmethods; i++) {
-        FnDef* m = im->methods[i];
-        int has_self = m->nparams > 0 && strcmp(m->params[0].name, "self") == 0;
-
-        AstType* self_t = NULL;
-        if (has_self) {
-            self_t = ck_clone_type(recv);
-            self_t->ptrs = 1;
-        }
-
-        ck->self_type = recv->name;
-        ck->self_t = self_t;
-        ck->cur_fn = m;
-        ck->loop_depth = 0;
-
-        /* method params */
-        for (int j = has_self ? 1 : 0; j < m->nparams; j++)
-            ck_add_local(ck, m->params[j].name, ck_clone_type(m->params[j].type), NULL);
-
-        if (m->body) {
-            ck_stmt(ck, m->body);
-            ck_check_returns(ck, m);
-        }
-
-        /* clean up locals */
-        while (ck->locals && ck->locals->parent) ck_pop_scope(ck);
-        while (ck->locals) ck_pop_scope(ck);
-        ck->locals = NULL;
-
-        ck->self_t = NULL;
-        ck->self_type = NULL;
-        ck->cur_fn = NULL;
-        free(self_t);
+        ck_check_method(ck, recv->name, im->methods[i]);
     }
 }
 
 static void ck_check_fn(Checker* ck, FnDef* f) {
+    if (!f || f->checked) return;
+
+    int is_auto_ret = (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0);
+    if (is_auto_ret) {
+        if (f->inferring_ret) return;
+        f->inferring_ret = 1;
+        f->inferred_ret = NULL;
+    }
+
+    FnDef* save_fn = ck->cur_fn;
+    Scope* save_locals = ck->locals;
+    const char* save_self_type = ck->self_type;
+    AstType* save_self_t = ck->self_t;
+    int save_loop = ck->loop_depth;
+    int save_switch = ck->switch_depth;
+    int save_defer = ck->defer_depth;
+
     ck->cur_fn = f;
     ck->loop_depth = 0;
+    ck->switch_depth = 0;
+    ck->defer_depth = 0;
     ck->self_type = NULL;
     ck->self_t = NULL;
+    ck->locals = NULL;
 
     for (int i = 0; i < f->nparams; i++)
         ck_add_local(ck, f->params[i].name, ck_clone_type(f->params[i].type), NULL);
 
     if (f->body) {
         ck_stmt(ck, f->body);
+    }
+
+    if (is_auto_ret) {
+        if (!f->inferred_ret) {
+            f->inferred_ret = ck_mk_type("void", 0);
+        }
+        ast_type_free(f->ret);
+        f->ret = f->inferred_ret;
+        f->inferred_ret = NULL;
+        f->inferring_ret = 0;
+
+        Sym* sym = sema_lookup(ck->s, f->name);
+        if (sym && sym->kind == SYM_FN) {
+            sym->ret_type = f->ret;
+        }
+    }
+
+    if (f->body) {
         ck_check_returns(ck, f);
     }
 
     while (ck->locals) ck_pop_scope(ck);
-    ck->locals = NULL;
-    ck->cur_fn = NULL;
+
+    ck->cur_fn = save_fn;
+    ck->locals = save_locals;
+    ck->self_type = save_self_type;
+    ck->self_t = save_self_t;
+    ck->loop_depth = save_loop;
+    ck->switch_depth = save_switch;
+    ck->defer_depth = save_defer;
+
+    f->checked = 1;
 }
 
 /* ── entry point ───────────────────────────────────────────────────── */

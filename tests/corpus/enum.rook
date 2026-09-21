@@ -9,7 +9,7 @@ int main() {
         Down => printf("down\n"),
         _ => printf("bad\n")
     }
-    let d2 = Down;
+    auto d2 = Down;
     match (d2) {
         Up => printf("up2\n"),
         Down => printf("down2\n")
