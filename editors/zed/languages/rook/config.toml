@@ -1,6 +1,7 @@
 name = "Rook"
 grammar = "c"
 path_suffixes = ["rook"]
+language_servers = ["rook-lsp"]
 line_comments = ["// "]
 block_comment = ["/*", "*/"]
 autoclose_before = ";:.,=}])>"

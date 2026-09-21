@@ -309,7 +309,7 @@ int main() {
 - **C Compiler:** GCC 11+ or Clang 14+
 - **Build Utilities:** CMake 3.16+ and Ninja or Make
 - **Optional LLVM Suite:** LLVM 15+ and libclang development headers (required for `--backend=llvm`, and dynamic C header parsing)
-- **Optional LSP Build:** Rust / Cargo (required to compile `rook-lsp`)
+- **LSP Language Server:** Built-in native C (`rook-lsp` / `rokade lsp`), zero external dependencies required
 
 ### 7.2 Building and Installing
 
@@ -449,18 +449,25 @@ The Rook standard library is located in `std/` and provides core capabilities:
 
 ### 10.1 Language Server Protocol (`rook-lsp`)
 
-The Rook Language Server is written in Rust and integrates with any LSP-compliant editor:
-- **Diagnostics:** Compile-time syntax and semantic errors reported via `rokade --diagnostics`.
+The Rook Language Server is written in C (same sources as the compiler, `src/lsp/`) and integrates with any LSP-compliant editor:
+- **Analyzer diagnostics:** all syntax errors plus one semantic error per function (`sema_check_all`), with `W2001` unused-variable warnings, `W2002` unreachable-code warnings, and `W2003` unused-parameter hints. Published via `textDocument/publishDiagnostics` with ranges, codes, and `Unnecessary` tags.
 - **Definition Navigation:** Jump to symbol definition (`--def-at <file> <line> <col>`).
 - **Symbol Outlines:** Document symbol tree inspection (`--symbols <file>`).
 - **Formatting:** Document formatting on save via `rokade fmt`.
+- **Machine diagnostics:** `rokade --diagnostics <file>` emits the same JSON array (`file`, `line`, `character`, `endCharacter`, `severity`, `code`, `message`).
 
 ### 10.2 Zed Editor Extension
 
 The automated installer detects and installs the Rook Zed extension into:
 `~/.local/share/zed/extensions/installed/rook`
 
-Provides syntax highlighting, indentation rules, and direct LSP server connection.
+Provides syntax highlighting, indentation rules, and direct LSP server connection (`languages/rook/config.toml` binds `language_servers = ["rook-lsp"]` for `.rook` files).
+
+Troubleshooting when Zed shows no diagnostics:
+1. Ensure `rook-lsp` is on `PATH` (`which rook-lsp`), or set `ROOK_LSP_PATH` to its full path — GUI-launched Zed often has a minimal `PATH` that misses `~/bin`.
+2. The extension also falls back to `rokade lsp` when `rook-lsp` is not found.
+3. Re-run `./install.sh --editor=zed` (it rebuilds `extension.wasm` when `cargo` + a `wasm32-wasip1` target are available), restart Zed, and check `~/.local/share/zed/logs/Zed.log`.
+4. `Failed to install dev extension: failed to compile grammar 'c'` with `pathspec 'vX.Y.Z' did not match` means Zed's cached `grammars/c/` checkout is a broken shallow clone (interrupted first fetch). Delete that directory inside the extension source you are installing (e.g. `editors/zed/grammars/c/`) and retry — Zed re-clones it (network needed once). `./install.sh --editor=zed` does this cleanup automatically.
 
 ### 10.3 Comprehensive Language Guides
 

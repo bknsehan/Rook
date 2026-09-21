@@ -1,0 +1,185 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Rook",
+  "scopeName": "source.rook",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#numbers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.rook",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.rook",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.comprise.rook",
+          "match": "^\\s*#?\\bcomprise\\b"
+        },
+        {
+          "name": "keyword.control.directive.include.rook",
+          "match": "^\\s*#\\binclude\\b"
+        },
+        {
+          "name": "keyword.control.directive.pragma.rook",
+          "match": "^\\s*#\\bpragma\\b"
+        },
+        {
+          "name": "keyword.control.directive.preprocessor.rook",
+          "match": "^\\s*#\\b(define|undef|ifdef|ifndef|if|elif|else|endif|error|warning)\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.rook",
+          "match": "\\b(struct|object|impl|sum|enum|alias|extern|auto|let|const|mut)\\b"
+        },
+        {
+          "name": "keyword.control.rook",
+          "match": "\\b(return|if|else|while|for|in|switch|case|default|match|defer|break|continue)\\b"
+        },
+        {
+          "name": "keyword.operator.rook",
+          "match": "\\b(sizeof|cast|as)\\b"
+        },
+        {
+          "name": "variable.language.self.rook",
+          "match": "\\bself\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.rook",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.rook",
+          "match": "\\b(null|NULL|nullptr)\\b"
+        },
+        {
+          "name": "constant.other.caps.rook",
+          "match": "\\b[A-Z][A-Z0-9_]{2,}\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.rook",
+          "match": "\\b(void|bool|int|int8|int16|int32|int64|uint8|uint16|uint32|uint64|float|double|char|size_t|u8|u16|u32|u64|i8|i16|i32|i64|f32|f64|uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t)\\b"
+        },
+        {
+          "name": "support.type.library.rook",
+          "match": "\\b(Str|Vec|Result|Option|StringBuilder|File)\\b"
+        },
+        {
+          "name": "entity.name.type.rook",
+          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.function.rook" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.rook",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.rook",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.rook",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.rook",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.other.angle-bracket.rook",
+          "match": "<[^>]+>"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.rook",
+          "match": "\\b0[xX][0-9a-fA-F]+[uUlL]*\\b"
+        },
+        {
+          "name": "constant.numeric.float.rook",
+          "match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?[fF]?\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.rook",
+          "match": "\\b[0-9]+[uUlL]*\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.rook",
+          "match": "(\\.\\.=|<=|>=|==|!=|&&|\\|\\||<<|>>|\\+=|-=|\\*=|/=|%=|\\+\\+|--|->|=>|\\.\\.|\\+|-|\\*|/|%|=|!|<|>|&|\\||\\^|~|\\?)"
+        }
+      ]
+    }
+  }
+}

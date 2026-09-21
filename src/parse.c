@@ -8,6 +8,8 @@
 #include <string.h>
 
 static char g_errbuf[1024];
+static ParseDiag g_pdiags[RK_PARSE_MAX_DIAGS];
+static int g_pndiags = 0;
 
 typedef struct Parser {
     const char* src;
@@ -20,6 +22,7 @@ typedef struct Parser {
     int silent;     /* suppress errors (backtracking) */
     int no_postfix; /* switch case labels */
     int err;
+    int tolerant;
     char* cur_module;
 } Parser;
 
@@ -57,12 +60,49 @@ static void error_at(Parser* p, Token* t, const char* fmt, ...) {
     va_start(ap, fmt);
     vsnprintf(msg, sizeof msg, fmt, ap);
     va_end(ap);
-    diag_render(p->src, t->start, t->len < 1 ? 1 : t->len, "error", msg,
-                g_errbuf, sizeof g_errbuf);
+    /* Record a structured entry (cap at RK_PARSE_MAX_DIAGS). */
+    if (g_pndiags < RK_PARSE_MAX_DIAGS) {
+        ParseDiag* d = &g_pdiags[g_pndiags++];
+        d->line = t ? t->line : 1;
+        d->col = t ? t->col : 1;
+        d->len = (t && t->len >= 1) ? t->len : 1;
+        d->file[0] = '\0';
+        snprintf(d->code, sizeof d->code, "E0001");
+        snprintf(d->msg, sizeof d->msg, "%s", msg);
+        /* Map expanded offsets back to original file coordinates. */
+        if (p->src && t) {
+            char rfile[sizeof d->file];
+            int rline = 0, rcol = 0;
+            if (diag_resolve(p->src, t->start, rfile, sizeof rfile, &rline, &rcol)) {
+                if (rline >= 1) d->line = rline;
+                if (rcol >= 1) d->col = rcol;
+                snprintf(d->file, sizeof d->file, "%s", rfile);
+            }
+        }
+    }
+    /* Keep g_errbuf as the FIRST error for CLI compat (was: last wins). */
+    if (g_pndiags <= 1) {
+        diag_render(p->src, t->start, t->len < 1 ? 1 : t->len, "error", msg,
+                    g_errbuf, sizeof g_errbuf);
+    }
 }
 
 const char* parse_error(void) {
     return g_errbuf;
+}
+
+int parse_error_count(void) {
+    return g_pndiags;
+}
+
+const ParseDiag* parse_error_get(int idx) {
+    if (idx < 0 || idx >= g_pndiags) return NULL;
+    return &g_pdiags[idx];
+}
+
+void parse_error_clear(void) {
+    g_errbuf[0] = '\0';
+    g_pndiags = 0;
 }
 
 /* Attach source location (from a token) to a freshly built node so the
@@ -851,15 +891,28 @@ static Stmt* parse_block(Parser* p) {
         b->line = open->line;
         b->col = open->col;
     }
-    while (!tok_is(cur(p), "}")) {
+    while (!tok_is(cur(p), "}") && cur(p)->kind != TK_EOF) {
         Stmt* s = parse_stmt(p);
-        if (!s) return NULL;
+        if (!s) {
+            if (p->tolerant) {
+                while (!tok_is(cur(p), ";") && !tok_is(cur(p), "}") && cur(p)->kind != TK_EOF) {
+                    adv(p);
+                }
+                if (tok_is(cur(p), ";")) adv(p);
+                if (cur(p)->kind == TK_EOF) break;
+                continue;
+            }
+            return NULL;
+        }
         b->stmts = realloc(b->stmts, (b->nstmts + 1) * sizeof *b->stmts);
         if (!b->stmts) exit(1);
         b->stmts[b->nstmts++] = s;
     }
     Token* close = cur(p);
-    if (!expect_punct(p, "}")) return NULL;
+    if (!expect_punct(p, "}")) {
+        if (p->tolerant) return b;
+        return NULL;
+    }
     if (open && close) {
         b->len = (close->start + close->len) - open->start;
     }
@@ -1443,7 +1496,9 @@ static int is_construct_kw(Token* t) {
            is_kw(t, "def") || is_kw(t, "func") || is_kw(t, "fn");
 }
 
-Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
+static Program* parse_program_internal(const char* src, int len, Token* toks, int ntoks, int tolerant) {
+    g_errbuf[0] = '\0';
+    g_pndiags = 0;
     freed_init();
     Parser p;
     p.src = src;
@@ -1456,6 +1511,7 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
     p.silent = 0;
     p.no_postfix = 0;
     p.err = 0;
+    p.tolerant = tolerant;
     p.cur_module = NULL;
 
     Program* prog = calloc(1, sizeof *prog);
@@ -1507,6 +1563,22 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
             else free(raw);
             Item* it = parse_top(&p);
             if (!it) {
+                if (p.tolerant) {
+                    while (cur(&p)->kind != TK_EOF) {
+                        Token* ct = cur(&p);
+                        if (tok_is(ct, "{")) p.depth++;
+                        else if (tok_is(ct, "}")) {
+                            if (p.depth > 0) p.depth--;
+                            if (p.depth == 0) { adv(&p); break; }
+                        } else if (p.depth == 0 && ct->bol && is_construct_kw(ct)) {
+                            break;
+                        }
+                        adv(&p);
+                    }
+                    if (cur(&p)->kind == TK_EOF) break;
+                    raw_begin = cur(&p)->start;
+                    continue;
+                }
                 free(prog);
                 return NULL;
             }
@@ -1541,5 +1613,14 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
     raw->raw_len = len - raw_begin;
     if (raw->raw_len > 0) ast_program_add(prog, raw);
     else free(raw);
+    if (p.cur_module) free(p.cur_module);
     return prog;
+}
+
+Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
+    return parse_program_internal(src, len, toks, ntoks, 0);
+}
+
+Program* parse_program_tolerant(const char* src, int len, Token* toks, int ntoks) {
+    return parse_program_internal(src, len, toks, ntoks, 1);
 }

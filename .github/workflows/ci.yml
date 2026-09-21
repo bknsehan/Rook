@@ -28,15 +28,11 @@ jobs:
             llvm-dev \
             libclang-dev
 
-      - name: Set up Rust (for rook-lsp)
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DROKADE_ENABLE_LLVM=ON \
-            -DROOK_BUILD_LSP=ON
+            -DROKADE_ENABLE_LLVM=ON
 
       - name: Build Rokade and LSP
         run: |
@@ -54,13 +50,17 @@ jobs:
         run: |
           ROKADE=./build/rokade BACKEND=llvm bash tests/run.sh
 
+      - name: Test Language Server (LSP)
+        run: |
+          python3 tests/lsp_test.py
+          python3 tests/lsp_workspace_test.py
+
       - name: Build & Test with AddressSanitizer (ASan / UBSan)
         run: |
           cmake -B build-asan -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DUSE_SANITIZER=ON \
-            -DROKADE_ENABLE_LLVM=ON \
-            -DROOK_BUILD_LSP=OFF
+            -DROKADE_ENABLE_LLVM=ON
           cmake --build build-asan
           ASAN_OPTIONS=detect_leaks=0 ROKADE=./build-asan/rokade bash tests/run.sh
           rm -rf build-asan
@@ -110,10 +110,9 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DROKADE_ENABLE_LLVM=ON \
-            -DROOK_BUILD_LSP=OFF
+            -DROKADE_ENABLE_LLVM=ON
 
-      - name: Build Rokade
+      - name: Build Rokade and LSP
         shell: msys2 {0}
         run: |
           cmake --build build

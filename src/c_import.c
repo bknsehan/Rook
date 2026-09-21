@@ -174,6 +174,27 @@ static int is_c_num_literal(const char* val) {
     return 1;
 }
 
+static void get_cursor_file_line_col(CXCursor cursor, char* out_file, size_t cap, int* out_line, int* out_col) {
+    if (out_file && cap > 0) out_file[0] = '\0';
+    if (out_line) *out_line = 1;
+    if (out_col) *out_col = 1;
+
+    CXSourceLocation loc = clang_getCursorLocation(cursor);
+    CXFile file = NULL;
+    unsigned line = 0, col = 0, offset = 0;
+    clang_getSpellingLocation(loc, &file, &line, &col, &offset);
+    if (file) {
+        CXString fn_str = clang_getFileName(file);
+        const char* fn = clang_getCString(fn_str);
+        if (fn && fn[0] && out_file && cap > 0) {
+            snprintf(out_file, cap, "%s", fn);
+        }
+        clang_disposeString(fn_str);
+    }
+    if (out_line && line > 0) *out_line = (int)line;
+    if (out_col && col > 0) *out_col = (int)col;
+}
+
 static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXClientData client_data) {
     (void)parent;
     ImportContext* ctx = (ImportContext*)client_data;
@@ -234,7 +255,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             }
 
             int is_variadic = clang_isFunctionTypeVariadic(fn_type);
-            sema_register_cfunc(name, ret_buf, params_buf, num_args, is_variadic);
+            char h_file[512] = "";
+            int h_line = 1, h_col = 1;
+            get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
+            sema_register_cfunc_loc(name, ret_buf, params_buf, num_args, is_variadic, h_file, h_line, h_col);
             clang_disposeString(ret_str);
         }
         clang_disposeString(cname);
@@ -249,7 +273,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                 StructFieldCollector sfc = {0};
                 clang_visitChildren(cursor, field_collector_cb, &sfc);
                 if (sfc.nfields > 0) {
-                    sema_register_cstruct(ctx->sema, actual_name, sfc.fields, sfc.nfields);
+                    char h_file[512] = "";
+                    int h_line = 1, h_col = 1;
+                    get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
+                    sema_register_cstruct_loc(ctx->sema, actual_name, sfc.fields, sfc.nfields, h_file, h_line, h_col);
                 }
             }
             clang_disposeString(sname);
@@ -262,18 +289,22 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             CXString utstr = clang_getTypeSpelling(utype);
             const char* ut_cstr = clang_getCString(utstr);
 
+            char h_file[512] = "";
+            int h_line = 1, h_col = 1;
+            get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
+
             /* Check if typedef is an alias for a struct definition */
             if (utype.kind == CXType_Record || utype.kind == CXType_Elaborated) {
                 StructFieldCollector sfc = {0};
                 clang_visitChildren(cursor, field_collector_cb, &sfc);
                 if (sfc.nfields > 0) {
-                    sema_register_cstruct(ctx->sema, name, sfc.fields, sfc.nfields);
+                    sema_register_cstruct_loc(ctx->sema, name, sfc.fields, sfc.nfields, h_file, h_line, h_col);
                 } else {
                     CXCursor def_cur = clang_getTypeDeclaration(utype);
                     if (!clang_Cursor_isNull(def_cur)) {
                         clang_visitChildren(def_cur, field_collector_cb, &sfc);
                         if (sfc.nfields > 0) {
-                            sema_register_cstruct(ctx->sema, name, sfc.fields, sfc.nfields);
+                            sema_register_cstruct_loc(ctx->sema, name, sfc.fields, sfc.nfields, h_file, h_line, h_col);
                         } else {
                             long long sz = clang_Type_getSizeOf(utype);
                             if (sz > 0) {
@@ -286,7 +317,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                                 snprintf(sz_str, sizeof sz_str, "%lld", sz);
                                 d->str = strdup(sz_str);
                                 f[0].dim = d;
-                                sema_register_cstruct(ctx->sema, name, f, 1);
+                                sema_register_cstruct_loc(ctx->sema, name, f, 1, h_file, h_line, h_col);
                             }
                         }
                     }
@@ -294,7 +325,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             }
 
             AstType* ast_t = parse_c_type_to_ast(ut_cstr);
-            sema_register_ctypedef(ctx->sema, name, ast_t);
+            sema_register_ctypedef_loc(ctx->sema, name, ast_t, h_file, h_line, h_col);
 
             clang_disposeString(utstr);
         }
@@ -308,7 +339,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             long long eval = clang_getEnumConstantDeclValue(cursor);
             char vbuf[32];
             snprintf(vbuf, sizeof(vbuf), "%lld", eval);
-            sema_register_cconst(ctx->sema, name, sema_mk_type("", "int", 0), vbuf);
+            char h_file[512] = "";
+            int h_line = 1, h_col = 1;
+            get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
+            sema_register_cconst_loc(ctx->sema, name, sema_mk_type("", "int", 0), vbuf, h_file, h_line, h_col);
         }
         clang_disposeString(ename);
     } else if (kind == CXCursor_VarDecl) {
@@ -319,7 +353,10 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
             CXString vtstr = clang_getTypeSpelling(vtype);
             const char* vt_cstr = clang_getCString(vtstr);
             AstType* ast_t = parse_c_type_to_ast(vt_cstr);
-            sema_register_cvar(ctx->sema, name, ast_t);
+            char h_file[512] = "";
+            int h_line = 1, h_col = 1;
+            get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
+            sema_register_cvar_loc(ctx->sema, name, ast_t, h_file, h_line, h_col);
             clang_disposeString(vtstr);
         }
         clang_disposeString(vname);
@@ -334,6 +371,9 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                 unsigned n_tokens = 0;
                 clang_tokenize(tu, range, &tokens, &n_tokens);
                 if (n_tokens >= 2) {
+                    char h_file[512] = "";
+                    int h_line = 1, h_col = 1;
+                    get_cursor_file_line_col(cursor, h_file, sizeof(h_file), &h_line, &h_col);
                     int registered = 0;
                     for (unsigned ti = 1; ti < n_tokens; ti++) {
                         CXTokenKind tkind = clang_getTokenKind(tokens[ti]);
@@ -341,7 +381,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                             CXString val_str = clang_getTokenSpelling(tu, tokens[ti]);
                             const char* val = clang_getCString(val_str);
                             if (val && is_c_num_literal(val)) {
-                                sema_register_cconst(ctx->sema, name, sema_mk_type("", "int", 0), val);
+                                sema_register_cconst_loc(ctx->sema, name, sema_mk_type("", "int", 0), val, h_file, h_line, h_col);
                                 registered = 1;
                             }
                             clang_disposeString(val_str);
@@ -369,7 +409,7 @@ static enum CXChildVisitResult tu_visitor(CXCursor cursor, CXCursor parent, CXCl
                                         strncat(ptypes, pt, sizeof(ptypes) - strlen(ptypes) - 1);
                                     }
                                 }
-                                sema_register_cfunc(name, safe_c_ret, ptypes, np, var);
+                                sema_register_cfunc_loc(name, safe_c_ret, ptypes, np, var, h_file, h_line, h_col);
                             }
                             clang_disposeString(val_str);
                         }

@@ -39,6 +39,22 @@ const char* diag_bold(void);
 const char* diag_dim(void);
 const char* diag_reset(void);
 
+/* Resolve a byte offset in (possibly include-expanded) `src` back to the
+   original file/line/col via `// @rk:src` markers. Returns 1 when a marker
+   was found (out_file/out_line/out_col set), 0 otherwise (caller falls back
+   to raw line counting). out_file may be NULL. */
+int diag_resolve(const char* src, int offset,
+                 char* out_file, size_t file_cap,
+                 int* out_line, int* out_col);
+
+/* Line-based variant for AST line/col (e.g. lint) in expanded coordinates.
+   Converts (exp_line, exp_col) to an offset, then resolves via markers.
+   Returns 1 on marker hit. */
+int diag_resolve_linecol(const char* src,
+                         int exp_line, int exp_col,
+                         char* out_file, size_t file_cap,
+                         int* out_line, int* out_col);
+
 /* Print a concise, colorized stage-progress marker to stderr (no trailing
    newline). Used by build/run pipelines. */
 void diag_stage(const char* stage);

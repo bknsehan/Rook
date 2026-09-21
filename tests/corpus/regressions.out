@@ -1,0 +1,13 @@
+val=20 cnt=1
+p: 15, 25
+sum_f=7.5
+types: 1000 20 50 -5 2000 30 75
+defer=10
+shape_sz=12
+shaped_sz=16
+rect=12.0
+alloc_int: 1234
+len: 4
+elem size matches int: 1
+assert: ok
+box: 999

@@ -1,0 +1,5 @@
+counter: 7
+hypot: 5
+mix: 9 30
+extern puts ok
+ABI OK: string=char* by-pointer; Vec2 by value

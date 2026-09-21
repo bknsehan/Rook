@@ -1,0 +1,8 @@
+dir: up
+enum eq=1 ne=0
+answer
+struct Rect area: 200
+s_rect area: 1200
+s_circ area: 12.57
+s_pt area: 0
+s_big area: 15

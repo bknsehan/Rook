@@ -1,11 +1,18 @@
 #include <stdio.h>
 #include <string.h>
 
+const char* make() {
+    const char* s2 = "hi";
+    return s2;
+}
+
 void greet(const char* name) {
     printf("hello %s\n", name);
 }
 
 int main() {
+    const char* m = make();
+    printf("%s\n", m);
     const char* s = "world";
     greet(s);
     greet("direct");

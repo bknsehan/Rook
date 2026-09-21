@@ -1,0 +1,73 @@
+{
+  "name": "rook-lang",
+  "displayName": "Rook Language Support",
+  "description": "Rich language support, syntax highlighting, and LSP integration for the Rook programming language",
+  "version": "0.7.1",
+  "publisher": "bknsehan",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:rook",
+    "workspaceContains:**/*.rook",
+    "workspaceContains:**/*.rk"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rook",
+        "aliases": [
+          "Rook",
+          "rook"
+        ],
+        "extensions": [
+          ".rook",
+          ".rk"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rook",
+        "scopeName": "source.rook",
+        "path": "./syntaxes/rook.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Rook Language",
+      "properties": {
+        "rook.lsp.path": {
+          "type": "string",
+          "default": "rook-lsp",
+          "description": "Path to the rook-lsp binary (defaults to 'rook-lsp' in PATH)"
+        },
+        "rook.lsp.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the Rook language server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "npx esbuild src/extension.js --bundle --platform=node --external:vscode --outfile=dist/extension.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.25.0",
+    "vscode-languageclient": "^9.0.1"
+  }
+}

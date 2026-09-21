@@ -1,0 +1,39 @@
+#include <stdio.h>
+
+int test_defer() {
+    defer printf("defer 1 (outer)\n");
+    defer printf("defer 2 (inner)\n");
+    printf("body executing\n");
+    return 42;
+}
+
+int main() {
+    // 1. Defer LIFO execution
+    int res = test_defer();
+    printf("res=%d\n", res);
+
+    // 2. Switch statements
+    int v = 2;
+    switch (v) {
+    case 1: printf("switch: one\n"); break;
+    case 2: printf("switch: two\n"); break;
+    default: printf("switch: other\n");
+    }
+
+    int y = 2;
+    switch (y) {
+    case 1: printf("y: a\n"); break;
+    case 2: printf("y: b\n"); break;
+    default: printf("y: c\n"); break;
+    }
+
+    // 3. For..in with array literal
+    int total = 0;
+    for x in [10, 20, 30] {
+        printf("item: %d\n", x);
+        total += x;
+    }
+    printf("total=%d\n", total);
+
+    return 0;
+}

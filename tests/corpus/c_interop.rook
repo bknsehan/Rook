@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+// 1. C Globals
+int counter = 7;
+
+// 2. C Typedef struct & C mix
+typedef struct CPoint {
+    int x;
+    int y;
+} CPoint;
+
+struct RookPoint {
+    a: int;
+    b: int;
+};
+
+int square(int n) {
+    return n * n;
+}
+
+// 3. Extern function declaration & ABI checks
+extern int puts(const char* s);
+
+static int check_string_abi(const char* s) {
+    if (s == 0) return 0;
+    if (strlen(s) != 5) return 0;
+    if (strcmp(s, "hello") != 0) return 0;
+    return 1;
+}
+
+extern int check_string_abi(const char* s);
+
+struct Vec2 { float x; float y; }
+
+int check_vec2_abi(Vec2 v) {
+    if (v.x < 0.99f || v.x > 1.01f) return 0;
+    if (v.y < 1.99f || v.y > 2.01f) return 0;
+    return 1;
+}
+
+int main() {
+    // Globals
+    printf("counter: %d\n", counter);
+
+    // Libm hypot
+    double h = hypot(3.0, 4.0);
+    printf("hypot: %d\n", (int)h);
+
+    // CPoint & RookPoint mix
+    CPoint cp = {3, 4};
+    auto sq = square(cp.x);
+    RookPoint rp;
+    rp.a = 10;
+    rp.b = 20;
+    printf("mix: %d %d\n", sq, rp.a + rp.b);
+
+    // Extern puts & ABI
+    puts("extern puts ok");
+    auto s = "hello";
+    auto v = Vec2{ x: 1.0f, y: 2.0f };
+    if (check_string_abi(s) == 1 && check_vec2_abi(v) == 1) {
+        printf("ABI OK: string=char* by-pointer; Vec2 by value\n");
+    }
+
+    return 0;
+}

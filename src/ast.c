@@ -628,6 +628,8 @@ static void fndef_free(FnDef* f) {
     free(f->params);              /* array of Param structs (name is borrowed) */
     ast_type_free(f->ret);
     stmt_free(f->body);
+    if (f->mod_prefix) free(f->mod_prefix);
+    if (f->source_file) free(f->source_file);
     free(f);
 }
 
@@ -639,6 +641,8 @@ static void structdef_free(StructDef* s) {
         expr_free(s->fields[i].dim);
     }
     free(s->fields);             /* array of StructField (name is borrowed) */
+    if (s->mod_prefix) free(s->mod_prefix);
+    if (s->source_file) free(s->source_file);
     free(s);
 }
 
@@ -665,6 +669,8 @@ static void enumdef_free(EnumDef* e) {
         free(v->fields);
     }
     free(e->variants);
+    if (e->mod_prefix) free(e->mod_prefix);
+    if (e->source_file) free(e->source_file);
     free(e);
 }
 

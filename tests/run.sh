@@ -44,7 +44,7 @@ if [ ! -x "$ROKADE" ]; then
         ROKADE="$ROKADE.exe"
     fi
 fi
-if [ ! -f "$CORPUS/basic.rook" ]; then
+if [ ! -d "$CORPUS" ]; then
     echo "corpus dir not found: $CORPUS"
     exit 1
 fi

@@ -1,5 +1,0 @@
-alloc_int: 1234
-len: 4
-elem size matches int: 1
-assert: ok
-box: 999

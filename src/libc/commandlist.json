@@ -7,7 +7,8 @@
         "name": "arg0",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "acos",
@@ -17,7 +18,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "asin",
@@ -27,7 +29,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "atan",
@@ -37,7 +40,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "atof",
@@ -47,7 +51,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "atoi",
@@ -57,7 +62,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "atol",
@@ -67,7 +73,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "bsearch",
@@ -93,7 +100,8 @@
         "name": "arg4",
         "type": "int (*)(const void*, const void*)"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "calloc",
@@ -107,7 +115,8 @@
         "name": "arg1",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "cbrt",
@@ -117,7 +126,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "ceil",
@@ -127,7 +137,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "cos",
@@ -137,7 +148,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "exit",
@@ -147,7 +159,8 @@
         "name": "arg0",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "exp",
@@ -157,7 +170,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "fabs",
@@ -167,7 +181,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "fclose",
@@ -177,7 +192,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "feof",
@@ -187,7 +203,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "ferror",
@@ -197,7 +214,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fflush",
@@ -207,7 +225,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fgetc",
@@ -217,7 +236,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fgets",
@@ -235,7 +255,8 @@
         "name": "arg2",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "floor",
@@ -245,7 +266,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "fopen",
@@ -259,7 +281,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fprintf",
@@ -277,7 +300,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fputc",
@@ -291,7 +315,8 @@
         "name": "arg1",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fputs",
@@ -305,7 +330,8 @@
         "name": "arg1",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fread",
@@ -327,7 +353,8 @@
         "name": "arg3",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "free",
@@ -337,7 +364,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "fseek",
@@ -355,7 +383,8 @@
         "name": "arg2",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "ftell",
@@ -365,7 +394,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "fwrite",
@@ -387,12 +417,14 @@
         "name": "arg3",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "getchar",
     "ret": "int",
-    "params": []
+    "params": [],
+    "header": "stdio.h"
   },
   {
     "name": "getdelim",
@@ -414,7 +446,8 @@
         "name": "arg3",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "getenv",
@@ -424,7 +457,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "getline",
@@ -442,7 +476,8 @@
         "name": "arg2",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "labs",
@@ -452,7 +487,8 @@
         "name": "arg0",
         "type": "long"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "llabs",
@@ -462,7 +498,8 @@
         "name": "arg0",
         "type": "long long"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "log",
@@ -472,7 +509,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "log10",
@@ -482,7 +520,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "log2",
@@ -492,7 +531,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "malloc",
@@ -502,7 +542,8 @@
         "name": "arg0",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "memchr",
@@ -520,7 +561,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "memcmp",
@@ -538,7 +580,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "memcpy",
@@ -556,7 +599,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "memmove",
@@ -574,7 +618,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "memset",
@@ -592,7 +637,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "perror",
@@ -602,7 +648,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "pow",
@@ -616,7 +663,8 @@
         "name": "arg1",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "printf",
@@ -630,7 +678,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "putchar",
@@ -640,7 +689,8 @@
         "name": "arg0",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "puts",
@@ -650,7 +700,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "qsort",
@@ -672,12 +723,14 @@
         "name": "arg3",
         "type": "int (*)(const void*, const void*)"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "rand",
     "ret": "int",
-    "params": []
+    "params": [],
+    "header": "stdlib.h"
   },
   {
     "name": "realloc",
@@ -691,7 +744,8 @@
         "name": "arg1",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "rewind",
@@ -701,7 +755,8 @@
         "name": "arg0",
         "type": "FILE*"
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "scanf",
@@ -715,7 +770,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "sin",
@@ -725,7 +781,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "snprintf",
@@ -747,7 +804,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "sprintf",
@@ -765,7 +823,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "sqrt",
@@ -775,7 +834,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "sqrtf",
@@ -785,7 +845,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "sinf",
@@ -795,7 +856,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "cosf",
@@ -805,7 +867,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "floorf",
@@ -815,7 +878,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "ceilf",
@@ -825,7 +889,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "roundf",
@@ -835,7 +900,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "powf",
@@ -849,7 +915,8 @@
         "name": "arg1",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "atan2f",
@@ -863,7 +930,8 @@
         "name": "arg1",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "tanf",
@@ -873,7 +941,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "asinf",
@@ -883,7 +952,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "acosf",
@@ -893,7 +963,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "atanf",
@@ -903,7 +974,8 @@
         "name": "arg0",
         "type": "float"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "srand",
@@ -913,7 +985,8 @@
         "name": "arg0",
         "type": "unsigned int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "sscanf",
@@ -931,7 +1004,8 @@
         "name": "...",
         "type": "..."
       }
-    ]
+    ],
+    "header": "stdio.h"
   },
   {
     "name": "strcat",
@@ -945,7 +1019,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strchr",
@@ -959,7 +1034,8 @@
         "name": "arg1",
         "type": "int"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strcmp",
@@ -973,7 +1049,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strcpy",
@@ -987,7 +1064,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strcspn",
@@ -1001,7 +1079,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strdup",
@@ -1011,7 +1090,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strlen",
@@ -1021,7 +1101,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strncat",
@@ -1039,7 +1120,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strncmp",
@@ -1057,7 +1139,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strncpy",
@@ -1075,7 +1158,8 @@
         "name": "arg2",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strrchr",
@@ -1089,7 +1173,8 @@
         "name": "arg1",
         "type": "int"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strstr",
@@ -1103,7 +1188,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strtod",
@@ -1117,7 +1203,8 @@
         "name": "arg1",
         "type": "char**"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "strtok",
@@ -1131,7 +1218,8 @@
         "name": "arg1",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "string.h"
   },
   {
     "name": "strtol",
@@ -1149,7 +1237,8 @@
         "name": "arg2",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "strtoll",
@@ -1167,7 +1256,8 @@
         "name": "arg2",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "strtoul",
@@ -1185,7 +1275,8 @@
         "name": "arg2",
         "type": "int"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "system",
@@ -1195,7 +1286,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "stdlib.h"
   },
   {
     "name": "usleep",
@@ -1205,7 +1297,8 @@
         "name": "arg0",
         "type": "unsigned int"
       }
-    ]
+    ],
+    "header": "unistd.h"
   },
   {
     "name": "getcwd",
@@ -1219,7 +1312,8 @@
         "name": "arg1",
         "type": "size_t"
       }
-    ]
+    ],
+    "header": "unistd.h"
   },
   {
     "name": "access",
@@ -1233,7 +1327,8 @@
         "name": "arg1",
         "type": "int"
       }
-    ]
+    ],
+    "header": "unistd.h"
   },
   {
     "name": "unlink",
@@ -1243,7 +1338,8 @@
         "name": "arg0",
         "type": "const char*"
       }
-    ]
+    ],
+    "header": "unistd.h"
   },
   {
     "name": "pthread_detach",
@@ -1253,7 +1349,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "tan",
@@ -1263,7 +1360,8 @@
         "name": "arg0",
         "type": "double"
       }
-    ]
+    ],
+    "header": "math.h"
   },
   {
     "name": "pthread_create",
@@ -1285,7 +1383,8 @@
         "name": "arg3",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_join",
@@ -1299,7 +1398,8 @@
         "name": "arg1",
         "type": "void**"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_mutex_init",
@@ -1313,7 +1413,8 @@
         "name": "arg1",
         "type": "const void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_mutex_lock",
@@ -1323,7 +1424,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_mutex_unlock",
@@ -1333,7 +1435,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_mutex_trylock",
@@ -1343,7 +1446,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_mutex_destroy",
@@ -1353,7 +1457,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_cond_init",
@@ -1367,7 +1472,8 @@
         "name": "arg1",
         "type": "const void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_cond_wait",
@@ -1381,7 +1487,8 @@
         "name": "arg1",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_cond_signal",
@@ -1391,7 +1498,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_cond_broadcast",
@@ -1401,7 +1509,8 @@
         "name": "arg0",
         "type": "void*"
       }
-    ]
+    ],
+    "header": "pthread.h"
   },
   {
     "name": "pthread_cond_destroy",
@@ -1410,6 +1519,215 @@
       {
         "name": "arg0",
         "type": "void*"
+      }
+    ],
+    "header": "pthread.h"
+  },
+  {
+    "name": "strtof",
+    "header": "stdlib.h",
+    "ret": "float",
+    "params": [
+      {
+        "name": "nptr",
+        "type": "const char*"
+      },
+      {
+        "name": "endptr",
+        "type": "char**"
+      }
+    ]
+  },
+  {
+    "name": "strtold",
+    "header": "stdlib.h",
+    "ret": "double",
+    "params": [
+      {
+        "name": "nptr",
+        "type": "const char*"
+      },
+      {
+        "name": "endptr",
+        "type": "char**"
+      }
+    ]
+  },
+  {
+    "name": "time",
+    "header": "time.h",
+    "ret": "long",
+    "params": [
+      {
+        "name": "tloc",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "clock",
+    "header": "time.h",
+    "ret": "long",
+    "params": []
+  },
+  {
+    "name": "clock_gettime",
+    "header": "time.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "clk_id",
+        "type": "int"
+      },
+      {
+        "name": "tp",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "difftime",
+    "header": "time.h",
+    "ret": "double",
+    "params": [
+      {
+        "name": "time1",
+        "type": "long"
+      },
+      {
+        "name": "time0",
+        "type": "long"
+      }
+    ]
+  },
+  {
+    "name": "stat",
+    "header": "sys/stat.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "pathname",
+        "type": "const char*"
+      },
+      {
+        "name": "statbuf",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "fstat",
+    "header": "sys/stat.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "fd",
+        "type": "int"
+      },
+      {
+        "name": "statbuf",
+        "type": "void*"
+      }
+    ]
+  },
+  {
+    "name": "mkdir",
+    "header": "sys/stat.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "pathname",
+        "type": "const char*"
+      },
+      {
+        "name": "mode",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "remove",
+    "header": "stdio.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "pathname",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "rename",
+    "header": "stdio.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "oldpath",
+        "type": "const char*"
+      },
+      {
+        "name": "newpath",
+        "type": "const char*"
+      }
+    ]
+  },
+  {
+    "name": "close",
+    "header": "unistd.h",
+    "ret": "int",
+    "params": [
+      {
+        "name": "fd",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "name": "read",
+    "header": "unistd.h",
+    "ret": "long",
+    "params": [
+      {
+        "name": "fd",
+        "type": "int"
+      },
+      {
+        "name": "buf",
+        "type": "void*"
+      },
+      {
+        "name": "count",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "write",
+    "header": "unistd.h",
+    "ret": "long",
+    "params": [
+      {
+        "name": "fd",
+        "type": "int"
+      },
+      {
+        "name": "buf",
+        "type": "const void*"
+      },
+      {
+        "name": "count",
+        "type": "size_t"
+      }
+    ]
+  },
+  {
+    "name": "sleep",
+    "header": "unistd.h",
+    "ret": "unsigned int",
+    "params": [
+      {
+        "name": "seconds",
+        "type": "unsigned int"
       }
     ]
   }

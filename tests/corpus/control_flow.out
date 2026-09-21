@@ -1,0 +1,10 @@
+body executing
+defer 2 (inner)
+defer 1 (outer)
+res=42
+switch: two
+y: b
+item: 10
+item: 20
+item: 30
+total=60

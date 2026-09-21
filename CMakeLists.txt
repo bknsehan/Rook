@@ -13,6 +13,7 @@ add_executable(rokade
   src/parse.c
   src/emit.c
   src/sema.c
+  src/lint.c
   src/codegen.c
   src/backend.c
   src/c_backend.c
@@ -20,6 +21,12 @@ add_executable(rokade
   src/toolchain.c
   src/llvm_backend.c
   src/c_import.c
+  src/lsp/lsp_json.c
+  src/lsp/lsp_doc.c
+  src/lsp/lsp_workspace.c
+  src/lsp/lsp_features.c
+  src/lsp/lsp_server.c
+  src/resolve.c
 )
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -103,43 +110,50 @@ install(TARGETS rokade
 install(FILES ${CMAKE_SOURCE_DIR}/src/libc/commandlist.json
   DESTINATION share/rokade)
 
-# ─── Language server (rook-lsp, Rust) ────────────────────────────────
-# Optional Rust crate (off for ASAN/UBSAN, which can't link a Rust binary).
-option(ROOK_BUILD_LSP "Build the rook-lsp language server" OFF)
-option(ROOK_LSP_C_HEADERS "Enable libclang project C-header parsing in rook-lsp" OFF)
+# ─── Language server (rook-lsp, Native C) ─────────────────────────────
+# Builds the native C language server (rook-lsp) sharing the compiler AST/Sema.
+add_executable(rook-lsp
+  src/lsp/lsp_main.c
+  src/lsp/lsp_server.c
+  src/lsp/lsp_features.c
+  src/lsp/lsp_doc.c
+  src/lsp/lsp_workspace.c
+  src/lsp/lsp_json.c
+  src/diag.c
+  src/util.c
+  src/ast.c
+  src/lexer.c
+  src/parse.c
+  src/emit.c
+  src/sema.c
+  src/lint.c
+  src/config.c
+  src/toolchain.c
+  src/c_import.c
+  src/resolve.c
+)
 
-if(ROOK_BUILD_LSP)
-  find_program(CARGO_EXECUTABLE cargo)
-  if(NOT CARGO_EXECUTABLE)
-    message(STATUS
-      "cargo not found — disabling ROOK_BUILD_LSP. Install the Rust toolchain "
-      "or configure with -DROOK_BUILD_LSP=ON once cargo is available.")
-    set(ROOK_BUILD_LSP OFF CACHE BOOL "Build the rook-lsp language server" FORCE)
-  endif()
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(rook-lsp PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation)
 endif()
 
-if(ROOK_BUILD_LSP)
-  set(_cargo_manifest ${CMAKE_SOURCE_DIR}/lsp/Cargo.toml)
-  set(_cargo_bin ${CMAKE_SOURCE_DIR}/lsp/target/release/rook-lsp${CMAKE_EXECUTABLE_SUFFIX})
-  set(_lsp_features "")
-  if(ROOK_LSP_C_HEADERS)
-    list(APPEND _lsp_features --features c-headers)
-  endif()
-
-  # One recipe builds via cargo, then places the binary at build/rook-lsp.
-  add_custom_target(rook_lsp ALL
-    COMMAND ${CARGO_EXECUTABLE} build --release --manifest-path ${_cargo_manifest} ${_lsp_features}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cargo_bin} ${CMAKE_BINARY_DIR}/rook-lsp${CMAKE_EXECUTABLE_SUFFIX}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/lsp
-    BYPRODUCTS ${_cargo_bin}
-    COMMENT "Building rook-lsp (cargo) -> ${CMAKE_BINARY_DIR}/rook-lsp${CMAKE_EXECUTABLE_SUFFIX}"
-    VERBATIM)
-
-  # Install the LSP binary alongside the compiler (only when built).
-  install(PROGRAMS ${_cargo_bin}
-    DESTINATION bin
-    OPTIONAL)
+target_compile_definitions(rook-lsp PRIVATE ROKADE_VERSION="${PROJECT_VERSION}")
+if(WIN32)
+  target_compile_definitions(rook-lsp PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
 endif()
+
+if(CLANG_LIB AND CLANG_INCLUDE_DIR)
+  target_compile_definitions(rook-lsp PRIVATE ROKADE_HAS_LIBCLANG=1)
+  target_include_directories(rook-lsp PRIVATE ${CLANG_INCLUDE_DIR})
+  target_link_libraries(rook-lsp PRIVATE ${CLANG_LIB})
+endif()
+
+if(M_LIB)
+  target_link_libraries(rook-lsp PRIVATE ${M_LIB})
+endif()
+
+install(TARGETS rook-lsp
+  RUNTIME DESTINATION bin)
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/std/
   DESTINATION std

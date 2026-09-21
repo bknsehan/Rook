@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
+struct Point {
+    int x;
+    int y;
+}
+
+struct TestBox {
+    int value;
+};
+
+impl TestBox {
+    int get_val(self) {
+        return self.value;
+    }
+}
+
+sum RegShape {
+    Circle { r: float; };
+    Rect { w: float; h: float; };
+    Point;
+}
+
+sum RegShapeD {
+    CircleD { r: double; };
+    PointD;
+}
+
+int side_effect(int* cnt) {
+    *cnt = *cnt + 1;
+    return 1;
+}
+
+int test_defer_order() {
+    int x = 10;
+    defer {
+        x = 99;
+    }
+    return x;
+}
+
+void* alloc_int(int val) {
+    int* p = (int*)malloc(sizeof(int));
+    if (!p) return NULL;
+    *p = val;
+    return p;
+}
+
+int main() {
+    // 1. Side-effecting array indexing (v0.5.0)
+    int arr[3] = {10, 20, 30};
+    int cnt = 0;
+    int val = arr[side_effect(&cnt)];
+    printf("val=%d cnt=%d\n", val, cnt);
+
+    // 2. Compound literal (v0.5.0)
+    Point p = (Point){ .x = 15, .y = 25 };
+    printf("p: %d, %d\n", p.x, p.y);
+
+    // 3. Float array loop (v0.5.0)
+    double sum_f = 0.0;
+    for f in [1.5, 2.5, 3.5] {
+        sum_f += f;
+    }
+    printf("sum_f=%.1f\n", sum_f);
+
+    // 4. Fundamental types (v0.5.0)
+    long lx = 1000;
+    short sx = 20;
+    unsigned ux = 50;
+    signed int si = -5;
+    unsigned long ul = 2000;
+    unsigned short us = 30;
+    unsigned int ui = 75;
+    printf("types: %ld %d %u %d %lu %u %u\n", lx, sx, ux, si, ul, us, ui);
+
+    // 5. Defer return value evaluation before block (v0.5.1)
+    printf("defer=%d\n", test_defer_order());
+
+    // 6. Sum type layout & alignment (v0.5.1)
+    printf("shape_sz=%d\n", (int)sizeof(RegShape));
+    printf("shaped_sz=%d\n", (int)sizeof(RegShapeD));
+
+    RegShape s1 = Rect { w: 3.0, h: 4.0 };
+    match (s1) {
+        Rect { w, h } => printf("rect=%.1f\n", w * h),
+        _ => printf("other\n"),
+    }
+
+    // 7. void* alloc & sizeof expressions (v0.6.3)
+    int* ap = (int*)alloc_int(1234);
+    if (ap) {
+        printf("alloc_int: %d\n", *ap);
+        free(ap);
+    }
+
+    int numbers[4] = {10, 20, 30, 40};
+    int len = sizeof(numbers) / sizeof(numbers[0]);
+    printf("len: %d\n", len);
+
+    int* nptr = numbers;
+    size_t sz_elem = sizeof(*nptr);
+    printf("elem size matches int: %d\n", sz_elem == sizeof(int));
+    assert(len == 4);
+    printf("assert: ok\n");
+
+    TestBox box = TestBox{ value: 999 };
+    printf("box: %d\n", box.get_val());
+
+    return 0;
+}

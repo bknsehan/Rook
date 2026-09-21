@@ -5,6 +5,16 @@ struct Point {
     y: int;
 };
 
+struct PointC {
+    int x;
+    int y;
+};
+
+struct Animal {
+    name: const char*;
+    legs: int;
+};
+
 impl Point {
     int len2(Point* self) {
         return self.x * self.x + self.y * self.y;
@@ -19,6 +29,7 @@ Point mk(int x, int y) {
 }
 
 int main() {
+    // 1. Basic fields, methods, return by value
     Point a;
     a.x = 3;
     a.y = 4;
@@ -27,5 +38,22 @@ int main() {
     printf("%d\n", b.len2());
     Point c = {6, 8};
     printf("%d\n", c.len2());
+
+    // 2. Named field initializers & out-of-order fields
+    auto p1 = Point{ x: 3, y: 4 };
+    auto p2 = Point{ y: 20, x: 10 };
+    printf("p1=(%d,%d) p2_sum=%d\n", p1.x, p1.y, p2.x + p2.y);
+
+    // 3. C-style field struct vs let-style field struct
+    PointC pc = PointC{ x: 10, y: 20 };
+    printf("pc=(%d,%d)\n", pc.x, pc.y);
+
+    Animal lion;
+    lion.name = "Lion";
+    lion.legs = 4;
+    Animal eagle = Animal{ name: "Eagle", legs: 2 };
+    printf("%s %d\n", lion.name, lion.legs);
+    printf("%s %d\n", eagle.name, eagle.legs);
+
     return 0;
 }

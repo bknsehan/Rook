@@ -21,6 +21,11 @@ target/
 lsp/target/
 src/lsp/target/
 editors/zed/target/
+editors/vscode/node_modules/
+
+# Zed dev-install clones the tree-sitter grammar source here (grammars/c/).
+# It is a build cache, not extension source — never commit it.
+editors/zed/grammars/c/
 
 # Editor and temporary files
 *.swp

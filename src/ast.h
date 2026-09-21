@@ -164,6 +164,7 @@ typedef struct FnDef {
     int col;
     int checked;            /* 1 once type-checked */
     char* mod_prefix;       /* module alias prefix from '#comprise ... as alias' */
+    char* source_file;      /* source file path for cross-file LSP navigation */
 } FnDef;
 
 typedef enum { FIELD_COLON, FIELD_C } FieldStyle;
@@ -184,6 +185,7 @@ typedef struct StructDef {
     int line;
     int col;
     char* mod_prefix;
+    char* source_file;
 } StructDef;
 
 typedef struct EnumVariant {
@@ -202,6 +204,7 @@ typedef struct EnumDef {
     int line;
     int col;
     char* mod_prefix;
+    char* source_file;
 } EnumDef;
 
 typedef struct ImplDef {

@@ -1,0 +1,67 @@
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+};
+
+int64 compute(int8 a, int16 b, int32 c, int64 d) {
+    return (int64)a + (int64)b + (int64)c + d;
+}
+
+uint64 ucompute(uint8 a, uint16 b, uint32 c, uint64 d) {
+    return (uint64)a + (uint64)b + (uint64)c + d;
+}
+
+int main() {
+    // 1. Basic loop & switch
+    int total = 0;
+    for (int i = 0; i < 5; i++) {
+        if (i % 2 == 0) total += i;
+    }
+    printf("total=%d\n", total);
+    int n = 7;
+    switch (n) {
+        case 5: printf("five\n"); break;
+        case 7: printf("seven\n"); break;
+        default: printf("other\n");
+    }
+
+    // 2. Auto primitives & pointers
+    auto a = 10;
+    auto b = 20;
+    auto sum = a + b;
+    auto pi = 3.14f;
+    auto greeting = "hello auto";
+    auto flag = 1;
+    printf("sum=%d pi=%.2f str=%s flag=%d\n", sum, pi, greeting, flag);
+
+    Point pt = Point{ x: 40, y: 50 };
+    auto p = pt;
+    auto ref = &p;
+    auto* ptr = &p.x;
+    printf("p=(%d,%d) ref=(%d,%d) ptr=%d\n", p.x, p.y, ref->x, ref->y, *ptr);
+
+    int atotal = 0;
+    for (auto i = 1; i <= 5; i++) {
+        atotal += i;
+    }
+    printf("atotal=%d\n", atotal);
+
+    // 3. Fixed-width integer types
+    int8 i8 = 10;
+    int16 i16 = 200;
+    int32 i32 = 30000;
+    int64 i64 = 4000000;
+
+    uint8 u8 = 250;
+    uint16 u16 = 50000;
+    uint32 u32 = 1000000;
+    uint64 u64 = 8000000;
+
+    int64 sum1 = compute(i8, i16, i32, i64);
+    uint64 sum2 = ucompute(u8, u16, u32, u64);
+    printf("sum1=%lld sum2=%llu\n", (long long)sum1, (unsigned long long)sum2);
+
+    return 0;
+}

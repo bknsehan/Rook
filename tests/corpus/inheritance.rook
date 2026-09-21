@@ -9,11 +9,62 @@ struct Player : Entity {
     hp: int;
 };
 
+struct Animal {
+    name: const char*;
+    legs: int;
+};
+
+impl Animal {
+    void speak(Animal* self) {
+        printf("%s\n", self.name);
+    }
+    int legs_count(Animal* self) {
+        return self.legs;
+    }
+}
+
+struct Cat : Animal {
+    lives: int;
+};
+
+impl Cat {
+    void meow(Cat* self) {
+        self.speak();
+    }
+}
+
+struct Pet : Animal {
+    owner: const char*;
+};
+
+struct Siamese : Pet {
+    color: const char*;
+};
+
 int main() {
+    // 1. Basic struct inheritance
     Player p;
     p.x = 3;
     p.y = 4;
     p.hp = 100;
     printf("%d %d %d\n", p.x, p.y, p.hp);
+
+    // 2. Inherited method dispatch
+    Cat c;
+    c.name = "Tom";
+    c.legs = 4;
+    c.lives = 9;
+    c.speak();
+    printf("legs=%d lives=%d\n", c.legs_count(), c.lives);
+    c.meow();
+
+    // 3. Multi-level inheritance (Siamese : Pet : Animal)
+    Siamese s;
+    s.name = "Nyan";
+    s.owner = "Bob";
+    s.color = "cream";
+    s.speak();
+    printf("owner=%s color=%s\n", s.owner, s.color);
+
     return 0;
 }

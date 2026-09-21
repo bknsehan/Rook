@@ -217,3 +217,35 @@ void diag_note(const char* fmt, ...) {
 void diag_stage(const char* stage) {
     fprintf(stderr, "  %s›%s %s\n", diag_blue(), diag_reset(), stage);
 }
+
+int diag_resolve(const char* src, int offset,
+                 char* out_file, size_t file_cap,
+                 int* out_line, int* out_col) {
+    const char* file = NULL;
+    int line = 0, col = 0;
+    if (!resolve_src_marker(src, offset, &file, &line, &col, NULL))
+        return 0;
+    if (out_file && file_cap > 0) {
+        snprintf(out_file, file_cap, "%s", file ? file : "");
+    }
+    if (out_line) *out_line = line;
+    if (out_col) *out_col = col;
+    return 1;
+}
+
+int diag_resolve_linecol(const char* src,
+                         int exp_line, int exp_col,
+                         char* out_file, size_t file_cap,
+                         int* out_line, int* out_col) {
+    if (!src || exp_line < 1) return 0;
+    if (exp_col < 1) exp_col = 1;
+    /* Find start offset of exp_line. */
+    int line = 1, off = 0;
+    while (src[off] && line < exp_line) {
+        if (src[off] == '\n') line++;
+        off++;
+    }
+    if (line != exp_line) return 0;
+    int offset = off + exp_col - 1;
+    return diag_resolve(src, offset, out_file, file_cap, out_line, out_col);
+}

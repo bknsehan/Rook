@@ -1,3 +1,0 @@
-struct Rect area: 200
-Shape.Point area: 0
-Shape.Rect area: 1200

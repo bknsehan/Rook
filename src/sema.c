@@ -34,6 +34,9 @@ typedef struct {
     char param_types[256];  /* \x1f-separated param types (e.g. "int\x1fconst char*") */
     int nparams;
     int is_variadic;        /* 1 if the last "param" was "..." (not counted in nparams) */
+    char header[256];
+    int line;
+    int col;
 } ClFunc;
 
 static ClFunc* cl_funcs = NULL;
@@ -154,6 +157,8 @@ static void cl_load(const char* basedir, const char* override) {
                     snprintf(last_key, sizeof(last_key), "name");
                 else if (tl == 3 && strncmp(buf + i + 1, "ret", 3) == 0)
                     snprintf(last_key, sizeof(last_key), "ret");
+                else if (tl == 6 && strncmp(buf + i + 1, "header", 6) == 0)
+                    snprintf(last_key, sizeof(last_key), "header");
                 else if (tl == 6 && strncmp(buf + i + 1, "params", 6) == 0)
                     snprintf(last_key, sizeof(last_key), "params");
                 else if (tl == 4 && strncmp(buf + i + 1, "type", 4) == 0)
@@ -175,9 +180,16 @@ static void cl_load(const char* basedir, const char* override) {
                     snprintf(cl_funcs[cl_count].ret, sizeof(cl_funcs[cl_count].ret),
                              "%.*s", (int)(tl < 127 ? tl : 127), buf + i + 1);
                     cl_funcs[cl_count].param_types[0] = '\0';
+                    cl_funcs[cl_count].header[0] = '\0';
                     cl_funcs[cl_count].nparams = 0;
                     cl_funcs[cl_count].is_variadic = 0;
+                    cl_funcs[cl_count].line = 0;
+                    cl_funcs[cl_count].col = 0;
                     cl_count++;
+                } else if (strcmp(last_key, "header") == 0 && cl_count > 0) {
+                    int idx = (int)cl_count - 1;
+                    snprintf(cl_funcs[idx].header, sizeof(cl_funcs[idx].header), "%.*s",
+                             (int)(tl < 255 ? tl : 255), buf + i + 1);
                 } else if (strcmp(last_key, "type") == 0 && name_cand[0]) {
                     /* Add param type to the current (last) function */
                     if (cl_count > 0) {
@@ -210,6 +222,55 @@ static void cl_load(const char* basedir, const char* override) {
     }
     free(buf);
     sema_register_cfunc("assert", "void", "int", 1, 0);
+
+    /* Assign default canonical C headers for functions without an explicit header */
+    static const struct { const char* fn; const char* hdr; } default_hdrs[] = {
+        {"fclose", "stdio.h"}, {"feof", "stdio.h"}, {"ferror", "stdio.h"}, {"fflush", "stdio.h"},
+        {"fgetc", "stdio.h"}, {"fgets", "stdio.h"}, {"fopen", "stdio.h"}, {"fprintf", "stdio.h"},
+        {"fputc", "stdio.h"}, {"fputs", "stdio.h"}, {"fread", "stdio.h"}, {"fseek", "stdio.h"},
+        {"ftell", "stdio.h"}, {"fwrite", "stdio.h"}, {"getchar", "stdio.h"}, {"getdelim", "stdio.h"},
+        {"getline", "stdio.h"}, {"perror", "stdio.h"}, {"printf", "stdio.h"}, {"putchar", "stdio.h"},
+        {"puts", "stdio.h"}, {"rewind", "stdio.h"}, {"scanf", "stdio.h"}, {"snprintf", "stdio.h"},
+        {"sprintf", "stdio.h"}, {"sscanf", "stdio.h"},
+        {"abs", "stdlib.h"}, {"atof", "stdlib.h"}, {"atoi", "stdlib.h"}, {"atol", "stdlib.h"},
+        {"bsearch", "stdlib.h"}, {"calloc", "stdlib.h"}, {"exit", "stdlib.h"}, {"free", "stdlib.h"},
+        {"getenv", "stdlib.h"}, {"labs", "stdlib.h"}, {"llabs", "stdlib.h"}, {"malloc", "stdlib.h"},
+        {"qsort", "stdlib.h"}, {"rand", "stdlib.h"}, {"realloc", "stdlib.h"}, {"srand", "stdlib.h"},
+        {"strtod", "stdlib.h"}, {"strtol", "stdlib.h"}, {"strtoll", "stdlib.h"}, {"strtoul", "stdlib.h"},
+        {"system", "stdlib.h"},
+        {"memchr", "string.h"}, {"memcmp", "string.h"}, {"memcpy", "string.h"}, {"memmove", "string.h"},
+        {"memset", "string.h"}, {"strcat", "string.h"}, {"strchr", "string.h"}, {"strcmp", "string.h"},
+        {"strcpy", "string.h"}, {"strcspn", "string.h"}, {"strdup", "string.h"}, {"strlen", "string.h"},
+        {"strncat", "string.h"}, {"strncmp", "string.h"}, {"strncpy", "string.h"}, {"strrchr", "string.h"},
+        {"strstr", "string.h"}, {"strtok", "string.h"},
+        {"acos", "math.h"}, {"acosf", "math.h"}, {"asin", "math.h"}, {"asinf", "math.h"},
+        {"atan", "math.h"}, {"atanf", "math.h"}, {"atan2f", "math.h"}, {"cbrt", "math.h"},
+        {"ceil", "math.h"}, {"ceilf", "math.h"}, {"cos", "math.h"}, {"cosf", "math.h"},
+        {"exp", "math.h"}, {"fabs", "math.h"}, {"floor", "math.h"}, {"floorf", "math.h"},
+        {"log", "math.h"}, {"log10", "math.h"}, {"log2", "math.h"}, {"pow", "math.h"},
+        {"powf", "math.h"}, {"roundf", "math.h"}, {"sin", "math.h"}, {"sinf", "math.h"},
+        {"sqrt", "math.h"}, {"sqrtf", "math.h"}, {"tan", "math.h"}, {"tanf", "math.h"},
+        {"access", "unistd.h"}, {"getcwd", "unistd.h"}, {"unlink", "unistd.h"}, {"usleep", "unistd.h"},
+        {"pthread_create", "pthread.h"}, {"pthread_join", "pthread.h"}, {"pthread_detach", "pthread.h"},
+        {"pthread_mutex_init", "pthread.h"}, {"pthread_mutex_lock", "pthread.h"},
+        {"pthread_mutex_trylock", "pthread.h"}, {"pthread_mutex_unlock", "pthread.h"},
+        {"pthread_mutex_destroy", "pthread.h"}, {"pthread_cond_init", "pthread.h"},
+        {"pthread_cond_wait", "pthread.h"}, {"pthread_cond_signal", "pthread.h"},
+        {"pthread_cond_broadcast", "pthread.h"}, {"pthread_cond_destroy", "pthread.h"},
+        {"time", "time.h"}, {"clock", "time.h"}, {"difftime", "time.h"},
+        {"assert", "assert.h"},
+        {NULL, NULL}
+    };
+    for (size_t j = 0; j < cl_count; j++) {
+        if (cl_funcs[j].header[0] == '\0') {
+            for (int k = 0; default_hdrs[k].fn; k++) {
+                if (strcmp(default_hdrs[k].fn, cl_funcs[j].name) == 0) {
+                    snprintf(cl_funcs[j].header, sizeof(cl_funcs[j].header), "%s", default_hdrs[k].hdr);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 const char* sema_lookup_cfunc(const char* name) {
@@ -274,7 +335,7 @@ void sema_load_commandlist(const char* basedir, const char* override) {
     cl_load(basedir, override);
 }
 
-int sema_register_cfunc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic) {
+int sema_register_cfunc_loc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic, const char* header, int line, int col) {
     if (!name || !name[0]) return 0;
 
     char safe_name[128];
@@ -299,6 +360,9 @@ int sema_register_cfunc(const char* name, const char* ret, const char* param_typ
             snprintf(cl_funcs[i].param_types, sizeof(cl_funcs[i].param_types), "%s", safe_params);
             cl_funcs[i].nparams = nparams;
             cl_funcs[i].is_variadic = is_variadic;
+            if (header && header[0]) snprintf(cl_funcs[i].header, sizeof(cl_funcs[i].header), "%s", header);
+            if (line > 0) cl_funcs[i].line = line;
+            if (col > 0) cl_funcs[i].col = col;
             return 1;
         }
     }
@@ -316,8 +380,65 @@ int sema_register_cfunc(const char* name, const char* ret, const char* param_typ
     cl_funcs[cl_count].param_types[sizeof(cl_funcs[cl_count].param_types) - 1] = '\0';
     cl_funcs[cl_count].nparams = nparams;
     cl_funcs[cl_count].is_variadic = is_variadic;
+    if (header && header[0]) snprintf(cl_funcs[cl_count].header, sizeof(cl_funcs[cl_count].header), "%s", header);
+    else cl_funcs[cl_count].header[0] = '\0';
+    cl_funcs[cl_count].line = line;
+    cl_funcs[cl_count].col = col;
     cl_count++;
     return 1;
+}
+
+int sema_register_cfunc(const char* name, const char* ret, const char* param_types, int nparams, int is_variadic) {
+    return sema_register_cfunc_loc(name, ret, param_types, nparams, is_variadic, NULL, 0, 0);
+}
+
+size_t sema_cfunc_count(void) {
+    return cl_count;
+}
+
+const char* sema_cfunc_name(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].name : NULL;
+}
+
+const char* sema_cfunc_ret_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].ret : NULL;
+}
+
+const char* sema_cfunc_params_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].param_types : NULL;
+}
+
+int sema_cfunc_nparams_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].nparams : 0;
+}
+
+int sema_cfunc_is_variadic_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].is_variadic : 0;
+}
+
+const char* sema_cfunc_header_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].header : NULL;
+}
+
+int sema_cfunc_line_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].line : 0;
+}
+
+int sema_cfunc_col_at(size_t idx) {
+    return idx < cl_count ? cl_funcs[idx].col : 0;
+}
+
+int sema_lookup_cfunc_loc(const char* name, const char** out_header, int* out_line, int* out_col) {
+    if (!name) return 0;
+    for (size_t i = 0; i < cl_count; i++) {
+        if (strcmp(cl_funcs[i].name, name) == 0) {
+            if (out_header) *out_header = cl_funcs[i].header[0] ? cl_funcs[i].header : NULL;
+            if (out_line) *out_line = cl_funcs[i].line;
+            if (out_col) *out_col = cl_funcs[i].col;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static Scope* scope_new(Scope* parent) {
@@ -331,6 +452,7 @@ static void scope_free(Scope* s) {
     if (!s) return;
     for (int i = 0; i < s->nsyms; i++) {
         free(s->syms[i]->name);
+        free(s->syms[i]->source_file);
         free(s->syms[i]);
     }
     free(s->syms);
@@ -377,6 +499,7 @@ void sema_free(Sema* s) {
     if (!s) return;
     scope_free(s->scope);
     free(s->err);
+    if (s->diags) free(s->diags);
     free(s);
 }
 
@@ -390,6 +513,64 @@ void sema_set_include_dirs(Sema* s, const char** dirs, size_t n_dirs) {
     if (!s) return;
     s->include_dirs = dirs;
     s->n_include_dirs = n_dirs;
+}
+
+void sema_diag_add(Sema* s, int line, int col, int end_col, int severity,
+                   const char* code, const char* msg) {
+    if (!s || !msg) return;
+    if (line < 1) line = 1;
+    if (col < 1) col = 1;
+    if (end_col < col) end_col = col;
+    if (s->ndiags >= s->capdiags) {
+        int ncap = s->capdiags ? s->capdiags * 2 : 16;
+        SemaDiag* nd = realloc(s->diags, (size_t)ncap * sizeof *nd);
+        if (!nd) exit(1);
+        s->diags = nd;
+        s->capdiags = ncap;
+    }
+    SemaDiag* d = &s->diags[s->ndiags++];
+    d->line = line;
+    d->col = col;
+    d->end_col = end_col;
+    d->severity = severity;
+    snprintf(d->code, sizeof d->code, "%s", code ? code : "E1000");
+    d->file[0] = '\0';
+    snprintf(d->message, sizeof d->message, "%s", msg);
+}
+
+void sema_clear_diags(Sema* s) {
+    if (!s) return;
+    free(s->diags);
+    s->diags = NULL;
+    s->ndiags = 0;
+    s->capdiags = 0;
+    free(s->err);
+    s->err = NULL;
+}
+
+int sema_diag_count(Sema* s) {
+    return s ? s->ndiags : 0;
+}
+
+SemaDiag* sema_diag_get(Sema* s, int idx) {
+    if (!s || idx < 0 || idx >= s->ndiags) return NULL;
+    return &s->diags[idx];
+}
+
+static void sema_offset_to_linecol(const char* src, int srclen, int offset,
+                                   int* out_line, int* out_col) {
+    int line = 1, ls = 0;
+    if (!src || offset < 0) {
+        if (out_line) *out_line = 1;
+        if (out_col) *out_col = 1;
+        return;
+    }
+    if (offset > srclen) offset = srclen;
+    for (int i = 0; i < offset; i++) {
+        if (src[i] == '\n') { line++; ls = i + 1; }
+    }
+    if (out_line) *out_line = line;
+    if (out_col) *out_col = offset - ls + 1;
 }
 
 static Sym* sym_new_fn(const char* name, FnDef* fn) {
@@ -457,7 +638,7 @@ AstType* sema_mk_type(const char* qual, const char* name, int ptrs) {
     return t;
 }
 
-int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nfields) {
+int sema_register_cstruct_loc(Sema* s, const char* name, StructField* fields, int nfields, const char* header, int line, int col) {
     if (!s || !s->scope || !name || !name[0]) return 0;
     Sym* existing = sema_lookup(s, name);
     if (existing && (existing->kind == SYM_STRUCT || existing->kind == SYM_IMPL)) {
@@ -468,34 +649,60 @@ int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nf
     st->fields = fields;
     st->nfields = nfields;
     st->is_object = 0;
+    st->source_file = (header && header[0]) ? strdup(header) : NULL;
+    st->line = line;
+    st->col = col;
     Sym* sym = sym_new_struct(name, st);
+    sym->source_file = (header && header[0]) ? strdup(header) : NULL;
+    sym->line = line;
+    sym->col = col;
+    scope_add(s->scope, sym);
+    return 1;
+}
+
+int sema_register_cstruct(Sema* s, const char* name, StructField* fields, int nfields) {
+    return sema_register_cstruct_loc(s, name, fields, nfields, NULL, 0, 0);
+}
+
+int sema_register_ctypedef_loc(Sema* s, const char* name, AstType* type, const char* header, int line, int col) {
+    if (!s || !s->scope || !name || !name[0] || !type) return 0;
+    Sym* existing = sema_lookup(s, name);
+    if (existing) return 0;
+    Sym* sym = sym_new_type(name, type);
+    sym->source_file = (header && header[0]) ? strdup(header) : NULL;
+    sym->line = line;
+    sym->col = col;
     scope_add(s->scope, sym);
     return 1;
 }
 
 int sema_register_ctypedef(Sema* s, const char* name, AstType* type) {
-    if (!s || !s->scope || !name || !name[0] || !type) return 0;
-    Sym* existing = sema_lookup(s, name);
-    if (existing) return 0;
-    Sym* sym = sym_new_type(name, type);
-    scope_add(s->scope, sym);
-    return 1;
+    return sema_register_ctypedef_loc(s, name, type, NULL, 0, 0);
 }
 
-int sema_register_cvar(Sema* s, const char* name, AstType* type) {
+int sema_register_cvar_loc(Sema* s, const char* name, AstType* type, const char* header, int line, int col) {
     if (!s || !s->scope || !name || !name[0] || !type) return 0;
     Sym* existing = sema_lookup(s, name);
     if (existing) return 0;
     Decl* d = calloc(1, sizeof *d);
     d->name = strdup(name);
     d->type = type;
+    d->line = line;
+    d->col = col;
     Sym* sym = sym_new_var(name, d);
     sym->type = type;
+    sym->source_file = (header && header[0]) ? strdup(header) : NULL;
+    sym->line = line;
+    sym->col = col;
     scope_add(s->scope, sym);
     return 1;
 }
 
-int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* val_str) {
+int sema_register_cvar(Sema* s, const char* name, AstType* type) {
+    return sema_register_cvar_loc(s, name, type, NULL, 0, 0);
+}
+
+int sema_register_cconst_loc(Sema* s, const char* name, AstType* type, const char* val_str, const char* header, int line, int col) {
     if (!s || !s->scope || !name || !name[0] || !type) return 0;
     Sym* existing = sema_lookup(s, name);
     if (existing) {
@@ -503,17 +710,26 @@ int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* v
             existing->decl = calloc(1, sizeof *existing->decl);
             existing->decl->name = strdup(name);
             existing->decl->type = type;
+            existing->decl->line = line;
+            existing->decl->col = col;
         }
         if (val_str && !existing->decl->init) {
             Expr* lit = ast_expr_new(E_LITERAL);
             lit->str = strdup(val_str);
             existing->decl->init = lit;
         }
+        if (header && header[0] && !existing->source_file) {
+            existing->source_file = strdup(header);
+            existing->line = line;
+            existing->col = col;
+        }
         return 1;
     }
     Decl* d = calloc(1, sizeof *d);
     d->name = strdup(name);
     d->type = type;
+    d->line = line;
+    d->col = col;
     if (val_str) {
         Expr* lit = ast_expr_new(E_LITERAL);
         lit->str = strdup(val_str);
@@ -521,8 +737,24 @@ int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* v
     }
     Sym* sym = sym_new_var(name, d);
     sym->type = type;
+    sym->source_file = (header && header[0]) ? strdup(header) : NULL;
+    sym->line = line;
+    sym->col = col;
     scope_add(s->scope, sym);
     return 1;
+}
+
+int sema_register_cconst(Sema* s, const char* name, AstType* type, const char* val_str) {
+    return sema_register_cconst_loc(s, name, type, val_str, NULL, 0, 0);
+}
+
+int sema_scope_sym_count(Sema* s) {
+    return (s && s->scope) ? s->scope->nsyms : 0;
+}
+
+Sym* sema_scope_sym_get(Sema* s, int idx) {
+    if (!s || !s->scope || idx < 0 || idx >= s->scope->nsyms) return NULL;
+    return s->scope->syms[idx];
 }
 
 static void collect_program(Sema* sema, Program* prog) {
@@ -775,6 +1007,25 @@ static void ck_err_at(Checker* ck, int offset, int width, const char* msg) {
     if (!buf) exit(1);
     diag_render(ck->s->src, offset, width, "error", msg, buf, 2048);
     ck->err = buf;
+    /* Also record a structured entry for analyzer/LSP consumers. */
+    {
+        int line = 1, col = 1;
+        sema_offset_to_linecol(ck->s->src, ck->s->srclen, offset, &line, &col);
+        /* Map expanded offsets back to original file coordinates. */
+        char rfile[512] = "";
+        int rline = 0, rcol = 0;
+        if (diag_resolve(ck->s->src, offset, rfile, sizeof rfile, &rline, &rcol)) {
+            if (rline >= 1) line = rline;
+            if (rcol >= 1) col = rcol;
+        }
+        int w = (width >= 1) ? width : 1;
+        int before = ck->s->ndiags;
+        sema_diag_add(ck->s, line, col, col + w, 1, "E1000", msg ? msg : "error");
+        if (rfile[0] && ck->s->ndiags > before) {
+            snprintf(ck->s->diags[ck->s->ndiags - 1].file,
+                     sizeof ck->s->diags[ck->s->ndiags - 1].file, "%s", rfile);
+        }
+    }
 }
 
 static void ck_err_expr(Checker* ck, Expr* x, const char* msg) {
@@ -1110,6 +1361,15 @@ static void raw_add(const char* name) {
     r->name = strdup(name);
     r->next = raw_buckets[b];
     raw_buckets[b] = r;
+}
+
+static SemaRawHook g_raw_hook = NULL;
+void sema_set_raw_hook(SemaRawHook hook) {
+    g_raw_hook = hook;
+}
+
+void sema_add_raw_name(const char* name) {
+    raw_add(name);
 }
 
 static int raw_has(const char* name) {
@@ -1940,7 +2200,13 @@ static void ck_member_field(Checker* ck, Expr* x) {
         if (sema_is_module(ck->s, obj->str)) {
             char mangled[256];
             snprintf(mangled, sizeof mangled, "%s_%s", obj->str, x->str);
-            if (sema_lookup(ck->s, mangled)) return;
+            Sym* sym = sema_lookup(ck->s, mangled);
+            if (sym) {
+                if (sym->fn) { x->def_kind = DEF_FN; x->def = sym->fn; }
+                else if (sym->st) { x->def_kind = DEF_STRUCT; x->def = sym->st; }
+                else if (sym->ed) { x->def_kind = DEF_ENUM; x->def = sym->ed; }
+                return;
+            }
             char msg[256];
             snprintf(msg, sizeof msg, "module '%s' has no member '%s'", obj->str, x->str);
             ck_err_expr(ck, x, msg);
@@ -1949,7 +2215,11 @@ static void ck_member_field(Checker* ck, Expr* x) {
         EnumDef* ed = sema_lookup_enum(ck->s, obj->str);
         if (ed) {
             for (int i = 0; i < ed->nvariants; i++) {
-                if (strcmp(ed->variants[i].name, x->str) == 0) return;
+                if (strcmp(ed->variants[i].name, x->str) == 0) {
+                    x->def_kind = DEF_VARIANT;
+                    x->def = &ed->variants[i];
+                    return;
+                }
             }
             char msg[256];
             snprintf(msg, sizeof msg, "enum '%s' has no variant '%s'", ed->name, x->str);
@@ -2818,6 +3088,7 @@ static int ck_check_program(Checker* ck, Program* prog) {
         Item* it = prog->items[i];
         if (it->kind == TOP_RAW) scan_raw_region(ck, it->raw, it->raw_len, 1);
     }
+    if (g_raw_hook) g_raw_hook();
 
     /* pass 1: register structs/impls/enums as type names (also for self) */
     for (int i = 0; i < prog->nitems && !ck->is_err; i++) {
@@ -2865,7 +3136,7 @@ static int ck_check_program(Checker* ck, Program* prog) {
 int sema_check(Sema* sema, Program* prog) {
     if (!sema) return 0;
     raw_names_free();
-    sema->err = NULL;
+    sema_clear_diags(sema);
 
     Checker ck;
     memset(&ck, 0, sizeof ck);
@@ -2873,11 +3144,116 @@ int sema_check(Sema* sema, Program* prog) {
     ck.err = NULL;
 
     Program* target = prog ? prog : sema->prog;
+    /* Allow re-check (LSP analyzes repeatedly on the same AST). */
+    if (target) {
+        for (int i = 0; i < target->nitems; i++) {
+            if (target->items[i]->kind == TOP_FN && target->items[i]->fn)
+                target->items[i]->fn->checked = 0;
+            else if (target->items[i]->kind == TOP_IMPL && target->items[i]->im) {
+                for (int m = 0; m < target->items[i]->im->nmethods; m++)
+                    if (target->items[i]->im->methods[m])
+                        target->items[i]->im->methods[m]->checked = 0;
+            }
+        }
+    }
     int err = ck_check_program(&ck, target);
     if (err) sema->err = ck.err ? ck.err : strdup("error");
+    else if (ck.err) free(ck.err);
 
     raw_names_free();
     return err;
+}
+
+/* Multi-error check pass for analyzer and language server tooling.
+   max_items > 0 limits body checks to the first max_items items (useful for LSP
+   so imported functions are known in scope but their internal bodies are not flagged). */
+int sema_check_all_ex(Sema* sema, Program* prog, int max_items) {
+    if (!sema) return 0;
+    raw_names_free();
+    sema_clear_diags(sema);
+
+    Program* target = prog ? prog : sema->prog;
+    if (!target) {
+        raw_names_free();
+        return 0;
+    }
+    sema->prog = target;
+
+    /* Reset per-function checked flags so repeated LSP analyses re-run. */
+    for (int i = 0; i < target->nitems; i++) {
+        if (target->items[i]->kind == TOP_FN && target->items[i]->fn)
+            target->items[i]->fn->checked = 0;
+        else if (target->items[i]->kind == TOP_IMPL && target->items[i]->im) {
+            for (int m = 0; m < target->items[i]->im->nmethods; m++)
+                if (target->items[i]->im->methods[m])
+                    target->items[i]->im->methods[m]->checked = 0;
+        }
+    }
+
+    /* Shared setup pass: raw C names + type-name registration (no body checks). */
+    Checker setup;
+    memset(&setup, 0, sizeof setup);
+    setup.s = sema;
+    setup.scope = sema->scope;
+    for (int i = 0; i < target->nitems; i++) {
+        Item* it = target->items[i];
+        if (it->kind == TOP_RAW) scan_raw_region(&setup, it->raw, it->raw_len, 1);
+    }
+    if (g_raw_hook) g_raw_hook();
+    for (int i = 0; i < target->nitems; i++) {
+        Item* it = target->items[i];
+        if (it->kind == TOP_STRUCT) {
+            Sym* sym = sema_lookup(sema, it->st->name);
+            if (!sym) {
+                Sym* n = sym_new_struct(it->st->name, it->st);
+                scope_add(sema->scope, n);
+            }
+        } else if (it->kind == TOP_ENUM) {
+            Sym* sym = sema_lookup(sema, it->ed->name);
+            if (!sym) {
+                Sym* n = sym_new_type(it->ed->name, NULL);
+                n->kind = SYM_ENUM;
+                n->ed = it->ed;
+                scope_add(sema->scope, n);
+                for (int j = 0; j < it->ed->nvariants; j++) {
+                    Sym* v = sym_new_variant(it->ed->variants[j].name, it->ed, j);
+                    scope_add(sema->scope, v);
+                }
+            }
+        }
+    }
+
+    /* Per-item body checks, each with a fresh error flag. */
+    int nerr = 0;
+    char* first_err = NULL;
+    int limit = (max_items > 0 && max_items <= target->nitems) ? max_items : target->nitems;
+    for (int i = 0; i < limit; i++) {
+        Item* it = target->items[i];
+        if (it->kind != TOP_FN && it->kind != TOP_IMPL) continue;
+        Checker ck;
+        memset(&ck, 0, sizeof ck);
+        ck.s = sema;
+        ck.scope = sema->scope;
+        ck.err = NULL;
+        if (it->kind == TOP_FN) ck_check_fn(&ck, it->fn);
+        else ck_check_impl(&ck, it->im);
+        if (ck.is_err) {
+            nerr++;
+            if (!first_err) first_err = ck.err;
+            else if (ck.err) free(ck.err);
+            /* ck_err_at already appended the structured diag; keep going. */
+        } else if (ck.err) {
+            free(ck.err);
+        }
+    }
+
+    if (first_err) sema->err = first_err;
+    raw_names_free();
+    return nerr;
+}
+
+int sema_check_all(Sema* sema, Program* prog) {
+    return sema_check_all_ex(sema, prog, 0);
 }
 
 /* Public wrappers used by the codegen to resolve receiver types for
