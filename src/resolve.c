@@ -8,9 +8,16 @@
 #include <ctype.h>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#define access _access
+#include <io.h>
+#ifndef R_OK
 #define R_OK 4
+#endif
+#ifndef F_OK
+#define F_OK 0
+#endif
+#define access _access
 #else
 #include <unistd.h>
 #endif

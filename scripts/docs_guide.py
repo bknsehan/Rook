@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 docs_guide.py
-Technical reference manual for the Rook programming language and Rokade compiler (v0.7.0).
+Technical reference manual for the Rook programming language and Rokade compiler (v0.7.1).
 Contains Chapters 1 to 21, written with strict technical accuracy and zero marketing language.
 """
 
@@ -113,7 +113,7 @@ def get_guide_chapters(make_code_box, make_callout):
       <th>Standard C (C11/C23)</th>
       <th>Rust (2024 Edition)</th>
       <th>Zig (0.13+)</th>
-      <th>Rook (v0.7.0)</th>
+      <th>Rook (v0.7.1)</th>
     </tr>
   </thead>
   <tbody>
@@ -274,11 +274,11 @@ int main() {
 <p>Rook utilizes a static, nominal type system with strict type checking and automated C typedef resolution.</p>
 
 <h3>5.1 Variable Declarations and Type Inference</h3>
-<p>Variables can be declared with an explicit type or inferred using the <code>let</code> keyword:</p>
+<p>Variables can be declared with an explicit type or inferred using the <code>auto</code> keyword:</p>
 {make_code_box("rook", """
 int count = 10;          // Explicit scalar
-let score = 250;         // Inferred as int
-let ptr = &count;        // Inferred as int*
+auto score = 250;        // Inferred as int
+auto ptr = &count;       // Inferred as int*
 int uninitialized_val;   // Automatically initialized to 0
 """, "Variable Declarations")}
 
@@ -1077,7 +1077,7 @@ rokade toolchain set cc /usr/bin/clang
 </ul>
 
 <h3>12.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
-<p>The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via <code>rokade --diagnostics</code>, jump-to-definition (<code>--def-at</code>), and document outlines (<code>--symbols</code>).</p>
+<p>The official language server (written natively in C, sharing the compiler AST and semantic analyzer) provides seamless editor integration for VS Code, VSCodium, Code - OSS, and other LSP-compliant editors. It provides real-time diagnostics, type-aware autocompletion, hover signatures, jump-to-definition across files and C headers, document symbols, format-on-save, and workspace-wide symbol search.</p>
 """
     add_ch("config", "12. Configuration, Multi-Target Builds & Toolchains", ch12)
 

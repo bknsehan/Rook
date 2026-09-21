@@ -12,8 +12,13 @@
 #include <ctype.h>
 #ifdef _WIN32
 #include <io.h>
-#define access _access
+#ifndef R_OK
 #define R_OK 4
+#endif
+#ifndef F_OK
+#define F_OK 0
+#endif
+#define access _access
 #else
 #include <unistd.h>
 #endif

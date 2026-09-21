@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Rook Programming Language (v0.7.0)</title>
+<title>The Rook Programming Language (v0.7.1)</title>
 <style>
   /* ─── mdBook Theme Variables ───────────────────────────────────────── */
   :root, html.warm {
@@ -679,7 +679,7 @@
     <div class="sidebar-header">
       <div class="sidebar-title">
         <span>Rook Language</span>
-        <span class="sidebar-version">v0.7.0</span>
+        <span class="sidebar-version">v0.7.1</span>
       </div>
       <div class="sidebar-search-box">
         <input type="text" id="search-input" placeholder="Search chapters..." aria-label="Search chapters" oninput="filterChapters(this.value)">
@@ -735,7 +735,7 @@
     <main class="content-container">
       <div class="book-hero">
         <h1>The Rook Programming Language</h1>
-        <p>Technical Reference &amp; Language Specification Manual (v0.7.0)</p>
+        <p>Technical Reference &amp; Language Specification Manual (v0.7.1)</p>
       </div>
 
       <div class="content" id="book-content">
@@ -841,7 +841,7 @@
       <th>Standard C (C11/C23)</th>
       <th>Rust (2024 Edition)</th>
       <th>Zig (0.13+)</th>
-      <th>Rook (v0.7.0)</th>
+      <th>Rook (v0.7.1)</th>
     </tr>
   </thead>
   <tbody>
@@ -996,10 +996,10 @@ int main() {
 <p>Rook utilizes a static, nominal type system with strict type checking and automated C typedef resolution.</p>
 
 <h3>5.1 Variable Declarations and Type Inference</h3>
-<p>Variables can be declared with an explicit type or inferred using the <code>let</code> keyword:</p>
+<p>Variables can be declared with an explicit type or inferred using the <code>auto</code> keyword:</p>
 <div class="code-block"><div class="code-header"><span class="code-lang">Variable Declarations</span><button class="copy-btn" onclick="copyCode(this)" title="Copy code snippet">Copy</button></div><pre><code class="language-rook">int count = 10;          // Explicit scalar
-let score = 250;         // Inferred as int
-let ptr = &amp;count;        // Inferred as int*
+auto score = 250;        // Inferred as int
+auto ptr = &amp;count;       // Inferred as int*
 int uninitialized_val;   // Automatically initialized to 0</code></pre></div>
 
 <h3>5.2 Pointer Semantics and Void Pointers</h3>
@@ -1747,7 +1747,7 @@ rokade toolchain set cc /usr/bin/clang</code></pre></div>
 </ul>
 
 <h3>12.3 Language Server Protocol (<code>rook-lsp</code>)</h3>
-<p>The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via <code>rokade --diagnostics</code>, jump-to-definition (<code>--def-at</code>), and document outlines (<code>--symbols</code>).</p>
+<p>The official language server (written natively in C, sharing the compiler AST and semantic analyzer) provides seamless editor integration for VS Code, VSCodium, Code - OSS, and other LSP-compliant editors. It provides real-time diagnostics, type-aware autocompletion, hover signatures, jump-to-definition across files and C headers, document symbols, format-on-save, and workspace-wide symbol search.</p>
 
 </section>
 
@@ -1925,7 +1925,7 @@ rokade toolchain set cc /usr/bin/clang</code></pre></div>
   }
 
   function highlightCAndRook(src) {
-    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:fn|int|float|double|char|void|bool|size_t|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
+    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:auto|func|int|float|double|char|void|bool|size_t|int8|int16|int32|int64|uint8|uint16|uint32|uint64|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
     var lastIndex = 0;
     var out = "";
     var match;

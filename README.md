@@ -28,7 +28,7 @@ Rook is an explicit systems programming language featuring direct C ABI compatib
 - [9. Standard Library Catalog (`std/`)](#9-standard-library-catalog-std)
 - [10. Tooling & Ecosystem](#10-tooling--ecosystem)
   - [10.1 Language Server Protocol (`rook-lsp`)](#101-language-server-protocol-rook-lsp)
-  - [10.2 Zed Editor Extension](#102-zed-editor-extension)
+  - [10.2 VS Code & Editor Integration](#102-vs-code--editor-integration)
   - [10.3 Comprehensive Language Guides](#103-comprehensive-language-guides)
 - [11. License](#11-license)
 
@@ -88,7 +88,7 @@ Source (.rook) ➔ Lexer / Parser (AST) ➔ Sema & Libclang AST Engine
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.7.0) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.7.1) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Management** | Manual (`malloc`/`free`), uninitialized stack by default. | Affine type system, compile-time borrow checker, static lifetimes. | Explicit allocators, manual management, no hidden control flow. | Manual explicit allocators, deterministic stack zero-initialization, optional bounds checks (`-b`). |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` declarations and external binding tools (`bindgen`). | Requires `@cImport` translation step. | Direct 1:1 ABI mapping; dynamic in-memory libclang C header parsing without wrappers. |
@@ -121,14 +121,14 @@ Rook statically rejects syntactic patterns that lead to undefined behavior or si
 
 ### 5.1 Variables, Type Inference & Zero-Initialization
 
-Variables are declared with explicit types or inferred using `let`. Local variables declared without an initializer are guaranteed zero-initialized:
+Variables are declared with explicit types or inferred using `auto`. Local variables declared without an initializer are guaranteed zero-initialized:
 
 ```rook
 #include <stdio.h>
 
 int main() {
     int count = 10;
-    let inferred_val = 250;     // Type inferred as int
+    auto inferred_val = 250;     // Type inferred as int
     int* ptr = &count;          // Standard pointer syntax
 
     int uninitialized_var;      // Emitted as: int uninitialized_var = {0};
@@ -449,25 +449,23 @@ The Rook standard library is located in `std/` and provides core capabilities:
 
 ### 10.1 Language Server Protocol (`rook-lsp`)
 
-The Rook Language Server is written in C (same sources as the compiler, `src/lsp/`) and integrates with any LSP-compliant editor:
-- **Analyzer diagnostics:** all syntax errors plus one semantic error per function (`sema_check_all`), with `W2001` unused-variable warnings, `W2002` unreachable-code warnings, and `W2003` unused-parameter hints. Published via `textDocument/publishDiagnostics` with ranges, codes, and `Unnecessary` tags.
-- **Definition Navigation:** Jump to symbol definition (`--def-at <file> <line> <col>`).
-- **Symbol Outlines:** Document symbol tree inspection (`--symbols <file>`).
-- **Formatting:** Document formatting on save via `rokade fmt`.
-- **Machine diagnostics:** `rokade --diagnostics <file>` emits the same JSON array (`file`, `line`, `character`, `endCharacter`, `severity`, `code`, `message`).
+The Rook Language Server is written natively in C (sharing the compiler AST and semantic analysis pipeline in `src/lsp/`) and integrates with any LSP-compliant editor over standard I/O:
+- **Real-Time Diagnostics:** Multi-error tolerant parser and semantic diagnostics with ranges, codes, and unused tags (`textDocument/publishDiagnostics`).
+- **Autocompletion & Snippets:** Context-aware completion for struct/sum fields, methods, module comprises, C standard headers (`#include <...>`), and built-in snippets.
+- **Go to Definition:** Jump-to-definition across local symbols, `#comprise <std/...>` standard library modules, and `#include` C headers.
+- **Hover Information:** Rich type signatures and documentation on hover (`textDocument/hover`).
+- **Document Symbols & Formatting:** Outline tree inspection and formatting with strict active document isolation.
+- **Semantic Tokens:** Fast delta-encoded semantic syntax token highlighting (`textDocument/semanticTokens/full`).
+- **Workspace Symbol Index:** Multi-directory project indexing and cross-file symbol lookups (`workspace/symbol`).
 
-### 10.2 Zed Editor Extension
+### 10.2 VS Code & Editor Integration
 
-The automated installer detects and installs the Rook Zed extension into:
-`~/.local/share/zed/extensions/installed/rook`
-
-Provides syntax highlighting, indentation rules, and direct LSP server connection (`languages/rook/config.toml` binds `language_servers = ["rook-lsp"]` for `.rook` files).
-
-Troubleshooting when Zed shows no diagnostics:
-1. Ensure `rook-lsp` is on `PATH` (`which rook-lsp`), or set `ROOK_LSP_PATH` to its full path — GUI-launched Zed often has a minimal `PATH` that misses `~/bin`.
-2. The extension also falls back to `rokade lsp` when `rook-lsp` is not found.
-3. Re-run `./install.sh --editor=zed` (it rebuilds `extension.wasm` when `cargo` + a `wasm32-wasip1` target are available), restart Zed, and check `~/.local/share/zed/logs/Zed.log`.
-4. `Failed to install dev extension: failed to compile grammar 'c'` with `pathspec 'vX.Y.Z' did not match` means Zed's cached `grammars/c/` checkout is a broken shallow clone (interrupted first fetch). Delete that directory inside the extension source you are installing (e.g. `editors/zed/grammars/c/`) and retry — Zed re-clones it (network needed once). `./install.sh --editor=zed` does this cleanup automatically.
+The automated installer (`./install.sh` / `install.ps1`) configures editor support automatically:
+- **Primary Editor:** Visual Studio Code, VSCodium, and Code - OSS (`editors/vscode`).
+- **Capabilities:** TextMate grammar highlighting (`.rook`, `.rk`), automated launch of native `rook-lsp` (with fallback to `rokade lsp`), snippets, and format-on-save.
+- **Installation:**
+  - Automated: `./install.sh --editor=vscode` (or interactive mode).
+  - Manual: Copy `editors/vscode` to `~/.vscode/extensions/rook-lang-0.7.1` (or `%USERPROFILE%\.vscode\extensions\rook-lang-0.7.1`).
 
 ### 10.3 Comprehensive Language Guides
 

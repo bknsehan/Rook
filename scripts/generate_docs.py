@@ -2,7 +2,7 @@
 """
 generate_docs.py
 Generates the official, distraction-free Rook Documentation (The Rook Book)
-in mdBook / Rust Book style for Rook & Rokade v0.7.0.
+in mdBook / Rust Book style for Rook & Rokade v0.7.1.
 """
 
 import os
@@ -47,7 +47,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Rook Programming Language (v0.7.0)</title>
+<title>The Rook Programming Language (v0.7.1)</title>
 <style>
   /* ─── mdBook Theme Variables ───────────────────────────────────────── */
   :root, html.warm {
@@ -723,7 +723,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="sidebar-header">
       <div class="sidebar-title">
         <span>Rook Language</span>
-        <span class="sidebar-version">v0.7.0</span>
+        <span class="sidebar-version">v0.7.1</span>
       </div>
       <div class="sidebar-search-box">
         <input type="text" id="search-input" placeholder="Search chapters..." aria-label="Search chapters" oninput="filterChapters(this.value)">
@@ -768,7 +768,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <main class="content-container">
       <div class="book-hero">
         <h1>The Rook Programming Language</h1>
-        <p>Technical Reference &amp; Language Specification Manual (v0.7.0)</p>
+        <p>Technical Reference &amp; Language Specification Manual (v0.7.1)</p>
       </div>
 
       <div class="content" id="book-content">
@@ -947,7 +947,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
 
   function highlightCAndRook(src) {
-    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:fn|int|float|double|char|void|bool|size_t|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
+    var masterRegex = /(#[^\n]*|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(^\s*#(?:include|comprise|define|ifdef|ifndef|endif)\b[^\n]*)|(\b(?:auto|func|int|float|double|char|void|bool|size_t|int8|int16|int32|int64|uint8|uint16|uint32|uint64|uint8_t|int8_t|uint16_t|int16_t|uint32_t|int32_t|uint64_t|int64_t|struct|enum|union|sum|impl|match|defer|return|if|else|while|for|break|continue|as|true|false|NULL|null)\b)|(\b[A-Z][a-zA-Z0-9_]*\b)|(\b\d+(?:\.\d+)?(?:[fF]|[uU]|[lL]{1,2})?\b)|(\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())/gm;
     var lastIndex = 0;
     var out = "";
     var match;
@@ -1072,7 +1072,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 def main():
-    print(f"Generating mdBook-styled documentation for Rook (v0.7.0)...")
+    print(f"Generating mdBook-styled documentation for Rook (v0.7.1)...")
     chapters = get_guide_chapters(make_code_box, make_callout)
 
     chapter_links = []

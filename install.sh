@@ -9,7 +9,7 @@ if [ "${EUID:-$(id -u)}" -eq 0 ] || [ -n "${SUDO_USER}" ]; then
     echo " Rook installs directly into your user environment:"
     echo "   Prefix:   \${HOME}/bin/Rook"
     echo "   Symlinks: \${HOME}/bin/rokade"
-    echo "   Zed Ext:  \${HOME}/.local/share/zed/extensions/installed/rook"
+    echo "   Editor:   VS Code, VSCodium, Code - OSS, Zed"
     echo ""
     echo " Simple user install works without any root permissions."
     echo " Please re-run simply as:"

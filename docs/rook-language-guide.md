@@ -1,4 +1,4 @@
-# Rook Language & Architecture Guide (v0.7.0)
+# Rook Language & Architecture Guide (v0.7.1)
 
 > **Specification & Reference Manual**  
 > Technical documentation covering Rook language mechanics, memory layouts, C ABI compatibility, compiler architecture, and systems programming foundations.
@@ -65,7 +65,7 @@ Source (.rook) ➔ Lexer/Parser (AST) ➔ Sema & Libclang ➔ Codegen
 
 ## 3. Technical Comparison: C, Rust, Zig, and Rook
 
-| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.7.0) |
+| Feature / Dimension | Standard C (C11/C23) | Rust (2024 Edition) | Zig (0.13+) | Rook (v0.7.1) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Memory Model** | Manual, uninitialized stack defaults, raw pointers. | Affine type system, borrow checker, compile-time lifetimes. | Manual with allocators, slices, no hidden control flow. | Manual, deterministic zero initialization, raw pointers, bounds checks. |
 | **C ABI Compatibility** | Native (is C). | Requires `extern "C"` blocks and binding tools (`bindgen`). | Requires `@cImport` and translated C type headers. | Native 1:1 ABI mapping, dynamic libclang header parsing without wrappers. |
@@ -137,11 +137,11 @@ Because `Entity` begins at byte offset 0, upcasting `(Entity*)&player` is a zero
 
 ## 5. Type System & Semantic Analysis
 
-### 5.1 Variable Declarations
+### 5.1 Variable Declarations & Type Inference
 ```rook
 int count = 10;          // Explicit scalar
-let score = 250;         // Inferred as int
-let ptr = &count;        // Inferred as int*
+auto score = 250;        // Inferred as int
+auto ptr = &count;       // Inferred as int*
 int uninitialized_val;   // Guaranteed zero-initialized
 ```
 
@@ -837,4 +837,4 @@ Rokade supports cross-compilation targets out of the box:
 - **Android (aarch64-linux-android):** Cross-compiles using the Android NDK Clang toolchain and target sysroot.
 
 ### 12.3 Language Server Protocol (`rook-lsp`)
-The official language server (written in Rust) provides editor integration for editors including Zed, VSCode, and Neovim. It provides syntax validation, semantic diagnostics via `rokade --diagnostics`, jump-to-definition (`--def-at`), and document outlines (`--symbols`).
+The official language server (written natively in C, sharing the compiler AST and semantic analysis pipeline) provides seamless editor integration for VS Code, VSCodium, Code - OSS, and other LSP-compliant editors. It provides real-time diagnostics, type-aware autocompletion, hover signatures, jump-to-definition across files and C headers, document symbols, format-on-save, and workspace-wide symbol search.
