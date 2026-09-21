@@ -1,0 +1,10 @@
+#include <stdio.h>
+#comprise "modules/mod1.rook" as m1;
+#comprise "modules/mod2.rook" as m2;
+
+int main() {
+    int s = m1.calc(10, 20);
+    int p = m2.calc(10, 20);
+    printf("sum=%d prod=%d\n", s, p);
+    return 0;
+}

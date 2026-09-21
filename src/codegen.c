@@ -27,6 +27,7 @@ typedef struct CG {
     int defer_depth;
     int loop_depth;
     AstType* cur_ret;   /* return type of the function currently being emitted */
+    FnDef* cur_fn;      /* function currently being emitted */
     int bounds_check;   /* -b flag: emit runtime bounds checks for array access */
 } CG;
 
@@ -374,6 +375,16 @@ static void cg_expr(CG* g, Expr* x) {
            then emit `Owner_method(&obj, args)`. */
         if (x->a && (x->a->kind == E_MEMBER || x->a->kind == E_ARROW)) {
             Expr* m = x->a;
+            if (m->kind == E_MEMBER && m->a && m->a->kind == E_IDENT &&
+                g->sema && sema_is_module(g->sema, m->a->str)) {
+                sb_appendf(&g->sb, "%s_%s(", m->a->str, m->str);
+                for (int i = 0; i < x->nitems; i++) {
+                    if (i) sb_append(&g->sb, ", ");
+                    cg_expr(g, x->items[i]);
+                }
+                sb_append(&g->sb, ")");
+                break;
+            }
             AstType* base = cg_resolve_type(g, m->a);
             char* owner = NULL;
             int steps = 0;
@@ -442,8 +453,11 @@ static void cg_expr(CG* g, Expr* x) {
                     else        sb_append(&g->sb, "} else { ");
                 } else {
                     const char* vname = (p && p->kind == E_IDENT) ? p->str :
+                                         (p && p->kind == E_MEMBER) ? p->str :
                                          (p && p->kind == E_CALL && p->a &&
                                           p->a->kind == E_IDENT) ? p->a->str :
+                                         (p && p->kind == E_CALL && p->a &&
+                                          p->a->kind == E_MEMBER) ? p->a->str :
                                          (p && p->kind == E_NAMED_INIT && p->type
                                           && p->type->name) ? p->type->name : NULL;
                     if (i == 0) sb_append(&g->sb, "if (__rk_match._tag == ");
@@ -508,6 +522,26 @@ static void cg_expr(CG* g, Expr* x) {
         break;
     }
     case E_MEMBER: {
+        if (x->a && x->a->kind == E_IDENT && g->sema) {
+            EnumDef* ed = sema_lookup_enum(g->sema, x->a->str);
+            if (ed) {
+                int vi = variant_index(ed, x->str);
+                if (vi >= 0) {
+                    if (ed->variants[vi].nfields == 0 && enum_has_payload(ed)) {
+                        sb_appendf(&g->sb, "((%s){ ._tag = ", ed->name);
+                        cg_emit_variant_const(g, ed->name, x->str);
+                        sb_append(&g->sb, " })");
+                        break;
+                    }
+                    if (ed->is_c_enum) {
+                        sb_append(&g->sb, x->str);
+                        break;
+                    }
+                    cg_emit_variant_const(g, ed->name, x->str);
+                    break;
+                }
+            }
+        }
         /* Field access, possibly through the inheritance chain. The base
            struct is embedded as a *value* member `_base`, so inherited
            fields require `obj._base...field`. The first connector uses
@@ -627,7 +661,9 @@ static void cg_expr(CG* g, Expr* x) {
         /* sum variant constructor: `Circle { r: 2.0 }` -> canonical tagged init. */
         if (x->type && x->type->name) {
             const char* fn = x->type->name;
-            const char* en = sema_lookup_variant(g->sema, fn);
+            const char* en = (x->a && x->a->kind == E_IDENT && g->sema && sema_lookup_enum(g->sema, x->a->str))
+                             ? x->a->str
+                             : sema_lookup_variant(g->sema, fn);
             if (en) {
                 EnumDef* ed = find_enum_def(g, en);
                 int vi = ed ? variant_index(ed, fn) : -1;
@@ -730,6 +766,29 @@ static void cg_param(CG* g, Param* p, AstType* receiver) {
 }
 
 static void cg_call(CG* g, Expr* callee, Expr** args, int nargs) {
+    if (callee->kind == E_MEMBER && callee->a && callee->a->kind == E_IDENT &&
+        g->sema && sema_is_module(g->sema, callee->a->str)) {
+        sb_appendf(&g->sb, "%s_%s(", callee->a->str, callee->str);
+        for (int i = 0; i < nargs; i++) {
+            if (i) sb_append(&g->sb, ", ");
+            cg_expr(g, args[i]);
+        }
+        sb_append(&g->sb, ")");
+        return;
+    }
+    if (callee->kind == E_IDENT && g->cur_fn && g->cur_fn->mod_prefix) {
+        char mangled[256];
+        snprintf(mangled, sizeof mangled, "%s_%s", g->cur_fn->mod_prefix, callee->str);
+        if (g->sema && sema_lookup(g->sema, mangled)) {
+            sb_appendf(&g->sb, "%s(", mangled);
+            for (int i = 0; i < nargs; i++) {
+                if (i) sb_append(&g->sb, ", ");
+                cg_expr(g, args[i]);
+            }
+            sb_append(&g->sb, ")");
+            return;
+        }
+    }
     if (callee->kind == E_MEMBER || callee->kind == E_ARROW) {
         AstType* base_type = cg_resolve_type(g, callee->a);
         if (base_type) {
@@ -857,7 +916,11 @@ static void cg_fn_prototype(CG* g, FnDef* f, AstType* receiver) {
     } else {
         sb_append(&g->sb, "void ");
     }
-    sb_append(&g->sb, f->name);
+    if (f->mod_prefix) {
+        sb_appendf(&g->sb, "%s_%s", f->mod_prefix, f->name);
+    } else {
+        sb_append(&g->sb, f->name);
+    }
     sb_append(&g->sb, "(");
     if (has_self) {
         cg_param(g, &f->params[0], receiver);
@@ -873,6 +936,8 @@ static void cg_fn(CG* g, FnDef* f, int ind, AstType* receiver) {
     /* `extern fn` declares a C function that is provided by an #include (or a
        [[raw]] region); trust it and emit nothing — not even a prototype. */
     if (f->is_extern) return;
+    FnDef* saved_fn = g->cur_fn;
+    g->cur_fn = f;
     int has_self = (f->nparams > 0 && strcmp(f->params[0].name, "self") == 0);
     if (has_self && receiver) {
         AstType* self_t = calloc(1, sizeof *self_t);
@@ -888,7 +953,11 @@ static void cg_fn(CG* g, FnDef* f, int ind, AstType* receiver) {
     } else {
         sb_append(&g->sb, "void ");
     }
-    sb_append(&g->sb, f->name);
+    if (f->mod_prefix) {
+        sb_appendf(&g->sb, "%s_%s", f->mod_prefix, f->name);
+    } else {
+        sb_append(&g->sb, f->name);
+    }
     sb_append(&g->sb, "(");
     if (has_self) {
         cg_param(g, &f->params[0], receiver);
@@ -900,6 +969,7 @@ static void cg_fn(CG* g, FnDef* f, int ind, AstType* receiver) {
     sb_append(&g->sb, ")");
     if (!f->body) {
         sb_append(&g->sb, ";\n");
+        g->cur_fn = saved_fn;
         return;
     }
     sb_append(&g->sb, "\n");
@@ -908,6 +978,7 @@ static void cg_fn(CG* g, FnDef* f, int ind, AstType* receiver) {
     g->cur_ret = f->ret;
     cg_stmt(g, f->body);
     g->cur_ret = saved_ret;
+    g->cur_fn = saved_fn;
     sb_append(&g->sb, "\n");
 }
 
@@ -1455,6 +1526,14 @@ static void cg_program(CG* g, Program* prog) {
               "#define _POSIX_C_SOURCE 200809L\n"
               "#include <stdint.h>\n"
               "#include <errno.h>\n"
+              "typedef int8_t int8;\n"
+              "typedef int16_t int16;\n"
+              "typedef int32_t int32;\n"
+              "typedef int64_t int64;\n"
+              "typedef uint8_t uint8;\n"
+              "typedef uint16_t uint16;\n"
+              "typedef uint32_t uint32;\n"
+              "typedef uint64_t uint64;\n"
               "#ifdef _WIN32\n"
               "#define WIN32_LEAN_AND_MEAN\n"
               "#define NOMINMAX\n"
@@ -1675,6 +1754,14 @@ char* codegen_header(Sema* sema, Program* prog, int* out_len, const char* mod_na
                "#define _POSIX_C_SOURCE 200809L\n"
                "#include <stdint.h>\n"
                "#include <errno.h>\n"
+               "typedef int8_t int8;\n"
+               "typedef int16_t int16;\n"
+               "typedef int32_t int32;\n"
+               "typedef int64_t int64;\n"
+               "typedef uint8_t uint8;\n"
+               "typedef uint16_t uint16;\n"
+               "typedef uint32_t uint32;\n"
+               "typedef uint64_t uint64;\n"
                "#ifdef _WIN32\n"
                "#define WIN32_LEAN_AND_MEAN\n"
                "#define NOMINMAX\n"

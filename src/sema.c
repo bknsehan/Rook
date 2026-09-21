@@ -347,6 +347,16 @@ static Sym* scope_lookup(Scope* s, const char* name) {
     return NULL;
 }
 
+static Sym* scope_lookup_kind(Scope* s, const char* name, SymKind kind) {
+    if (!s || !name) return NULL;
+    for (int i = s->nsyms - 1; i >= 0; i--) {
+        if (s->syms[i]->kind == kind && strcmp(s->syms[i]->name, name) == 0)
+            return s->syms[i];
+    }
+    if (s->parent) return scope_lookup_kind(s->parent, name, kind);
+    return NULL;
+}
+
 static void scope_add(Scope* s, Sym* sym) {
     if (s->nsyms == s->cap) {
         s->cap = s->cap ? s->cap * 2 : 16;
@@ -522,13 +532,27 @@ static void collect_program(Sema* sema, Program* prog) {
         case TOP_RAW:
             break;
         case TOP_FN: {
-            Sym* sym = sym_new_fn(it->fn->name, it->fn);
-            scope_add(sema->scope, sym);
+            if (it->fn->mod_prefix) {
+                char mangled[256];
+                snprintf(mangled, sizeof mangled, "%s_%s", it->fn->mod_prefix, it->fn->name);
+                Sym* sym = sym_new_fn(mangled, it->fn);
+                scope_add(sema->scope, sym);
+            } else {
+                Sym* sym = sym_new_fn(it->fn->name, it->fn);
+                scope_add(sema->scope, sym);
+            }
             break;
         }
         case TOP_STRUCT: {
-            Sym* sym = sym_new_struct(it->st->name, it->st);
-            scope_add(sema->scope, sym);
+            if (it->st->mod_prefix) {
+                char mangled[256];
+                snprintf(mangled, sizeof mangled, "%s_%s", it->st->mod_prefix, it->st->name);
+                Sym* sym = sym_new_struct(mangled, it->st);
+                scope_add(sema->scope, sym);
+            } else {
+                Sym* sym = sym_new_struct(it->st->name, it->st);
+                scope_add(sema->scope, sym);
+            }
             break;
         }
         case TOP_IMPL: {
@@ -537,12 +561,18 @@ static void collect_program(Sema* sema, Program* prog) {
             break;
         }
         case TOP_ENUM: {
-            Sym* sym = sym_new_type(it->ed->name, NULL);
+            const char* ename = it->ed->name;
+            char mangled[256];
+            if (it->ed->mod_prefix) {
+                snprintf(mangled, sizeof mangled, "%s_%s", it->ed->mod_prefix, it->ed->name);
+                ename = mangled;
+            }
+            Sym* sym = sym_new_type(ename, NULL);
             sym->kind = SYM_ENUM;
             sym->ed = it->ed;
             scope_add(sema->scope, sym);
-            for (int i = 0; i < it->ed->nvariants; i++) {
-                Sym* v = sym_new_variant(it->ed->variants[i].name, it->ed, i);
+            for (int j = 0; j < it->ed->nvariants; j++) {
+                Sym* v = sym_new_variant(it->ed->variants[j].name, it->ed, j);
                 scope_add(sema->scope, v);
             }
             break;
@@ -555,6 +585,20 @@ int sema_collect(Sema* sema, Program* prog) {
     sema->prog = prog;
     collect_program(sema, prog);
     return sema->err ? 1 : 0;
+}
+
+int sema_is_module(Sema* sema, const char* name) {
+    if (!sema || !sema->prog || !name) return 0;
+    for (int i = 0; i < sema->prog->nitems; i++) {
+        Item* it = sema->prog->items[i];
+        if (it->kind == TOP_FN && it->fn && it->fn->mod_prefix && strcmp(it->fn->mod_prefix, name) == 0)
+            return 1;
+        if (it->kind == TOP_STRUCT && it->st && it->st->mod_prefix && strcmp(it->st->mod_prefix, name) == 0)
+            return 1;
+        if (it->kind == TOP_ENUM && it->ed && it->ed->mod_prefix && strcmp(it->ed->mod_prefix, name) == 0)
+            return 1;
+    }
+    return 0;
 }
 
 Sym* sema_lookup(Sema* sema, const char* name) {
@@ -581,8 +625,9 @@ const char* sema_lookup_variant(Sema* sema, const char* name) {
 /* Look up a struct definition by name (walks the symbol table). */
 StructDef* sema_lookup_struct(Sema* sema, const char* name) {
     if (!sema || !name) return NULL;
-    Sym* sym = scope_lookup(sema->scope, name);
+    Sym* sym = scope_lookup_kind(sema->scope, name, SYM_STRUCT);
     if (sym && sym->kind == SYM_STRUCT) return sym->st;
+    sym = scope_lookup_kind(sema->scope, name, SYM_IMPL);
     if (sym && sym->kind == SYM_IMPL) {
         /* impl syms store the target struct; find the struct def */
         for (int i = 0; i < sema->prog->nitems; i++) {
@@ -603,7 +648,7 @@ StructDef* sema_lookup_struct(Sema* sema, const char* name) {
 /* Look up an enum definition by name (walks symbol table, falls back to items). */
 EnumDef* sema_lookup_enum(Sema* sema, const char* name) {
     if (!sema || !name) return NULL;
-    Sym* sym = scope_lookup(sema->scope, name);
+    Sym* sym = scope_lookup_kind(sema->scope, name, SYM_ENUM);
     if (sym && sym->kind == SYM_ENUM && sym->ed) return sym->ed;
     if (sema->prog) {
         for (int i = 0; i < sema->prog->nitems; i++) {
@@ -782,8 +827,9 @@ static void ck_bind_match_pattern(Checker* ck, Expr* p, AstType* scrut) {
     EnumVariant* v = NULL;
     if (p->kind == E_NAMED_INIT && p->type && p->type->name) {  /* Circle { r: x } */
         vname = p->type->name;
-        if (scrut && scrut->name) {
-            EnumDef* cand_ed = sema_lookup_enum(ck->s, scrut->name);
+        const char* ename = (p->a && p->a->kind == E_IDENT) ? p->a->str : (scrut ? scrut->name : NULL);
+        if (ename) {
+            EnumDef* cand_ed = sema_lookup_enum(ck->s, ename);
             if (cand_ed) {
                 for (int j = 0; j < cand_ed->nvariants; j++) {
                     if (strcmp(cand_ed->variants[j].name, vname) == 0) {
@@ -865,6 +911,8 @@ static const char* const C_TYPE_WORDS[] = {
     "int", "char", "float", "double", "long", "short", "void", "size_t",
     "ssize_t", "ptrdiff_t", "unsigned", "signed", "FILE", "va_list", "uint8_t", "uint16_t", "uint32_t",
     "uint64_t", "int8_t", "int16_t", "int32_t", "int64_t", "uintptr_t",
+    "uint8", "uint16", "uint32", "uint64",
+    "int8", "int16", "int32", "int64",
     "intptr_t", "CPoint", "bool",
     NULL
 };
@@ -942,6 +990,10 @@ static int ck_type_is_numeric(const char* name) {
            strcmp(name, "uint64_t") == 0 || strcmp(name, "int8_t") == 0 ||
            strcmp(name, "int16_t") == 0 || strcmp(name, "int32_t") == 0 ||
            strcmp(name, "int64_t") == 0 || strcmp(name, "uintptr_t") == 0 ||
+           strcmp(name, "uint8") == 0 || strcmp(name, "uint16") == 0 ||
+           strcmp(name, "uint32") == 0 || strcmp(name, "uint64") == 0 ||
+           strcmp(name, "int8") == 0 || strcmp(name, "int16") == 0 ||
+           strcmp(name, "int32") == 0 || strcmp(name, "int64") == 0 ||
            strcmp(name, "intptr_t") == 0 ||
            strcmp(name, "__off_t") == 0 || strcmp(name, "__off64_t") == 0 ||
            strcmp(name, "__uint64_t") == 0 || strcmp(name, "__int64_t") == 0 ||
@@ -1452,6 +1504,11 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             return r;
         }
         Sym* g = sema_lookup(ck->s, e->str);
+        if (!g && ck->cur_fn && ck->cur_fn->mod_prefix) {
+            char mangled[256];
+            snprintf(mangled, sizeof mangled, "%s_%s", ck->cur_fn->mod_prefix, e->str);
+            g = sema_lookup(ck->s, mangled);
+        }
         if (g && g->kind == SYM_ENUMVARIANT && g->ed) {
             return ck_mk_type(g->ed->name, 0);   /* the owning enum type */
         }
@@ -1459,6 +1516,9 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
             AstType* r = g->type ? ck_clone_type(g->type) : NULL;
             if (r && g->decl && g->decl->dim) r->ptrs++;
             return r;
+        }
+        if (g && g->kind == SYM_FN && g->fn && g->fn->ret) {
+            return ck_clone_type(g->fn->ret);
         }
         return NULL;
     }
@@ -1486,20 +1546,12 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
                 return ck_mk_type(en, 0);
             }
             Sym* sym = sema_lookup(ck->s, fn);
+            if (!sym && ck->cur_fn && ck->cur_fn->mod_prefix) {
+                char mangled[256];
+                snprintf(mangled, sizeof mangled, "%s_%s", ck->cur_fn->mod_prefix, fn);
+                sym = sema_lookup(ck->s, mangled);
+            }
             if (sym && sym->kind == SYM_FN && sym->fn && sym->fn->ret) {
-                if (sym->fn->ret->name && strcmp(sym->fn->ret->name, "auto") == 0) {
-                    if (sym->fn->inferring_ret) {
-                        if (sym->fn->inferred_ret) {
-                            return ck_clone_type(sym->fn->inferred_ret);
-                        } else {
-                            char msg[256];
-                            snprintf(msg, sizeof msg, "cannot deduce return type for function '%s' before base case is established", fn);
-                            ck_err_expr(ck, e, msg);
-                            return ck_mk_type("int", 0);
-                        }
-                    }
-                    ck_check_fn(ck, sym->fn);
-                }
                 return ck_clone_type(sym->fn->ret);
             }
             if (fn && strncmp(fn, "__atomic_", 9) == 0) {
@@ -1522,31 +1574,19 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
         }
         if (e->a && (e->a->kind == E_MEMBER || e->a->kind == E_ARROW)) {
             Expr* m = e->a;
+            if (m->kind == E_MEMBER && m->a && m->a->kind == E_IDENT && sema_is_module(ck->s, m->a->str)) {
+                char mangled[256];
+                snprintf(mangled, sizeof mangled, "%s_%s", m->a->str, m->str);
+                Sym* msym = sema_lookup(ck->s, mangled);
+                if (msym && msym->kind == SYM_FN && msym->fn && msym->fn->ret) {
+                    return ck_clone_type(msym->fn->ret);
+                }
+            }
             AstType* base = ck_resolve_type(ck, m->a);
             if (base && base->name) {
                 Sym* msym = sema_lookup_method(ck->s, base->name, m->str);
                 if (msym) {
-                    if (msym->fn && msym->fn->ret && msym->fn->ret->name && strcmp(msym->fn->ret->name, "auto") == 0) {
-                        if (msym->fn->inferring_ret) {
-                            if (msym->fn->inferred_ret) {
-                                AstType* r = ck_clone_type(msym->fn->inferred_ret);
-                                free(msym->name);
-                                free(msym);
-                                free(base);
-                                return r;
-                            } else {
-                                char msg[256];
-                                snprintf(msg, sizeof msg, "cannot deduce return type for method '%s' before base case is established", m->str);
-                                ck_err_expr(ck, e, msg);
-                                free(msym->name);
-                                free(msym);
-                                free(base);
-                                return ck_mk_type("int", 0);
-                            }
-                        }
-                        ck_check_method(ck, base->name, msym->fn);
-                    }
-                    AstType* r = msym->fn->ret ? ck_clone_type(msym->fn->ret) : (msym->ret_type ? ck_clone_type(msym->ret_type) : NULL);
+                    AstType* r = msym->fn && msym->fn->ret ? ck_clone_type(msym->fn->ret) : (msym->ret_type ? ck_clone_type(msym->ret_type) : NULL);
                     free(msym->name);
                     free(msym);
                     free(base);
@@ -1559,6 +1599,24 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
     }
     case E_MEMBER:
     case E_ARROW: {
+        if (e->a && e->a->kind == E_IDENT && sema_is_module(ck->s, e->a->str)) {
+            char mangled[256];
+            snprintf(mangled, sizeof mangled, "%s_%s", e->a->str, e->str);
+            Sym* sym = sema_lookup(ck->s, mangled);
+            if (sym && sym->kind == SYM_FN && sym->fn && sym->fn->ret) {
+                return ck_clone_type(sym->fn->ret);
+            }
+        }
+        if (e->a && e->a->kind == E_IDENT) {
+            EnumDef* ed = sema_lookup_enum(ck->s, e->a->str);
+            if (ed) {
+                for (int i = 0; i < ed->nvariants; i++) {
+                    if (strcmp(ed->variants[i].name, e->str) == 0) {
+                        return ck_mk_type(ed->name, 0);
+                    }
+                }
+            }
+        }
         AstType* base = ck_resolve_type(ck, e->a);
         if (base && base->name) {
             StructDef* st = sema_lookup_struct(ck->s, base->name);
@@ -1602,7 +1660,12 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
     case E_NAMED_INIT:
     case E_COMPOUND: {
         if (!e->type || !e->type->name) return NULL;
-        const char* owning_enum = sema_lookup_variant(ck->s, e->type->name);
+        const char* owning_enum = NULL;
+        if (e->a && e->a->kind == E_IDENT && sema_lookup_enum(ck->s, e->a->str)) {
+            owning_enum = e->a->str;
+        } else {
+            owning_enum = sema_lookup_variant(ck->s, e->type->name);
+        }
         if (owning_enum) {
             return ck_mk_type(owning_enum, e->type->ptrs);
         }
@@ -1674,9 +1737,7 @@ static AstType* ck_resolve_type(Checker* ck, Expr* e) {
 
 static AstType* ck_fn_ret_instantiated(Checker* ck, FnDef* f) {
     (void)ck;
-    if (!f) return NULL;
-    if (f->inferred_ret) return ck_clone_type(f->inferred_ret);
-    if (!f->ret) return NULL;
+    if (!f || !f->ret) return NULL;
     return ck_clone_type(f->ret);
 }
 
@@ -1706,6 +1767,11 @@ static void ck_check_call(Checker* ck, Expr* x) {
     if (callee->kind == E_IDENT) {
         const char* fn = callee->str;
         Sym* sym = sema_lookup(ck->s, fn);
+        if (!sym && ck->cur_fn && ck->cur_fn->mod_prefix) {
+            char mangled[256];
+            snprintf(mangled, sizeof mangled, "%s_%s", ck->cur_fn->mod_prefix, fn);
+            sym = sema_lookup(ck->s, mangled);
+        }
         if (sym && sym->kind == SYM_FN && sym->fn) {
             FnDef* f = sym->fn;
             int nparams = f->nparams;
@@ -1765,6 +1831,45 @@ static void ck_check_call(Checker* ck, Expr* x) {
 
     if (callee->kind == E_MEMBER) {
         Expr* m = callee;
+        if (m->a && m->a->kind == E_IDENT && sema_is_module(ck->s, m->a->str)) {
+            char mangled[256];
+            snprintf(mangled, sizeof mangled, "%s_%s", m->a->str, m->str);
+            Sym* sym = sema_lookup(ck->s, mangled);
+            if (!sym || sym->kind != SYM_FN || !sym->fn) {
+                char msg[256];
+                snprintf(msg, sizeof msg, "module '%s' has no function '%s'", m->a->str, m->str);
+                ck_err_expr(ck, callee, msg);
+                return;
+            }
+            FnDef* f = sym->fn;
+            int nparams = f->nparams;
+            int skip = (nparams > 0 && strcmp(f->params[0].name, "self") == 0) ? 1 : 0;
+            if (x->nitems != nparams - skip) {
+                char msg[256];
+                snprintf(msg, sizeof msg, "function '%s.%s' expects %d argument%s, got %d",
+                         m->a->str, m->str, nparams - skip, (nparams - skip) == 1 ? "" : "s", x->nitems);
+                ck_err_expr(ck, x, msg);
+                return;
+            }
+            for (int i = 0; i < x->nitems; i++) {
+                int pi = i + skip;
+                AstType* want = ck_clone_type(f->params[pi].type);
+                AstType* got = ck_resolve_type(ck, x->items[i]);
+                if (!want || !got) { free(want); free(got); continue; }
+                int ok = ck_types_compatible(ck, want, got);
+                if (!ok) {
+                    char* ws = ck_type_str(want);
+                    char* gs = ck_type_str(got);
+                    char msg[256];
+                    snprintf(msg, sizeof msg, "argument %d of '%s.%s': expected %s, got %s",
+                             i + 1, m->a->str, m->str, ws, gs);
+                    ck_err_expr(ck, x->items[i], msg);
+                    free(ws); free(gs);
+                }
+                free(want); free(got);
+            }
+            return;
+        }
         AstType* base = ck_resolve_type(ck, m->a);
         if (!base) return;
         const char* method = m->str;
@@ -1831,13 +1936,33 @@ static void ck_check_call(Checker* ck, Expr* x) {
 
 static void ck_member_field(Checker* ck, Expr* x) {
     Expr* obj = x->a;
+    if (obj && obj->kind == E_IDENT) {
+        if (sema_is_module(ck->s, obj->str)) {
+            char mangled[256];
+            snprintf(mangled, sizeof mangled, "%s_%s", obj->str, x->str);
+            if (sema_lookup(ck->s, mangled)) return;
+            char msg[256];
+            snprintf(msg, sizeof msg, "module '%s' has no member '%s'", obj->str, x->str);
+            ck_err_expr(ck, x, msg);
+            return;
+        }
+        EnumDef* ed = sema_lookup_enum(ck->s, obj->str);
+        if (ed) {
+            for (int i = 0; i < ed->nvariants; i++) {
+                if (strcmp(ed->variants[i].name, x->str) == 0) return;
+            }
+            char msg[256];
+            snprintf(msg, sizeof msg, "enum '%s' has no variant '%s'", ed->name, x->str);
+            ck_err_expr(ck, x, msg);
+            return;
+        }
+    }
     AstType* t = ck_resolve_type(ck, obj);
     if (!t) return;
     const char* field = x->str;
 
-    Sym* sym = sema_lookup(ck->s, t->name);
-    if (sym && (sym->kind == SYM_STRUCT || sym->kind == SYM_IMPL)) {
-        StructDef* st = sema_lookup_struct(ck->s, t->name);
+    StructDef* st = sema_lookup_struct(ck->s, t->name);
+    if (st) {
         int found = 0;
         while (st) {
             for (int i = 0; i < st->nfields; i++) {
@@ -1960,6 +2085,9 @@ static void ck_expr(Checker* ck, Expr* x) {
         if (raw_has(x->str)) break;
         if (sema_is_cfunc(x->str)) break;
         if (x->str[0] >= '0' && x->str[0] <= '9') break;
+        if (sema_is_module(ck->s, x->str)) break;
+        if (sema_lookup_enum(ck->s, x->str)) break;
+        if (sema_lookup_struct(ck->s, x->str)) break;
         char msg[256];
         snprintf(msg, sizeof msg, "use of undeclared identifier '%s'", x->str);
         int sn = 0;
@@ -2078,6 +2206,11 @@ static void ck_expr(Checker* ck, Expr* x) {
         }
         AstType* lt = ck_resolve_type(ck, x->a);
         AstType* rt = ck_resolve_type(ck, x->b);
+        if (lt && lt->ptrs == 0 && lt->qual && strstr(lt->qual, "const")) {
+            char msg[256];
+            snprintf(msg, sizeof msg, "cannot assign to const variable '%s'", x->a && x->a->str ? x->a->str : "");
+            ck_err_expr(ck, x, msg);
+        }
         if (lt && rt) {
             int lp = lt->ptrs > 0;
             int rp = rt->ptrs > 0;
@@ -2214,16 +2347,10 @@ static int ck_decl_type_valid(Checker* ck, AstType* t) {
     if (t->name && strcmp(t->name, "auto") == 0) return 1;
     if (is_c_type_word(t->name)) return 1;
     if (raw_has(t->name)) return 1;
+    if (sema_lookup_struct(ck->s, t->name)) return 1;
+    if (sema_lookup_enum(ck->s, t->name)) return 1;
     Sym* sym = sema_lookup(ck->s, t->name);
-    if (sym && (sym->kind == SYM_STRUCT || sym->kind == SYM_IMPL)) {
-        StructDef* st = sema_lookup_struct(ck->s, t->name);
-        if (st) return 1;
-    }
     if (sym && sym->kind == SYM_TYPE) return 1;
-    /* A `sum` (enum) is a valid type. `scope_lookup` may return a shadowing
-       `impl` symbol registered under the same name, so verify the enum exists
-       directly against the program items. */
-    if (sym && sym->kind == SYM_ENUM) return 1;
     if (sym && sym->kind == SYM_IMPL && is_enum_type(ck->s, t->name)) return 1;
     if (ck->cur_fn && ck->cur_fn->nparams > 0) {
         for (int i = 0; i < ck->cur_fn->nparams; i++) {
@@ -2266,6 +2393,9 @@ static void ck_decl(Checker* ck, Decl* d) {
             ck_err_at(ck, d->start, d->len >= 1 ? d->len : 1, msg);
             ast_type_free(inf);
             return;
+        }
+        if (d->type->qual && !inf->qual) {
+            inf->qual = strdup(d->type->qual);
         }
         ast_type_free(d->type);
         d->type = inf;
@@ -2490,35 +2620,6 @@ static void ck_stmt(Checker* ck, Stmt* s) {
         }
         if (s->e) ck_expr(ck, s->e);
         if (ck->cur_fn) {
-            if (ck->cur_fn->inferring_ret) {
-                AstType* ret_t = NULL;
-                if (s->e) {
-                    ret_t = ck_resolve_type(ck, s->e);
-                    if (!ret_t) {
-                        ck_err_expr(ck, s->e, "cannot deduce return type from expression");
-                    }
-                } else {
-                    ret_t = ck_mk_type("void", 0);
-                }
-                if (ret_t) {
-                    if (!ck->cur_fn->inferred_ret) {
-                        ck->cur_fn->inferred_ret = ret_t;
-                    } else {
-                        int ok = ck_types_compatible(ck, ck->cur_fn->inferred_ret, ret_t);
-                        if (!ok) {
-                            char* ws = ck_type_str(ck->cur_fn->inferred_ret);
-                            char* gs = ck_type_str(ret_t);
-                            char msg[256];
-                            snprintf(msg, sizeof msg, "inconsistent return types in function '%s': '%s' versus '%s'",
-                                     ck->cur_fn->name ? ck->cur_fn->name : "<fn>", ws ? ws : "?", gs ? gs : "?");
-                            ck_err_at(ck, s->start, s->len >= 1 ? s->len : 1, msg);
-                            free(ws); free(gs);
-                        }
-                        free(ret_t);
-                    }
-                }
-                break;
-            }
             AstType* want = ck_fn_ret_instantiated(ck, ck->cur_fn);
             int is_void = want && want->ptrs == 0 && strcmp(want->name, "void") == 0;
             if (want && !is_void) {
@@ -2592,13 +2693,6 @@ static void ck_stmt(Checker* ck, Stmt* s) {
 static void ck_check_method(Checker* ck, const char* recv_name, FnDef* m) {
     if (!m || m->checked) return;
 
-    int is_auto_ret = (m->ret && m->ret->name && strcmp(m->ret->name, "auto") == 0);
-    if (is_auto_ret) {
-        if (m->inferring_ret) return;
-        m->inferring_ret = 1;
-        m->inferred_ret = NULL;
-    }
-
     FnDef* save_fn = ck->cur_fn;
     Scope* save_locals = ck->locals;
     const char* save_self_type = ck->self_type;
@@ -2626,19 +2720,6 @@ static void ck_check_method(Checker* ck, const char* recv_name, FnDef* m) {
 
     if (m->body) {
         ck_stmt(ck, m->body);
-    }
-
-    if (is_auto_ret) {
-        if (!m->inferred_ret) {
-            m->inferred_ret = ck_mk_type("void", 0);
-        }
-        ast_type_free(m->ret);
-        m->ret = m->inferred_ret;
-        m->inferred_ret = NULL;
-        m->inferring_ret = 0;
-    }
-
-    if (m->body) {
         ck_check_returns(ck, m);
     }
 
@@ -2688,13 +2769,6 @@ static void ck_check_impl(Checker* ck, ImplDef* im) {
 static void ck_check_fn(Checker* ck, FnDef* f) {
     if (!f || f->checked) return;
 
-    int is_auto_ret = (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0);
-    if (is_auto_ret) {
-        if (f->inferring_ret) return;
-        f->inferring_ret = 1;
-        f->inferred_ret = NULL;
-    }
-
     FnDef* save_fn = ck->cur_fn;
     Scope* save_locals = ck->locals;
     const char* save_self_type = ck->self_type;
@@ -2716,24 +2790,6 @@ static void ck_check_fn(Checker* ck, FnDef* f) {
 
     if (f->body) {
         ck_stmt(ck, f->body);
-    }
-
-    if (is_auto_ret) {
-        if (!f->inferred_ret) {
-            f->inferred_ret = ck_mk_type("void", 0);
-        }
-        ast_type_free(f->ret);
-        f->ret = f->inferred_ret;
-        f->inferred_ret = NULL;
-        f->inferring_ret = 0;
-
-        Sym* sym = sema_lookup(ck->s, f->name);
-        if (sym && sym->kind == SYM_FN) {
-            sym->ret_type = f->ret;
-        }
-    }
-
-    if (f->body) {
         ck_check_returns(ck, f);
     }
 

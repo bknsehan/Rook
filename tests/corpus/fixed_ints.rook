@@ -1,0 +1,27 @@
+#include <stdio.h>
+
+int64 compute(int8 a, int16 b, int32 c, int64 d) {
+    return (int64)a + (int64)b + (int64)c + d;
+}
+
+uint64 ucompute(uint8 a, uint16 b, uint32 c, uint64 d) {
+    return (uint64)a + (uint64)b + (uint64)c + d;
+}
+
+int main() {
+    int8 i8 = 10;
+    int16 i16 = 200;
+    int32 i32 = 30000;
+    int64 i64 = 4000000;
+
+    uint8 u8 = 250;
+    uint16 u16 = 50000;
+    uint32 u32 = 1000000;
+    uint64 u64 = 8000000;
+
+    int64 sum1 = compute(i8, i16, i32, i64);
+    uint64 sum2 = ucompute(u8, u16, u32, u64);
+
+    printf("sum1=%lld sum2=%llu\n", (long long)sum1, (unsigned long long)sum2);
+    return 0;
+}

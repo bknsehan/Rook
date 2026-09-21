@@ -421,21 +421,43 @@ static char* rook_rewrites_includes(const char* src, int src_len) {
                 after++;
             }
             size_t idlen = (size_t)(after - id0);
+            char alias[128] = "";
+            if (quote && *after == quote) {
+                after++;
+            }
+            while (*after == ' ' || *after == '\t') after++;
+            if (strncmp(after, "as", 2) == 0 && (after[2] == ' ' || after[2] == '\t')) {
+                after += 2;
+                while (*after == ' ' || *after == '\t') after++;
+                const char* a0 = after;
+                while (*after && *after != ' ' && *after != '\t' && *after != ';' && *after != '\r' && *after != '\n') after++;
+                size_t alen = (size_t)(after - a0);
+                if (alen > 0 && alen < sizeof(alias)) {
+                    memcpy(alias, a0, alen);
+                    alias[alen] = '\0';
+                }
+            }
             if (idlen > 0 && idlen < sizeof mod) {
                 memcpy(mod, id0, idlen);
                 mod[idlen] = '\0';
                 if (idlen > 5 && strcmp(mod + idlen - 5, ".rook") == 0) {
                     mod[idlen - 5] = '\0';
                 }
-                for (char* cp = mod; *cp; cp++) {
-                    if (*cp == '.') *cp = '/';
+                if (!quote) {
+                    for (char* cp = mod; *cp; cp++) {
+                        if (*cp == '.') *cp = '/';
+                    }
                 }
                 const char* indent = p;
                 while (indent < end && (*indent == ' ' || *indent == '\t')) indent++;
                 sb_appendn(&out, p, (int)(indent - p));
                 sb_append(&out, "#include \"");
                 sb_append(&out, mod);
-                sb_append(&out, ".rook\"\n");
+                sb_append(&out, ".rook\"");
+                if (alias[0]) {
+                    sb_appendf(&out, " as %s", alias);
+                }
+                sb_append(&out, "\n");
                 p = nl ? nl + 1 : end;
                 continue;
             }
@@ -513,6 +535,21 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                         memcpy(incpath, c1 + 1, inc_len);
                         incpath[inc_len] = '\0';
 
+                        char mod_alias[256] = "";
+                        const char* aptr = cend + 1;
+                        while (*aptr == ' ' || *aptr == '\t') aptr++;
+                        if (strncmp(aptr, "as", 2) == 0 && (aptr[2] == ' ' || aptr[2] == '\t')) {
+                            aptr += 2;
+                            while (*aptr == ' ' || *aptr == '\t') aptr++;
+                            const char* astart = aptr;
+                            while (*aptr && *aptr != ' ' && *aptr != '\t' && *aptr != ';' && *aptr != '\r' && *aptr != '\n') aptr++;
+                            size_t alen = (size_t)(aptr - astart);
+                            if (alen > 0 && alen < sizeof(mod_alias)) {
+                                memcpy(mod_alias, astart, alen);
+                                mod_alias[alen] = '\0';
+                            }
+                        }
+
                         /* Check if it's a .rook source file */
                         int is_rook = (inc_len >= 5 && strcmp(incpath + inc_len - 5, ".rook") == 0);
                         if (is_rook) {
@@ -528,9 +565,11 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                             /* Deduplicate: check if already visited */
                             char canon[4096];
                             const char* track_path = rk_realpath(resolved, canon) ? canon : resolved;
+                            char track_key[4096];
+                            snprintf(track_key, sizeof(track_key), "%s#%s", track_path, mod_alias);
                             int seen = 0;
                             for (VisitedInc* v = *visited; v; v = v->next) {
-                                if (strcmp(v->path, track_path) == 0) { seen = 1; break; }
+                                if (strcmp(v->path, track_key) == 0) { seen = 1; break; }
                             }
                             if (seen) {
                                 free(resolved);
@@ -540,7 +579,7 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                             }
                             VisitedInc* vi = malloc(sizeof *vi);
                             if (vi) {
-                                snprintf(vi->path, sizeof(vi->path), "%s", track_path);
+                                snprintf(vi->path, sizeof(vi->path), "%s", track_key);
                                 vi->next = *visited;
                                 *visited = vi;
                             }
@@ -572,9 +611,15 @@ static char* resolve_includes_rec(const char* src, int src_len, const char* base
                                 free(work);
                                 return NULL;
                             }
+                            if (mod_alias[0]) {
+                                sb_appendf(&out, "#pragma rook module %s\n", mod_alias);
+                            }
                             sb_append(&out, expanded);
                             if (out.len == 0 || out.data[out.len - 1] != '\n')
                                 sb_append(&out, "\n");
+                            if (mod_alias[0]) {
+                                sb_appendf(&out, "#pragma rook module end\n");
+                            }
                             free(expanded);
                             p = nl ? nl + 1 : end;
                             cur_orig_line++;

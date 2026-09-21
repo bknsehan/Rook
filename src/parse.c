@@ -20,6 +20,7 @@ typedef struct Parser {
     int silent;     /* suppress errors (backtracking) */
     int no_postfix; /* switch case labels */
     int err;
+    char* cur_module;
 } Parser;
 
 static Token* cur(Parser* p) {
@@ -465,6 +466,43 @@ static Expr* parse_postfix(Parser* p) {
             adv(p);
             char* name = ident(p);
             if (!name) return NULL;
+            if (k == E_MEMBER && tok_is(cur(p), "{")) {
+                /* Scoped named initializer: `Shape.Rect { ... }` */
+                adv(p); /* consume '{' */
+                Expr* init = e_at(ast_expr_new(E_NAMED_INIT), mt);
+                AstType* ty = ast_type_new();
+                ty->name = name;
+                ty->qual = strdup("");
+                ty->ptrs = 0;
+                init->type = ty;
+                init->a = e; /* owning enum expr, e.g. E_IDENT("Shape") */
+                while (!tok_is(cur(p), "}")) {
+                    char* fname = ident(p);
+                    if (!fname) return NULL;
+                    Expr* fe = NULL;
+                    if (tok_is(cur(p), ":")) {
+                        adv(p);
+                        fe = parse_expr(p);
+                    } else {
+                        fe = ast_expr_new(E_IDENT);
+                        fe->str = fname;
+                    }
+                    if (!fe) return NULL;
+                    init->nfields = realloc(init->nfields, (init->nnfields + 1) * sizeof *init->nfields);
+                    if (!init->nfields) exit(1);
+                    init->nfields[init->nnfields].name = fname;
+                    init->nfields[init->nnfields].e = fe;
+                    init->nnfields++;
+                    if (tok_is(cur(p), ",")) {
+                        adv(p);
+                        continue;
+                    }
+                    break;
+                }
+                if (!expect_punct(p, "}")) return NULL;
+                e = init;
+                continue;
+            }
             Expr* m = e_at(ast_expr_new(k), mt);
             m->str = name;
             m->a = e;
@@ -1035,6 +1073,10 @@ static FnDef* parse_fn_def(Parser* p) {
     f->ret = parse_type(p);
     if (!f->ret) return NULL;
     Token* name_tok = cur(p);
+    if (f->ret->name && strcmp(f->ret->name, "auto") == 0) {
+        error_at(p, name_tok ? name_tok : cur(p), "'auto' return type is not supported; specify an explicit return type");
+        return NULL;
+    }
     f->name = ident(p);
     if (!f->name) return NULL;
     if (name_tok) { f->start = name_tok->start; f->len = name_tok->len; f->line = name_tok->line; f->col = name_tok->col; }
@@ -1053,6 +1095,11 @@ static FnDef* parse_fn_def(Parser* p) {
             /* C-style `type name` parameter form */
             AstType* ty = parse_type(p);
             if (!ty) return NULL;
+            if (ty->name && strcmp(ty->name, "auto") == 0) {
+                error_at(p, cur(p), "function parameter cannot have 'auto' type; specify an explicit type");
+                ast_type_free(ty);
+                return NULL;
+            }
             char* nm = ident(p);
             if (!nm) return NULL;
             param.name = nm;
@@ -1071,10 +1118,6 @@ static FnDef* parse_fn_def(Parser* p) {
     if (tok_is(cur(p), ";")) {
         adv(p);
         f->is_extern = 1;
-        if (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0) {
-            error_at(p, name_tok ? name_tok : cur(p), "function declaration without body cannot have 'auto' return type");
-            return NULL;
-        }
     } else if (tok_is(cur(p), "{")) {
         f->body = parse_block(p);
         if (!f->body) return NULL;
@@ -1217,7 +1260,7 @@ static FnDef* parse_extern_fn(Parser* p) {
     f->name = ident(p);
     if (!f->name) return NULL;
     if (f->ret && f->ret->name && strcmp(f->ret->name, "auto") == 0) {
-        error_at(p, name_tok ? name_tok : cur(p), "extern function '%s' cannot have 'auto' return type", f->name ? f->name : "");
+        error_at(p, name_tok ? name_tok : cur(p), "'auto' return type is not supported; specify an explicit return type");
         return NULL;
     }
     if (name_tok) { f->line = name_tok->line; f->col = name_tok->col; }
@@ -1234,6 +1277,11 @@ static FnDef* parse_extern_fn(Parser* p) {
         } else {
             AstType* ty = parse_type(p);
             if (!ty) return NULL;
+            if (ty->name && strcmp(ty->name, "auto") == 0) {
+                error_at(p, cur(p), "function parameter cannot have 'auto' type; specify an explicit type");
+                ast_type_free(ty);
+                return NULL;
+            }
             char* nm = ident(p);
             if (!nm) return NULL;
             param.name = nm;
@@ -1408,6 +1456,7 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
     p.silent = 0;
     p.no_postfix = 0;
     p.err = 0;
+    p.cur_module = NULL;
 
     Program* prog = calloc(1, sizeof *prog);
     if (!prog) exit(1);
@@ -1416,6 +1465,37 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
     for (;;) {
         Token* t = cur(&p);
         if (t->kind == TK_EOF) break;
+
+        if (t->bol && p.depth == 0 && tok_is(t, "#") &&
+            is_kw(peek(&p, 1), "pragma") &&
+            is_kw(peek(&p, 2), "rook") &&
+            is_kw(peek(&p, 3), "module")) {
+
+            Item* raw = ast_item_new(TOP_RAW);
+            raw->raw = (char*)src + raw_begin;
+            raw->raw_len = t->start - raw_begin;
+            if (raw->raw_len > 0) ast_program_add(prog, raw);
+            else free(raw);
+
+            adv(&p); /* '#' */
+            adv(&p); /* 'pragma' */
+            adv(&p); /* 'rook' */
+            adv(&p); /* 'module' */
+
+            Token* next = cur(&p);
+            if (is_kw(next, "end")) {
+                adv(&p);
+                free(p.cur_module);
+                p.cur_module = NULL;
+            } else if (next->kind == TK_IDENT) {
+                free(p.cur_module);
+                p.cur_module = tok_strdup(next);
+                adv(&p);
+            }
+            raw_begin = cur(&p)->start;
+            continue;
+        }
+
         int top_start = (t->bol && p.depth == 0 &&
                          (is_construct_kw(t) ||
                           (t->kind == TK_IDENT && looks_like_c_fn(&p))));
@@ -1429,6 +1509,20 @@ Program* parse_program(const char* src, int len, Token* toks, int ntoks) {
             if (!it) {
                 free(prog);
                 return NULL;
+            }
+            if (p.cur_module) {
+                if (it->kind == TOP_FN && it->fn) {
+                    it->fn->mod_prefix = strdup(p.cur_module);
+                } else if (it->kind == TOP_STRUCT && it->st) {
+                    it->st->mod_prefix = strdup(p.cur_module);
+                } else if (it->kind == TOP_ENUM && it->ed) {
+                    it->ed->mod_prefix = strdup(p.cur_module);
+                } else if (it->kind == TOP_IMPL && it->im) {
+                    it->im->mod_prefix = strdup(p.cur_module);
+                    for (int j = 0; j < it->im->nmethods; j++) {
+                        it->im->methods[j]->mod_prefix = strdup(p.cur_module);
+                    }
+                }
             }
             ast_program_add(prog, it);
             raw_begin = p.last_end;

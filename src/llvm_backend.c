@@ -61,6 +61,7 @@ typedef struct LLVMGen {
     Program* prog;
 
     LLVMValueRef cur_fn;
+    FnDef* cur_fn_def;
     LLVMTypeRef cur_ret_type;
     AstType* cur_ast_ret;
 
@@ -231,7 +232,8 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
         return LLVMPointerTypeInContext(g->ctx, 0);
     }
     const char* n = t->name;
-    if (strcmp(n, "int") == 0 || strcmp(n, "int32_t") == 0 || strcmp(n, "uint32_t") == 0 ||
+    if (strcmp(n, "int") == 0 || strcmp(n, "int32") == 0 || strcmp(n, "uint32") == 0 ||
+        strcmp(n, "int32_t") == 0 || strcmp(n, "uint32_t") == 0 ||
         strcmp(n, "unsigned") == 0 || strcmp(n, "signed") == 0 ||
         strcmp(n, "unsigned int") == 0 || strcmp(n, "signed int") == 0) {
         return LLVMInt32TypeInContext(g->ctx);
@@ -250,7 +252,8 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
         }
         return LLVMInt64TypeInContext(g->ctx);
     }
-    if (strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0) {
+    if (strcmp(n, "int64") == 0 || strcmp(n, "uint64") == 0 ||
+        strcmp(n, "int64_t") == 0 || strcmp(n, "uint64_t") == 0) {
         return LLVMInt64TypeInContext(g->ctx);
     }
     if (strcmp(n, "size_t") == 0 || strcmp(n, "__size_t") == 0 ||
@@ -279,12 +282,14 @@ static LLVMTypeRef gen_llvm_type(LLVMGen* g, AstType* t) {
     }
     if (strcmp(n, "short") == 0 || strcmp(n, "unsigned short") == 0 ||
         strcmp(n, "short int") == 0 || strcmp(n, "unsigned short int") == 0 ||
+        strcmp(n, "int16") == 0 || strcmp(n, "uint16") == 0 ||
         strcmp(n, "int16_t") == 0 || strcmp(n, "uint16_t") == 0) {
         return LLVMInt16TypeInContext(g->ctx);
     }
     if (strcmp(n, "char") == 0 || strcmp(n, "unsigned char") == 0 ||
-        strcmp(n, "signed char") == 0 || strcmp(n, "int8_t") == 0 ||
-        strcmp(n, "uint8_t") == 0 || strcmp(n, "bool") == 0 || strcmp(n, "_Bool") == 0) {
+        strcmp(n, "signed char") == 0 ||
+        strcmp(n, "int8") == 0 || strcmp(n, "uint8") == 0 ||
+        strcmp(n, "int8_t") == 0 || strcmp(n, "uint8_t") == 0 || strcmp(n, "bool") == 0 || strcmp(n, "_Bool") == 0) {
         return LLVMInt8TypeInContext(g->ctx);
     }
     if (strcmp(n, "float") == 0) {
@@ -1404,15 +1409,30 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         int inherit_steps = 0;
         char* method_owner = NULL;
         if (e->a->kind == E_IDENT) {
-            snprintf(fn_name, sizeof(fn_name), "%s", e->a->str);
-        } else if (e->a->kind == E_MEMBER || e->a->kind == E_ARROW) {
-            AstType* at = llvm_resolve_expr_type(g, e->a->a);
-            if (at && at->name) {
-                method_owner = llvm_find_method_owner(g, at->name, e->a->str, &inherit_steps);
-                if (method_owner) {
-                    snprintf(fn_name, sizeof(fn_name), "%s_%s", method_owner, e->a->str);
+            if (g->cur_fn_def && g->cur_fn_def->mod_prefix) {
+                char mangled[256];
+                snprintf(mangled, sizeof(mangled), "%s_%s", g->cur_fn_def->mod_prefix, e->a->str);
+                if (LLVMGetNamedFunction(g->module, mangled)) {
+                    snprintf(fn_name, sizeof(fn_name), "%s", mangled);
                 } else {
-                    snprintf(fn_name, sizeof(fn_name), "%s_%s", at->name, e->a->str);
+                    snprintf(fn_name, sizeof(fn_name), "%s", e->a->str);
+                }
+            } else {
+                snprintf(fn_name, sizeof(fn_name), "%s", e->a->str);
+            }
+        } else if (e->a->kind == E_MEMBER || e->a->kind == E_ARROW) {
+            if (e->a->kind == E_MEMBER && e->a->a && e->a->a->kind == E_IDENT &&
+                g->sema && sema_is_module(g->sema, e->a->a->str)) {
+                snprintf(fn_name, sizeof(fn_name), "%s_%s", e->a->a->str, e->a->str);
+            } else {
+                AstType* at = llvm_resolve_expr_type(g, e->a->a);
+                if (at && at->name) {
+                    method_owner = llvm_find_method_owner(g, at->name, e->a->str, &inherit_steps);
+                    if (method_owner) {
+                        snprintf(fn_name, sizeof(fn_name), "%s_%s", method_owner, e->a->str);
+                    } else {
+                        snprintf(fn_name, sizeof(fn_name), "%s_%s", at->name, e->a->str);
+                    }
                 }
             }
         }
@@ -1608,7 +1628,9 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         }
 
         int nargs = e->nitems;
-        int is_method_call = (e->a->kind == E_MEMBER || e->a->kind == E_ARROW);
+        int is_module_call = (e->a->kind == E_MEMBER && e->a->a && e->a->a->kind == E_IDENT &&
+                              g->sema && sema_is_module(g->sema, e->a->a->str));
+        int is_method_call = (e->a->kind == E_MEMBER || e->a->kind == E_ARROW) && !is_module_call;
         int total_args = nargs + (is_method_call ? 1 : 0);
         LLVMValueRef* args = calloc(total_args > 0 ? total_args : 1, sizeof(LLVMValueRef));
 
@@ -1706,6 +1728,26 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
 
     case E_ARROW:
     case E_MEMBER: {
+        if (e->kind == E_MEMBER && e->a && e->a->kind == E_IDENT && g->sema) {
+            EnumDef* ed = sema_lookup_enum(g->sema, e->a->str);
+            if (ed) {
+                int vi = variant_index(ed, e->str);
+                if (vi >= 0) {
+                    if (enum_has_payload(ed)) {
+                        AstType enum_at = { .qual = "", .name = ed->name, .ptrs = 0 };
+                        LLVMTypeRef enum_t = gen_llvm_type(g, &enum_at);
+                        LLVMValueRef sum_alloca = LLVMBuildAlloca(g->builder, enum_t, "unit_sum_init");
+                        LLVMBuildStore(g->builder, LLVMConstNull(enum_t), sum_alloca);
+                        LLVMValueRef tag_ptr = LLVMBuildStructGEP2(g->builder, enum_t, sum_alloca, 0, "tag_ptr");
+                        LLVMBuildStore(g->builder, LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)vi, 0), tag_ptr);
+                        if (out_type) *out_type = enum_t;
+                        return LLVMBuildLoad2(g->builder, enum_t, sum_alloca, "load_unit_sum");
+                    }
+                    if (out_type) *out_type = LLVMInt32TypeInContext(g->ctx);
+                    return LLVMConstInt(LLVMInt32TypeInContext(g->ctx), (unsigned long long)vi, 0);
+                }
+            }
+        }
         LLVMTypeRef elem_type = NULL;
         LLVMValueRef lptr = gen_lvalue(g, e, &elem_type);
         if (lptr && elem_type) {
@@ -1772,7 +1814,8 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
         LLVMTypeRef src_type = NULL;
         LLVMValueRef val = gen_expr(g, e->a, &src_type);
         LLVMTypeRef dst_type = gen_llvm_type(g, e->type);
-        LLVMValueRef cast_val = cast_to_type(g, val, src_type, dst_type);
+        int src_unsigned = is_expr_unsigned(g, e->a, src_type);
+        LLVMValueRef cast_val = cast_to_type_ext(g, val, src_type, dst_type, !src_unsigned);
         if (out_type) *out_type = dst_type;
         return cast_val;
     }
@@ -1817,7 +1860,9 @@ static LLVMValueRef gen_expr(LLVMGen* g, Expr* e, LLVMTypeRef* out_type) {
 
     case E_NAMED_INIT: {
         const char* type_name = (e->type && e->type->name) ? e->type->name : NULL;
-        const char* en = type_name ? sema_lookup_variant(g->sema, type_name) : NULL;
+        const char* en = (e->a && e->a->kind == E_IDENT && g->sema && sema_lookup_enum(g->sema, e->a->str))
+                         ? e->a->str
+                         : (type_name ? sema_lookup_variant(g->sema, type_name) : NULL);
         if (en) {
             /* sum variant constructor: `Circle { r: 2.0 }` */
             EnumDef* ed = sema_lookup_enum(g->sema, en);
@@ -2031,7 +2076,9 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
             const char* vname = NULL;
             if (p) {
                 if (p->kind == E_IDENT && strcmp(p->str, "_") != 0) vname = p->str;
+                else if (p->kind == E_MEMBER) vname = p->str;
                 else if (p->kind == E_CALL && p->a && p->a->kind == E_IDENT) vname = p->a->str;
+                else if (p->kind == E_CALL && p->a && p->a->kind == E_MEMBER) vname = p->a->str;
                 else if (p->kind == E_NAMED_INIT && p->type) vname = p->type->name;
             }
             if (vname) {
@@ -2093,7 +2140,9 @@ static LLVMValueRef gen_match(LLVMGen* g, Expr* scrut_expr, MatchArm* marms, int
             const char* vname = NULL;
             if (p) {
                 if (p->kind == E_IDENT) vname = p->str;
+                else if (p->kind == E_MEMBER) vname = p->str;
                 else if (p->kind == E_CALL && p->a && p->a->kind == E_IDENT) vname = p->a->str;
+                else if (p->kind == E_CALL && p->a && p->a->kind == E_MEMBER) vname = p->a->str;
                 else if (p->kind == E_NAMED_INIT && p->type) vname = p->type->name;
             }
 
@@ -2588,6 +2637,7 @@ static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name, c
     if (!fn_val) return;
 
     g->cur_fn = fn_val;
+    g->cur_fn_def = fn;
     g->cur_ast_ret = fn->ret;
     g->cur_ret_type = gen_llvm_type(g, fn->ret);
     g->nlocals = 0;
@@ -2599,7 +2649,7 @@ static void gen_function_body(LLVMGen* g, FnDef* fn, const char* mangled_name, c
 
     int has_self = (fn->nparams > 0 && strcmp(fn->params[0].name, "self") == 0);
     int p_offset = 0;
-    if (mangled_name && !has_self) {
+    if (target_type_name && !has_self) {
         LLVMValueRef self_param = LLVMGetParam(fn_val, 0);
         LLVMValueRef alloca_ref = LLVMBuildAlloca(g->builder, LLVMPointerTypeInContext(g->ctx, 0), "self");
         LLVMBuildStore(g->builder, self_param, alloca_ref);
@@ -2837,7 +2887,13 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
         Item* it = prog->items[i];
         if (it->kind == TOP_FN && it->fn) {
             FnDef* fn = it->fn;
-            if (LLVMGetNamedFunction(module, fn->name)) {
+            char mangled[256];
+            const char* fname = fn->name;
+            if (fn->mod_prefix) {
+                snprintf(mangled, sizeof mangled, "%s_%s", fn->mod_prefix, fn->name);
+                fname = mangled;
+            }
+            if (LLVMGetNamedFunction(module, fname)) {
                 continue;
             }
             LLVMTypeRef ret_t = gen_llvm_type(&g, fn->ret);
@@ -2846,7 +2902,7 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
                 pts[p] = gen_llvm_type(&g, fn->params[p].type);
             }
             LLVMTypeRef fn_t = LLVMFunctionType(ret_t, pts, fn->nparams, 0);
-            LLVMAddFunction(module, fn->name, fn_t);
+            LLVMAddFunction(module, fname, fn_t);
             free(pts);
         } else if (it->kind == TOP_IMPL && it->im) {
             ImplDef* im = it->im;
@@ -2880,7 +2936,13 @@ static LLVMModuleRef llvm_backend_build_module(LLVMContextRef ctx, Sema* sema, P
     for (int i = 0; i < prog->nitems; i++) {
         Item* it = prog->items[i];
         if (it->kind == TOP_FN && it->fn) {
-            gen_function_body(&g, it->fn, NULL, NULL);
+            char mangled[256];
+            const char* fname = NULL;
+            if (it->fn->mod_prefix) {
+                snprintf(mangled, sizeof mangled, "%s_%s", it->fn->mod_prefix, it->fn->name);
+                fname = mangled;
+            }
+            gen_function_body(&g, it->fn, fname, NULL);
         } else if (it->kind == TOP_IMPL && it->im) {
             ImplDef* im = it->im;
             for (int m = 0; m < im->nmethods; m++) {

@@ -105,7 +105,7 @@ install(FILES ${CMAKE_SOURCE_DIR}/src/libc/commandlist.json
 
 # ─── Language server (rook-lsp, Rust) ────────────────────────────────
 # Optional Rust crate (off for ASAN/UBSAN, which can't link a Rust binary).
-option(ROOK_BUILD_LSP "Build the rook-lsp language server" ON)
+option(ROOK_BUILD_LSP "Build the rook-lsp language server" OFF)
 option(ROOK_LSP_C_HEADERS "Enable libclang project C-header parsing in rook-lsp" OFF)
 
 if(ROOK_BUILD_LSP)

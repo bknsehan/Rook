@@ -162,9 +162,8 @@ typedef struct FnDef {
     int len;
     int line;
     int col;
-    int inferring_ret;      /* 1 while inferring auto return type (cycle detection) */
     int checked;            /* 1 once type-checked */
-    AstType* inferred_ret;  /* candidate return type during inference */
+    char* mod_prefix;       /* module alias prefix from '#comprise ... as alias' */
 } FnDef;
 
 typedef enum { FIELD_COLON, FIELD_C } FieldStyle;
@@ -184,6 +183,7 @@ typedef struct StructDef {
     int is_object;       /* 1: `object` (OOP: inheritance + impl); 0: plain C `struct` */
     int line;
     int col;
+    char* mod_prefix;
 } StructDef;
 
 typedef struct EnumVariant {
@@ -201,6 +201,7 @@ typedef struct EnumDef {
     int is_c_enum;       /* 1: plain C-style `enum Name { A, B }` (verbatim, no payload) */
     int line;
     int col;
+    char* mod_prefix;
 } EnumDef;
 
 typedef struct ImplDef {
@@ -210,6 +211,7 @@ typedef struct ImplDef {
     int start;              /* byte offset of the `impl` keyword (diagnostics) */
     int line;
     int col;
+    char* mod_prefix;
 } ImplDef;
 
 typedef struct Item {

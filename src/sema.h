@@ -59,6 +59,7 @@ Sym* sema_lookup_method(Sema* s, const char* type_name, const char* method_name)
 const char* sema_lookup_variant(Sema* s, const char* name);
 StructDef* sema_lookup_struct(Sema* s, const char* name);
 EnumDef* sema_lookup_enum(Sema* s, const char* name);
+int sema_is_module(Sema* s, const char* name);
 
 /* Run the full type-checking pass. On the first error, sets `s->err` to a
    malloc'd source-accurate diagnostic and returns 1; otherwise returns 0. */
